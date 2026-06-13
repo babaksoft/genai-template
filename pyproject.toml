@@ -1,0 +1,76 @@
+[build-system]
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "genai-template"
+version = "0.1.0"
+description = "A starter project promoting system design for Generative AI applications"
+readme = "README.md"
+requires-python = ">=3.10<3.13"
+license = "MIT"
+authors = [
+  { name="babaksoft", email="babak.eslamieh@gmail.com" },
+]
+keywords = ["general", "utility"]
+classifiers = [
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3 :: Only",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+license-files = ["LICEN[CS]E*"]
+
+dependencies = [
+    "arize-phoenix",
+    "boto3",
+    "chromadb",
+    "fastapi[standard]",
+    "langfuse",
+    "llama-index",
+    "llama-index-callbacks-arize-phoenix",
+    "llama-index-embeddings-fastembed",
+    "llama-index-embeddings-huggingface",
+    "llama-index-embeddings-openai",
+    "llama-index-llms-ollama",
+    "llama-index-llms-openai",
+    "llama-index-vector-stores-chroma",
+    "llama-index-vector-stores-qdrant",
+    "ollama",
+    "openinference-instrumentation-llama-index",
+    "python-dotenv",
+    "qdrant-client[fastembed]",
+    "requests",
+    "sentence-transformers",
+    "streamlit",
+]
+
+[project.urls]
+Homepage = "https://github.com/babaksoft/genai-template"
+Issues = "https://github.com/babaksoft/genai-template/issues"
+
+[project.optional-dependencies]
+build = [
+    "build",
+    "hatchling",
+]
+
+dev = [
+    "black",
+    "isort",
+    "mypy",
+    "pytest",
+    "ruff",
+]
+
+[tool.isort]
+profile = "black"
+
+[tool.hatch.build]
+sources = ["src"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/genai_template"]
