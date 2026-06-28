@@ -1,0 +1,3 @@
+"""
+Chunking and metadata logic.
+"""
