@@ -5,5 +5,5 @@
 ![Static Badge](https://img.shields.io/badge/category-agentic-orange)
 ![Static Badge](https://img.shields.io/badge/framework-llamaindex-orange)
 ![GitHub License](https://img.shields.io/github/license/babaksoft/genai-template)
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/babaksoft/genai-template/build.yml)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/babaksoft/genai-template/ci.yml)
 
