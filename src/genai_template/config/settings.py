@@ -1,6 +1,8 @@
 import logging
 from pathlib import Path
 
+from genai_template.common.types import VectorDistance
+
 # Global settings
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 PKG_ROOT = Path(__file__).resolve().parent.parent
@@ -30,3 +32,4 @@ TOP_K = 5
 # Chroma settings
 CHROMA_COLLECTION = "documents"
 CHROMA_PERSIST_DIR = REPO_ROOT / "storage" / "chroma"
+CHROMA_DISTANCE = VectorDistance.COSINE
