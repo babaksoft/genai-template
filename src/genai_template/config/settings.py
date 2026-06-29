@@ -29,4 +29,4 @@ TOP_K = 5
 
 # Chroma settings
 CHROMA_COLLECTION = "documents"
-CHROMA_PERSIST_DIR = "./storage/chroma"
+CHROMA_PERSIST_DIR = REPO_ROOT / "storage" / "chroma"
