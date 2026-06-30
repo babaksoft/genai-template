@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from genai_template.components.embeddings.fastembed import (
     FastEmbedEmbeddingModel,
 )
@@ -127,4 +129,36 @@ def test_batch_embedding_called_once() -> None:
 
     mock_model.get_text_embedding_batch.assert_called_once_with(
         texts=["First", "Second"],
+    )
+
+
+def test_embed_query_empty() -> None:
+    """An empty query should be rejected."""
+
+    with patch("genai_template.components.embeddings.fastembed.FastEmbedEmbedding"):
+        embedder = FastEmbedEmbeddingModel()
+
+    with pytest.raises(ValueError):
+        embedder.embed_query("   ")
+
+
+def test_embed_query() -> None:
+    """A query embedding should be generated."""
+
+    embedding = [0.1, 0.2, 0.3]
+
+    with patch(
+        "genai_template.components.embeddings.fastembed.FastEmbedEmbedding"
+    ) as mock_embedding_class:
+        mock_model = MagicMock()
+        mock_model.get_query_embedding.return_value = embedding
+        mock_embedding_class.return_value = mock_model
+
+        embedder = FastEmbedEmbeddingModel()
+        result = embedder.embed_query("What is RAG?")
+
+    assert result == embedding
+
+    mock_model.get_query_embedding.assert_called_once_with(
+        "What is RAG?",
     )

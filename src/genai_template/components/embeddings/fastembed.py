@@ -66,3 +66,29 @@ class FastEmbedEmbeddingModel:
         )
 
         return chunks
+
+    def embed_query(
+        self,
+        query: str,
+    ) -> list[float]:
+        """Generate an embedding for a user query.
+
+        Args:
+            query:
+                User query to embed.
+
+        Returns:
+            Query embedding.
+
+        Raises:
+            ValueError:
+                If the query is empty or contains only whitespace.
+        """
+        if not query.strip():
+            raise ValueError("Query must not be empty.")
+
+        logger.info("Generating embedding for query: '%s'", query)
+        embedding = self._embed_model.get_query_embedding(query)
+        logger.info("Query embedding generated.")
+
+        return embedding
