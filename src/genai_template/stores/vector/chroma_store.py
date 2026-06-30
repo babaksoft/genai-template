@@ -44,15 +44,15 @@ class ChromaStore:
             settings.CHROMA_COLLECTION,
         )
 
-    def add(
+    def upsert(
         self,
         chunks: list[DocumentChunk],
     ) -> None:
-        """Persist embedded document chunks.
+        """Persist or update (upsert) embedded document chunks.
 
         Args:
             chunks:
-                Embedded chunks to persist.
+                Embedded chunks to persist or update.
 
         Raises:
             ValueError:
@@ -81,7 +81,7 @@ class ChromaStore:
 
             metadatas.append(metadata)
 
-        self._collection.add(
+        self._collection.upsert(
             ids=ids,
             documents=documents,
             embeddings=cast(Embeddings, embeddings),
