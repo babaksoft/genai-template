@@ -13,6 +13,7 @@ from chromadb.api.types import Embeddings, Metadatas
 from genai_template.common.types import VectorDistance
 from genai_template.config import settings
 from genai_template.schemas.chunk import DocumentChunk
+from genai_template.schemas.retrieved_chunk import RetrievedChunk
 
 logger = logging.getLogger(__name__)
 
@@ -93,30 +94,62 @@ class ChromaStore:
             len(chunks),
         )
 
-    def query(
+    def search(
         self,
         embedding: list[float],
         top_k: int,
-    ) -> list[str]:
-        """Query the vector store.
+    ) -> list[RetrievedChunk]:
+        """Search for similar document chunks.
 
         Args:
             embedding:
                 Query embedding.
             top_k:
-                Maximum number of matches.
+                Maximum number of results.
 
         Returns:
-            Matching chunk IDs.
+            Retrieved chunks ordered by increasing distance.
         """
+
         result = self._collection.query(
             query_embeddings=cast(Embeddings, [embedding]),
             n_results=top_k,
         )
 
-        ids = result.get("ids", [])
+        ids = result.get("ids") or []
+        documents = result.get("documents") or []
+        metadatas = result.get("metadatas") or []
+        distances = result.get("distances") or []
 
         if not ids:
             return []
 
-        return list(ids[0])
+        retrieved_chunks: list[RetrievedChunk] = []
+
+        for chunk_id, text, metadata, distance in zip(
+            ids[0],
+            documents[0],
+            metadatas[0],
+            distances[0],
+            strict=True,
+        ):
+            document_chunk = DocumentChunk(
+                id=chunk_id,
+                document_id=str(metadata["document_id"]),
+                text=text,
+                metadata=json.loads(str(metadata["metadata"])),
+            )
+
+            retrieved_chunks.append(
+                RetrievedChunk(
+                    chunk=document_chunk,
+                    distance=distance,
+                )
+            )
+
+        logger.info(
+            "Retrieved %d chunk(s).",
+            len(retrieved_chunks),
+        )
+
+        return retrieved_chunks

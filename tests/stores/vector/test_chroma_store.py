@@ -123,14 +123,24 @@ def test_upsert_missing_embedding(
 
 
 @patch("genai_template.stores.vector.chroma_store.chromadb.PersistentClient")
-def test_query(
+def test_search(
     mock_client_class: MagicMock,
 ) -> None:
-    """Query should return matching chunk IDs."""
+    """Search should reconstruct retrieved chunks."""
 
     mock_collection = MagicMock()
     mock_collection.query.return_value = {
-        "ids": [["chunk-001", "chunk-002"]],
+        "ids": [["chunk-001"]],
+        "documents": [["Hello world."]],
+        "metadatas": [
+            [
+                {
+                    "document_id": "document.md",
+                    "metadata": '{"author": "Babak"}',
+                }
+            ]
+        ],
+        "distances": [[0.12]],
     }
 
     mock_client = MagicMock()
@@ -138,25 +148,32 @@ def test_query(
     mock_client_class.return_value = mock_client
 
     store = ChromaStore()
-
-    result = store.query(
+    result = store.search(
         embedding=[0.1, 0.2, 0.3],
-        top_k=2,
+        top_k=1,
     )
 
-    assert result == [
-        "chunk-001",
-        "chunk-002",
-    ]
+    assert len(result) == 1
+
+    retrieved = result[0]
+
+    assert retrieved.chunk.id == "chunk-001"
+    assert retrieved.chunk.document_id == "document.md"
+    assert retrieved.chunk.text == "Hello world."
+    assert retrieved.chunk.metadata == {
+        "author": "Babak",
+    }
+
+    assert retrieved.distance == 0.12
 
     mock_collection.query.assert_called_once_with(
         query_embeddings=[[0.1, 0.2, 0.3]],
-        n_results=2,
+        n_results=1,
     )
 
 
 @patch("genai_template.stores.vector.chroma_store.chromadb.PersistentClient")
-def test_query_empty_result(
+def test_search_empty_result(
     mock_client_class: MagicMock,
 ) -> None:
     """Empty query results should return an empty list."""
@@ -173,7 +190,7 @@ def test_query_empty_result(
     store = ChromaStore()
 
     assert (
-        store.query(
+        store.search(
             embedding=[0.1, 0.2, 0.3],
             top_k=5,
         )
