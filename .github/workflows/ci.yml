@@ -78,4 +78,4 @@ jobs:
           pip install -c constraints.txt pytest
 
       - name: Run unit tests
-        run: pytest -v
+        run: pytest -m "not integration" -v

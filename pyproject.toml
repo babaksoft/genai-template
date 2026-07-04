@@ -70,7 +70,11 @@ target-version = ["py312"]
 profile = "black"
 
 [tool.pytest.ini_options]
+pythonpath = ["src"]
 testpaths = ["tests"]
+markers = [
+    "integration: marks tests requiring external services",
+]
 
 [tool.hatch.build]
 sources = ["src"]

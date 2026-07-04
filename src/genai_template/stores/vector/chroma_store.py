@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 from typing import cast
 
 import chromadb
@@ -27,11 +28,17 @@ class ChromaStore:
         VectorDistance.INNER_PRODUCT: "ip",
     }
 
-    def __init__(self) -> None:
-        """Initialize the Chroma collection."""
-        client = chromadb.PersistentClient(
-            path=settings.CHROMA_PERSIST_DIR,
-        )
+    def __init__(self, persist_directory: Path | None = None) -> None:
+        """
+        Initialize the Chroma collection.
+
+        Args:
+            persist_directory:
+                Directory to store persisted data.
+        """
+
+        persist_directory = persist_directory or settings.CHROMA_PERSIST_DIR
+        client = chromadb.PersistentClient(path=persist_directory)
 
         self._collection: Collection = client.get_or_create_collection(
             name=settings.CHROMA_COLLECTION,
