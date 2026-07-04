@@ -29,13 +29,14 @@ class RetrievalPipeline:
             store:
                 Vector store.
         """
+
         self._embedder = embedder or FastEmbedEmbeddingModel()
         self._store = store or ChromaStore()
 
     def retrieve(
         self,
         query: str,
-        top_k: int,
+        top_k: int = 5,
     ) -> list[RetrievedChunk]:
         """Retrieve relevant document chunks.
 
@@ -43,12 +44,13 @@ class RetrievalPipeline:
             query:
                 User query.
             top_k:
-                Maximum number of retrieved chunks.
+                Maximum number of retrieved chunks. Default is 5.
 
         Returns:
             Returns retrieved chunks in the order returned by the underlying
             vector store (typically increasing distance).
         """
+
         logger.info("Retrieving relevant document chunks.")
 
         embedding = self._embedder.embed_query(query)
