@@ -17,6 +17,7 @@ class FastEmbedEmbeddingModel:
 
     def __init__(self) -> None:
         """Initialize the embedding model."""
+
         self._embed_model = FastEmbedEmbedding(
             model_name=settings.EMBEDDING_MODEL,
         )
@@ -39,6 +40,7 @@ class FastEmbedEmbeddingModel:
         Returns:
             The same chunks with populated embeddings.
         """
+
         if not chunks:
             return []
 
@@ -48,7 +50,6 @@ class FastEmbedEmbeddingModel:
         )
 
         texts = [chunk.text for chunk in chunks]
-
         embeddings = self._embed_model.get_text_embedding_batch(
             texts=texts,
         )
@@ -84,6 +85,7 @@ class FastEmbedEmbeddingModel:
             ValueError:
                 If the query is empty or contains only whitespace.
         """
+
         if not query.strip():
             raise ValueError("Query must not be empty.")
 

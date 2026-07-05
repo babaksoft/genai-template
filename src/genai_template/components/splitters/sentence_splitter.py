@@ -18,6 +18,7 @@ class DocumentSplitter:
 
     def __init__(self) -> None:
         """Initialize the document splitter."""
+
         self._splitter = SentenceSplitter(
             chunk_size=settings.CHUNK_SIZE,
             chunk_overlap=settings.CHUNK_OVERLAP,
@@ -36,6 +37,7 @@ class DocumentSplitter:
         Returns:
             A list of document chunks.
         """
+
         if not documents:
             return []
 

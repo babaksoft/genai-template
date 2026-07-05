@@ -1,6 +1,6 @@
-from genai_template.prompts.rag_templates import SINGLE_TURN_QA
-
 """Prompt builder component."""
+
+from genai_template.prompts.rag_templates import SINGLE_TURN_QA
 
 
 class PromptBuilder:

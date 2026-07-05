@@ -29,6 +29,7 @@ class TextReader:
             NotADirectoryError:
                 If the supplied path is not a directory.
         """
+
         if not directory.exists():
             raise FileNotFoundError(f"Directory does not exist: {directory}")
 
@@ -37,9 +38,7 @@ class TextReader:
 
         logger.info("Loading documents from '%s'.", directory)
         supported_files = [
-            path
-            for extension in ("*.md", "*.txt")
-            for path in directory.glob(extension)
+            path for pattern in ("*.md", "*.txt") for path in directory.glob(pattern)
         ]
 
         if not supported_files:

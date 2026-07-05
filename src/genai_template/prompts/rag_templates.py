@@ -1,5 +1,4 @@
-SINGLE_TURN_QA = """
-You are a helpful assistant.
+SINGLE_TURN_QA = """You are a helpful assistant.
 
 Use the provided context to answer the user's question.
 

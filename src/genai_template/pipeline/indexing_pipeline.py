@@ -28,7 +28,19 @@ class IndexingPipeline:
         embedder: FastEmbedEmbeddingModel | None = None,
         store: ChromaStore | None = None,
     ) -> None:
-        """Initialize the indexing pipeline."""
+        """
+        Initialize the indexing pipeline.
+
+        Args:
+            reader:
+                Document reader.
+            splitter:
+                Document splitter used for chunking.
+            embedder:
+                Document chunk embedder.
+            store:
+                Vector store.
+        """
 
         self._reader = reader or TextReader()
         self._splitter = splitter or DocumentSplitter()

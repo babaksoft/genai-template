@@ -38,8 +38,8 @@ class ChromaStore:
         """
 
         persist_directory = persist_directory or settings.CHROMA_PERSIST_DIR
-        client = chromadb.PersistentClient(path=persist_directory)
 
+        client = chromadb.PersistentClient(path=persist_directory)
         self._collection: Collection = client.get_or_create_collection(
             name=settings.CHROMA_COLLECTION,
             metadata={
@@ -66,6 +66,7 @@ class ChromaStore:
             ValueError:
                 If a chunk has no embedding.
         """
+
         if not chunks:
             return
 
