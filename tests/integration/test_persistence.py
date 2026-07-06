@@ -2,12 +2,14 @@
 
 from datetime import UTC, datetime
 
+import pytest
 from sqlalchemy import select
 
 from genai_template.db import create_session
 from genai_template.db.models import Experiment, Run
 
 
+@pytest.mark.integration
 def test_can_persist_experiment() -> None:
     """Persist and retrieve an experiment."""
 
@@ -41,6 +43,7 @@ def test_can_persist_experiment() -> None:
         session.close()
 
 
+@pytest.mark.integration
 def test_can_persist_run() -> None:
     """Persist and retrieve a run."""
 
