@@ -25,6 +25,7 @@ dependencies = [
     "arize-phoenix",
     "boto3",
     "chromadb",
+    "dvc[s3]",
     "fastapi[standard]",
     "langfuse",
     "llama-index",
