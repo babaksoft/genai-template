@@ -7,6 +7,8 @@ from pathlib import Path
 
 from llama_index.core import Document, SimpleDirectoryReader
 
+from genai_template.utils.timer import Timer
+
 logger = logging.getLogger(__name__)
 
 
@@ -37,20 +39,28 @@ class TextReader:
             raise NotADirectoryError(f"Expected a directory: {directory}")
 
         logger.info("Loading documents from '%s'.", directory)
-        supported_files = [
-            path for pattern in ("*.md", "*.txt") for path in directory.glob(pattern)
-        ]
 
-        if not supported_files:
-            logger.info("No supported documents found in '%s'.", directory)
-            return []
+        with Timer() as timer:
+            supported_files = [
+                path
+                for pattern in ("*.md", "*.txt")
+                for path in directory.glob(pattern)
+            ]
 
-        documents = SimpleDirectoryReader(
-            input_dir=str(directory),
-            required_exts=[".md", ".txt"],
-            filename_as_id=True,
-        ).load_data()
+            if not supported_files:
+                logger.info("No supported documents found in '%s'.", directory)
+                return []
 
-        logger.info("Loaded %d document(s).", len(documents))
+            documents = SimpleDirectoryReader(
+                input_dir=str(directory),
+                required_exts=[".md", ".txt"],
+                filename_as_id=True,
+            ).load_data()
+
+        logger.info(
+            "Loaded %d document(s) in %.3f second(s).",
+            len(documents),
+            timer.elapsed,
+        )
 
         return documents

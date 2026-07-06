@@ -1,11 +1,16 @@
 """Retrieval-Augmented Generation service."""
 
+import logging
+
 from genai_template.components.context.context_builder import ContextBuilder
 from genai_template.components.language_models.ollama_language_model import (
     OllamaLanguageModel,
 )
 from genai_template.components.prompt.prompt_builder import PromptBuilder
 from genai_template.pipeline.retrieval_pipeline import RetrievalPipeline
+from genai_template.utils.timer import Timer
+
+logger = logging.getLogger(__name__)
 
 
 class RagService:
@@ -46,11 +51,15 @@ class RagService:
             Generated answer.
         """
 
-        retrieved_chunks = self._retrieval_pipeline.retrieve(query)
-        context = self._context_builder.build(retrieved_chunks)
-        prompt = self._prompt_builder.build(
-            query=query,
-            context=context,
-        )
+        with Timer() as timer:
+            retrieved_chunks = self._retrieval_pipeline.retrieve(query)
+            context = self._context_builder.build(retrieved_chunks)
+            prompt = self._prompt_builder.build(
+                query=query,
+                context=context,
+            )
+            response = self._language_model.generate(prompt)
 
-        return self._language_model.generate(prompt)
+        logger.info("RAG request completed in %.3f second(s).", timer.elapsed)
+
+        return response

@@ -8,6 +8,7 @@ from llama_index.embeddings.fastembed import FastEmbedEmbedding
 
 from genai_template.config import settings
 from genai_template.schemas.chunk import DocumentChunk
+from genai_template.utils.timer import Timer
 
 logger = logging.getLogger(__name__)
 
@@ -49,21 +50,24 @@ class FastEmbedEmbeddingModel:
             len(chunks),
         )
 
-        texts = [chunk.text for chunk in chunks]
-        embeddings = self._embed_model.get_text_embedding_batch(
-            texts=texts,
-        )
+        with Timer() as timer:
+            texts = [chunk.text for chunk in chunks]
+            embeddings = self._embed_model.get_text_embedding_batch(
+                texts=texts,
+            )
 
-        for chunk, embedding in zip(
-            chunks,
-            embeddings,
-            strict=True,
-        ):
-            chunk.embedding = embedding
+            for chunk, embedding in zip(
+                chunks,
+                embeddings,
+                strict=True,
+            ):
+                chunk.embedding = embedding
 
         logger.info(
-            "Generated %d embedding(s).",
+            "Generated %d embedding(s) in %.3f second(s): dimension=%d",
             len(chunks),
+            timer.elapsed,
+            len(chunks[0].embedding or []),
         )
 
         return chunks
@@ -90,7 +94,11 @@ class FastEmbedEmbeddingModel:
             raise ValueError("Query must not be empty.")
 
         logger.info("Generating embedding for query: '%s'", query)
-        embedding = self._embed_model.get_query_embedding(query)
-        logger.info("Query embedding generated.")
+        logger.info("Query length: %d character(s)", len(query))
+
+        with Timer() as timer:
+            embedding = self._embed_model.get_query_embedding(query)
+
+        logger.info("Query embedding generated in %.3f second(s).", timer.elapsed)
 
         return embedding

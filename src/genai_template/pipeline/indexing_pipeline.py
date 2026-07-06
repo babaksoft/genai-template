@@ -14,6 +14,7 @@ from genai_template.components.splitters.sentence_splitter import (
 )
 from genai_template.schemas.chunk import DocumentChunk
 from genai_template.stores.vector.chroma_store import ChromaStore
+from genai_template.utils.timer import Timer
 
 logger = logging.getLogger(__name__)
 
@@ -61,19 +62,17 @@ class IndexingPipeline:
             Indexed document chunks.
         """
 
-        logger.info(
-            "Starting indexing pipeline for '%s'.",
-            data_dir,
-        )
-
-        documents = self._reader.load(data_dir)
-        chunks = self._splitter.split(documents)
-        embedded_chunks = self._embedder.embed(chunks)
-        self._store.upsert(embedded_chunks)
+        with Timer() as timer:
+            documents = self._reader.load(data_dir)
+            chunks = self._splitter.split(documents)
+            embedded_chunks = self._embedder.embed(chunks)
+            self._store.upsert(embedded_chunks)
 
         logger.info(
-            "Indexed %d chunk(s).",
-            len(embedded_chunks),
+            "Indexed %d document(s) into %d chunk(s) in %.3f second(s).",
+            len(documents),
+            len(chunks),
+            timer.elapsed,
         )
 
         return embedded_chunks

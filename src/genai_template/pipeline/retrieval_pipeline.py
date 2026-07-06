@@ -9,6 +9,7 @@ from genai_template.components.embeddings.fastembed import (
 )
 from genai_template.schemas.retrieved_chunk import RetrievedChunk
 from genai_template.stores.vector.chroma_store import ChromaStore
+from genai_template.utils.timer import Timer
 
 logger = logging.getLogger(__name__)
 
@@ -51,18 +52,16 @@ class RetrievalPipeline:
             vector store (typically increasing distance).
         """
 
-        logger.info("Retrieving relevant document chunks.")
-
-        embedding = self._embedder.embed_query(query)
-
-        retrieved_chunks = self._store.search(
-            embedding=embedding,
-            top_k=top_k,
-        )
+        with Timer() as timer:
+            embedding = self._embedder.embed_query(query)
+            retrieved_chunks = self._store.search(
+                embedding=embedding,
+                top_k=top_k,
+            )
 
         logger.info(
-            "Retrieved %d chunk(s).",
-            len(retrieved_chunks),
+            "Retrieval completed in %.3f second(s).",
+            timer.elapsed,
         )
 
         return retrieved_chunks

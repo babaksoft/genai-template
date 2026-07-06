@@ -15,6 +15,7 @@ from genai_template.common.types import VectorDistance
 from genai_template.config import settings
 from genai_template.schemas.chunk import DocumentChunk
 from genai_template.schemas.retrieved_chunk import RetrievedChunk
+from genai_template.utils.timer import Timer
 
 logger = logging.getLogger(__name__)
 
@@ -75,31 +76,33 @@ class ChromaStore:
         embeddings: list[list[float]] = []
         metadatas: list[dict[str, str]] = []
 
-        for chunk in chunks:
-            if chunk.embedding is None:
-                raise ValueError(f"Chunk '{chunk.id}' has no embedding.")
+        with Timer() as timer:
+            for chunk in chunks:
+                if chunk.embedding is None:
+                    raise ValueError(f"Chunk '{chunk.id}' has no embedding.")
 
-            ids.append(chunk.id)
-            documents.append(chunk.text)
-            embeddings.append(chunk.embedding)
+                ids.append(chunk.id)
+                documents.append(chunk.text)
+                embeddings.append(chunk.embedding)
 
-            metadata = {
-                "document_id": chunk.document_id,
-                "metadata": json.dumps(chunk.metadata),
-            }
+                metadata = {
+                    "document_id": chunk.document_id,
+                    "metadata": json.dumps(chunk.metadata),
+                }
 
-            metadatas.append(metadata)
+                metadatas.append(metadata)
 
-        self._collection.upsert(
-            ids=ids,
-            documents=documents,
-            embeddings=cast(Embeddings, embeddings),
-            metadatas=cast(Metadatas, metadatas),
-        )
+            self._collection.upsert(
+                ids=ids,
+                documents=documents,
+                embeddings=cast(Embeddings, embeddings),
+                metadatas=cast(Metadatas, metadatas),
+            )
 
         logger.info(
-            "Stored %d chunk(s).",
+            "Stored %d chunk(s) in %.3f second(s).",
             len(chunks),
+            timer.elapsed,
         )
 
     def search(
@@ -119,45 +122,59 @@ class ChromaStore:
             Retrieved chunks ordered by increasing distance.
         """
 
-        result = self._collection.query(
-            query_embeddings=cast(Embeddings, [embedding]),
-            n_results=top_k,
-        )
+        logger.info("Searching vector store for similar chunks: top_k=%d", top_k)
 
-        ids = result.get("ids") or []
-        documents = result.get("documents") or []
-        metadatas = result.get("metadatas") or []
-        distances = result.get("distances") or []
-
-        if not ids:
-            return []
-
-        retrieved_chunks: list[RetrievedChunk] = []
-
-        for chunk_id, text, metadata, distance in zip(
-            ids[0],
-            documents[0],
-            metadatas[0],
-            distances[0],
-            strict=True,
-        ):
-            document_chunk = DocumentChunk(
-                id=chunk_id,
-                document_id=str(metadata["document_id"]),
-                text=text,
-                metadata=json.loads(str(metadata["metadata"])),
+        with Timer() as timer:
+            result = self._collection.query(
+                query_embeddings=cast(Embeddings, [embedding]),
+                n_results=top_k,
             )
 
-            retrieved_chunks.append(
-                RetrievedChunk(
-                    chunk=document_chunk,
-                    distance=distance,
+            ids = result.get("ids") or []
+            documents = result.get("documents") or []
+            metadatas = result.get("metadatas") or []
+            distances = result.get("distances") or []
+
+            if not ids:
+                return []
+
+            retrieved_chunks: list[RetrievedChunk] = []
+
+            for chunk_id, text, metadata, distance in zip(
+                ids[0],
+                documents[0],
+                metadatas[0],
+                distances[0],
+                strict=True,
+            ):
+                document_chunk = DocumentChunk(
+                    id=chunk_id,
+                    document_id=str(metadata["document_id"]),
+                    text=text,
+                    metadata=json.loads(str(metadata["metadata"])),
                 )
-            )
 
-        logger.info(
-            "Retrieved %d chunk(s).",
-            len(retrieved_chunks),
-        )
+                retrieved_chunks.append(
+                    RetrievedChunk(
+                        chunk=document_chunk,
+                        distance=distance,
+                    )
+                )
+
+        self._log_stats(retrieved_chunks, timer)
 
         return retrieved_chunks
+
+    def _log_stats(self, retrieved_chunks: list[RetrievedChunk], timer: Timer) -> None:
+
+        logger.info(
+            "Retrieved %d chunk(s) in %.3f second(s).",
+            len(retrieved_chunks),
+            timer.elapsed,
+        )
+
+        if retrieved_chunks:
+            distances = [chunk.distance for chunk in retrieved_chunks]
+
+            distances.sort()
+            logger.info("Distance range: [%.2f, %.2f]", distances[0], distances[-1])

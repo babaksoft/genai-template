@@ -1,6 +1,12 @@
 """Ollama language model adapter."""
 
+import logging
+
 from llama_index.llms.ollama import Ollama
+
+from genai_template.utils.timer import Timer
+
+logger = logging.getLogger(__name__)
 
 
 class OllamaLanguageModel:
@@ -15,6 +21,7 @@ class OllamaLanguageModel:
                 Name of the Ollama model.
         """
 
+        self._model_name = model_name
         self._llm = Ollama(model=model_name)
 
     def generate(self, prompt: str) -> str:
@@ -29,6 +36,13 @@ class OllamaLanguageModel:
             Generated response.
         """
 
-        response = self._llm.complete(prompt)
+        logger.info("Generating response using model '%s'.", self._model_name)
+        logger.info("Prompt length: %d characters", len(prompt))
+
+        with Timer() as timer:
+            response = self._llm.complete(prompt)
+
+        logger.info("Response generation completed in %.3f second(s).", timer.elapsed)
+        logger.info("Response length: %d characters", len(str(response.text)))
 
         return str(response.text)
