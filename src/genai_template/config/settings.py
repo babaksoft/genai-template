@@ -12,6 +12,9 @@ LOG_DIR = REPO_ROOT / "logs"
 LOG_FILE = LOG_DIR / "genai_template.log"
 LOG_LEVEL = logging.DEBUG
 
+# Database settings
+DATABASE_URL = "sqlite:///db/genai_template.db"
+
 # Document settings
 DATA_DIR = REPO_ROOT / "data"
 
