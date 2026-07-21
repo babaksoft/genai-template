@@ -19,7 +19,7 @@ DATABASE_URL = "sqlite:///db/genai_template.db"
 DATA_DIR = REPO_ROOT / "data"
 
 # LLM settings
-OLLAMA_MODEL = "llama3.2"
+LLM_MODEL = "llama3.2"
 OLLAMA_BASE_URL = "http://localhost:11434"
 
 # Embedding settings
@@ -32,7 +32,11 @@ CHUNK_OVERLAP = 20
 # Retrieval settings
 TOP_K = 5
 
-# Chroma settings
+# Vector store settings
+VECTOR_STORE = "Chroma"
 CHROMA_COLLECTION = "documents"
 CHROMA_PERSIST_DIR = REPO_ROOT / "storage" / "chroma"
 CHROMA_DISTANCE = VectorDistance.COSINE
+
+# Experiment settings
+EXPERIMENT_NAME = "Baseline RAG"

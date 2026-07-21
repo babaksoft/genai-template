@@ -9,6 +9,7 @@ class Timer:
 
     def __enter__(self) -> Self:
         """Start timing."""
+
         self._start = time.perf_counter()
         self.elapsed = 0.0
         return self
@@ -20,6 +21,7 @@ class Timer:
         tb: TracebackType | None,
     ) -> None:
         """Stop timing."""
+
         self.elapsed = time.perf_counter() - self._start
 
 
