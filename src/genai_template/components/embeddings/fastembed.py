@@ -7,8 +7,8 @@ import logging
 from llama_index.embeddings.fastembed import FastEmbedEmbedding
 
 from genai_template.config import settings
-from genai_template.schemas.chunk import DocumentChunk
-from genai_template.utils.timer import Timer
+from genai_template.schemas import DocumentChunk
+from genai_template.utils import Timer
 
 logger = logging.getLogger(__name__)
 

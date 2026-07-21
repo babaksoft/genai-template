@@ -13,9 +13,8 @@ from chromadb.api.types import Embeddings, Metadatas
 
 from genai_template.common.types import VectorDistance
 from genai_template.config import settings
-from genai_template.schemas.chunk import DocumentChunk
-from genai_template.schemas.retrieved_chunk import RetrievedChunk
-from genai_template.utils.timer import Timer
+from genai_template.schemas import DocumentChunk, RetrievedChunk
+from genai_template.utils import Timer
 
 logger = logging.getLogger(__name__)
 

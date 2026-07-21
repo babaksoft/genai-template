@@ -2,7 +2,7 @@
 
 from llama_index.core import Document
 
-from genai_template.components.splitters.sentence_splitter import (
+from genai_template.components.splitters import (
     DocumentSplitter,
 )
 

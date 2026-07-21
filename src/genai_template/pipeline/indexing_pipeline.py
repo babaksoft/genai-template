@@ -5,16 +5,16 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from genai_template.components.embeddings.fastembed import (
+from genai_template.components.embeddings import (
     FastEmbedEmbeddingModel,
 )
-from genai_template.components.readers.text_reader import TextReader
-from genai_template.components.splitters.sentence_splitter import (
+from genai_template.components.readers import TextReader
+from genai_template.components.splitters import (
     DocumentSplitter,
 )
-from genai_template.schemas.chunk import DocumentChunk
-from genai_template.stores.vector.chroma_store import ChromaStore
-from genai_template.utils.timer import Timer
+from genai_template.schemas import DocumentChunk
+from genai_template.stores.vector import ChromaStore
+from genai_template.utils import Timer
 
 logger = logging.getLogger(__name__)
 

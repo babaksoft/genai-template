@@ -2,8 +2,8 @@
 
 from unittest.mock import MagicMock
 
-from genai_template.schemas.retrieved_chunk import RetrievedChunk
-from genai_template.services.rag_service import RagService
+from genai_template.schemas import RetrievedChunk
+from genai_template.services import RagService
 
 
 def test_answer_orchestrates_rag_workflow() -> None:

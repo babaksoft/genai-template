@@ -5,10 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from genai_template.pipeline.indexing_pipeline import (
-    IndexingPipeline,
-)
-from genai_template.schemas.chunk import DocumentChunk
+from genai_template.pipeline import IndexingPipeline
+from genai_template.schemas import DocumentChunk
 
 
 def test_run(

@@ -1,6 +1,6 @@
 """Tests for the ContextBuilder."""
 
-from genai_template.components.context.context_builder import ContextBuilder
+from genai_template.components.context import ContextBuilder
 from genai_template.schemas import (
     DocumentChunk,
     RetrievedChunk,

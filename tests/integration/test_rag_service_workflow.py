@@ -5,18 +5,17 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from genai_template.components.context.context_builder import ContextBuilder
-from genai_template.components.embeddings.fastembed import FastEmbedEmbeddingModel
-from genai_template.components.language_models.ollama_language_model import (
+from genai_template.components.context import ContextBuilder
+from genai_template.components.embeddings import FastEmbedEmbeddingModel
+from genai_template.components.language_models import (
     OllamaLanguageModel,
 )
-from genai_template.components.prompt.prompt_builder import PromptBuilder
-from genai_template.components.readers.text_reader import TextReader
-from genai_template.components.splitters.sentence_splitter import DocumentSplitter
-from genai_template.pipeline.indexing_pipeline import IndexingPipeline
-from genai_template.pipeline.retrieval_pipeline import RetrievalPipeline
-from genai_template.services.rag_service import RagService
-from genai_template.stores.vector.chroma_store import ChromaStore
+from genai_template.components.prompt import PromptBuilder
+from genai_template.components.readers import TextReader
+from genai_template.components.splitters import DocumentSplitter
+from genai_template.pipeline import IndexingPipeline, RetrievalPipeline
+from genai_template.services import RagService
+from genai_template.stores.vector import ChromaStore
 
 LLM_MODEL = "llama3"
 

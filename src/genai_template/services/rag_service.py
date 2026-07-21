@@ -2,16 +2,16 @@
 
 import logging
 
-from genai_template.components.context.context_builder import ContextBuilder
-from genai_template.components.language_models.ollama_language_model import (
+from genai_template.components.context import ContextBuilder
+from genai_template.components.language_models import (
     OllamaLanguageModel,
 )
-from genai_template.components.prompt.prompt_builder import PromptBuilder
+from genai_template.components.prompt import PromptBuilder
 from genai_template.config import settings
-from genai_template.pipeline.retrieval_pipeline import RetrievalPipeline
-from genai_template.schemas.run_metrics import RunMetrics
-from genai_template.services.experiment_service import ExperimentService
-from genai_template.utils.timer import Timer
+from genai_template.pipeline import RetrievalPipeline
+from genai_template.schemas import RunMetrics
+from genai_template.services import ExperimentService
+from genai_template.utils import Timer
 
 logger = logging.getLogger(__name__)
 

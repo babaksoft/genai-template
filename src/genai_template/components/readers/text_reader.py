@@ -7,7 +7,7 @@ from pathlib import Path
 
 from llama_index.core import Document, SimpleDirectoryReader
 
-from genai_template.utils.timer import Timer
+from genai_template.utils import Timer
 
 logger = logging.getLogger(__name__)
 

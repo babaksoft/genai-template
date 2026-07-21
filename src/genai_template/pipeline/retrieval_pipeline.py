@@ -7,9 +7,9 @@ import logging
 from genai_template.components.embeddings.fastembed import (
     FastEmbedEmbeddingModel,
 )
-from genai_template.schemas.retrieved_chunk import RetrievedChunk
-from genai_template.stores.vector.chroma_store import ChromaStore
-from genai_template.utils.timer import Timer
+from genai_template.schemas import RetrievedChunk
+from genai_template.stores.vector import ChromaStore
+from genai_template.utils import Timer
 
 logger = logging.getLogger(__name__)
 

@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 
 from genai_template.config import settings
 from genai_template.db.models import Experiment, Run
-from genai_template.schemas.run_metrics import RunMetrics
-from genai_template.utils.datetime import utc_now
+from genai_template.schemas import RunMetrics
+from genai_template.utils import utc_now
 
 logger = logging.getLogger(__name__)
 

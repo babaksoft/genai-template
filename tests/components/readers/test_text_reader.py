@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from llama_index.core import Document
 
-from genai_template.components.readers.text_reader import TextReader
+from genai_template.components.readers import TextReader
 
 
 def test_load_documents(tmp_path: Path) -> None:

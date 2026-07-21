@@ -1,6 +1,6 @@
 """Tests for the PromptBuilder."""
 
-from genai_template.components.prompt.prompt_builder import PromptBuilder
+from genai_template.components.prompt import PromptBuilder
 
 
 def test_build_includes_query() -> None:

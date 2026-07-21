@@ -5,8 +5,8 @@ from sqlalchemy.orm import sessionmaker
 
 from genai_template.db.base import Base
 from genai_template.db.models import Experiment, Run
-from genai_template.schemas.run_metrics import RunMetrics
-from genai_template.services.experiment_service import ExperimentService
+from genai_template.schemas import RunMetrics
+from genai_template.services import ExperimentService
 
 
 def create_service() -> ExperimentService:

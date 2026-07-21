@@ -4,11 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from genai_template.pipeline.retrieval_pipeline import (
-    RetrievalPipeline,
-)
-from genai_template.schemas.chunk import DocumentChunk
-from genai_template.schemas.retrieved_chunk import RetrievedChunk
+from genai_template.pipeline import RetrievalPipeline
+from genai_template.schemas import DocumentChunk, RetrievedChunk
 
 
 def test_retrieve() -> None:

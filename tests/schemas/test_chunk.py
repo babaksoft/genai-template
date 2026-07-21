@@ -1,6 +1,6 @@
 """Unit tests for DocumentChunk."""
 
-from genai_template.schemas.chunk import DocumentChunk
+from genai_template.schemas import DocumentChunk
 
 
 def test_chunk_creation() -> None:

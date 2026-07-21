@@ -6,10 +6,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from genai_template.components.embeddings.fastembed import (
+from genai_template.components.embeddings import (
     FastEmbedEmbeddingModel,
 )
-from genai_template.schemas.chunk import DocumentChunk
+from genai_template.schemas import DocumentChunk
 
 
 def test_embed_populates_embeddings() -> None:

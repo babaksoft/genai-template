@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from genai_template.components.language_models.ollama_language_model import (
+from genai_template.components.language_models import (
     OllamaLanguageModel,
 )
 

@@ -8,8 +8,8 @@ from llama_index.core import Document
 from llama_index.core.node_parser import SentenceSplitter
 
 from genai_template.config import settings
-from genai_template.schemas.chunk import DocumentChunk
-from genai_template.utils.timer import Timer
+from genai_template.schemas import DocumentChunk
+from genai_template.utils import Timer
 
 logger = logging.getLogger(__name__)
 

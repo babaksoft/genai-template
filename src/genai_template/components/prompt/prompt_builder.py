@@ -3,7 +3,7 @@
 import logging
 
 from genai_template.prompts.rag_templates import SINGLE_TURN_QA
-from genai_template.utils.timer import Timer
+from genai_template.utils import Timer
 
 logger = logging.getLogger(__name__)
 

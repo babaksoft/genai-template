@@ -7,8 +7,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from genai_template.config import settings
-from genai_template.schemas.chunk import DocumentChunk
-from genai_template.stores.vector.chroma_store import ChromaStore
+from genai_template.schemas import DocumentChunk
+from genai_template.stores.vector import ChromaStore
 
 
 @patch("genai_template.stores.vector.chroma_store.chromadb.PersistentClient")

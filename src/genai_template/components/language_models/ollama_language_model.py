@@ -4,7 +4,7 @@ import logging
 
 from llama_index.llms.ollama import Ollama
 
-from genai_template.utils.timer import Timer
+from genai_template.utils import Timer
 
 logger = logging.getLogger(__name__)
 

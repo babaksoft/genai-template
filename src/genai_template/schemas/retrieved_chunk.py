@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from genai_template.schemas.chunk import DocumentChunk
+from genai_template.schemas import DocumentChunk
 
 
 class RetrievedChunk(BaseModel):

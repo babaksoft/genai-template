@@ -2,9 +2,9 @@
 
 from sqlalchemy import Engine, create_engine
 
-from genai_template.config.settings import DATABASE_URL
+from genai_template.config import settings
 
 engine: Engine = create_engine(
-    DATABASE_URL,
+    settings.DATABASE_URL,
     echo=False,
 )
