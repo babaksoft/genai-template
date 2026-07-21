@@ -1,7 +1,6 @@
 """Integration test for the complete RAG workflow."""
 
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -13,11 +12,12 @@ from genai_template.components.language_models.ollama_language_model import (
 from genai_template.components.prompt.prompt_builder import PromptBuilder
 from genai_template.components.readers.text_reader import TextReader
 from genai_template.components.splitters.sentence_splitter import DocumentSplitter
-from genai_template.config import settings
 from genai_template.pipeline.indexing_pipeline import IndexingPipeline
 from genai_template.pipeline.retrieval_pipeline import RetrievalPipeline
 from genai_template.services.rag_service import RagService
 from genai_template.stores.vector.chroma_store import ChromaStore
+
+LLM_MODEL = "llama3"
 
 
 @pytest.mark.integration
@@ -48,9 +48,8 @@ def test_rag_service_answers_question(tmp_path: Path) -> None:
         context_builder=ContextBuilder(),
         prompt_builder=PromptBuilder(),
         language_model=OllamaLanguageModel(
-            model_name=settings.LLM_MODEL,
+            model_name=LLM_MODEL,
         ),
-        experiment_service=MagicMock(),
     )
 
     answer = rag_service.answer("What is the capital of France?")
