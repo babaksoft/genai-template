@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock
 
+from genai_template.schemas.retrieved_chunk import RetrievedChunk
 from genai_template.services.rag_service import RagService
 
 
@@ -12,8 +13,9 @@ def test_answer_orchestrates_rag_workflow() -> None:
     context_builder = MagicMock()
     prompt_builder = MagicMock()
     language_model = MagicMock()
+    experiment_service = MagicMock()
 
-    retrieved_chunks = object()
+    retrieved_chunks: list[RetrievedChunk] = []
 
     retrieval_pipeline.retrieve.return_value = retrieved_chunks
     context_builder.build.return_value = "context"
@@ -25,6 +27,7 @@ def test_answer_orchestrates_rag_workflow() -> None:
         context_builder=context_builder,
         prompt_builder=prompt_builder,
         language_model=language_model,
+        experiment_service=experiment_service,
     )
 
     answer = service.answer("What is RAG?")

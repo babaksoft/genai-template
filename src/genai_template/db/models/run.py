@@ -33,31 +33,37 @@ class Run(Base):
     query: Mapped[str] = mapped_column(
         Text,
         nullable=False,
+        default="",
     )
 
     embedding_model: Mapped[str] = mapped_column(
         String(128),
         nullable=False,
+        default="",
     )
 
     vector_store: Mapped[str] = mapped_column(
         String(128),
         nullable=False,
+        default="",
     )
 
     llm_model: Mapped[str] = mapped_column(
         String(128),
         nullable=False,
+        default="",
     )
 
     top_k: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
+        default=0,
     )
 
     retrieved_chunks: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
+        default=0,
     )
 
     best_distance: Mapped[float | None] = mapped_column(
@@ -73,29 +79,35 @@ class Run(Base):
     context_length: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
+        default=0,
     )
 
     prompt_length: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
+        default=0,
     )
 
     retrieval_time: Mapped[float] = mapped_column(
         Float,
         nullable=False,
+        default=0.0,
     )
 
     generation_time: Mapped[float] = mapped_column(
         Float,
         nullable=False,
+        default=0.0,
     )
 
     total_time: Mapped[float] = mapped_column(
         Float,
         nullable=False,
+        default=0.0,
     )
 
     response_length: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
+        default=0,
     )

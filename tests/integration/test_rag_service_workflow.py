@@ -1,6 +1,7 @@
 """Integration test for the complete RAG workflow."""
 
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -50,6 +51,7 @@ def test_rag_service_answers_question(tmp_path: Path) -> None:
         language_model=OllamaLanguageModel(
             model_name=LLM_MODEL,
         ),
+        experiment_service=MagicMock(),
     )
 
     answer = rag_service.answer("What is the capital of France?")
