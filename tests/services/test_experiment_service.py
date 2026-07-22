@@ -1,6 +1,6 @@
 """Unit tests for the experiment service."""
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from genai_template.db.base import Base
@@ -17,7 +17,6 @@ def create_service() -> ExperimentService:
     session_factory = sessionmaker(
         bind=engine,
         autoflush=False,
-        autocommit=False,
         expire_on_commit=False,
     )
 
@@ -49,11 +48,11 @@ def test_start_run_creates_experiment_when_missing() -> None:
     """Starting the first run should create the configured experiment."""
 
     service = create_service()
-    run = service.start_run()
+    run = service.start_run(experiment_name="default")
 
     with service._session_factory() as session:
-        experiments = session.query(Experiment).all()
-        runs = session.query(Run).all()
+        experiments = list(session.scalars(select(Experiment)))
+        runs = list(session.scalars(select(Run)))
 
     assert len(experiments) == 1
     assert len(runs) == 1
@@ -68,12 +67,12 @@ def test_start_run_reuses_existing_experiment() -> None:
     """Starting multiple runs should reuse the same experiment."""
 
     service = create_service()
-    first = service.start_run()
-    second = service.start_run()
+    first = service.start_run(experiment_name="default")
+    second = service.start_run(experiment_name="default")
 
     with service._session_factory() as session:
-        experiments = session.query(Experiment).all()
-        runs = session.query(Run).all()
+        experiments = list(session.scalars(select(Experiment)))
+        runs = list(session.scalars(select(Run)))
 
     assert len(experiments) == 1
     assert len(runs) == 2
@@ -87,7 +86,7 @@ def test_complete_run_updates_metrics() -> None:
     service = create_service()
     metrics = create_metrics()
 
-    run = service.start_run()
+    run = service.start_run(experiment_name="default")
     service.complete_run(run, metrics)
 
     with service._session_factory() as session:
@@ -115,3 +114,78 @@ def test_complete_run_updates_metrics() -> None:
         assert persisted.retrieval_time == metrics.retrieval_time
         assert persisted.generation_time == metrics.generation_time
         assert persisted.total_time == metrics.total_time
+
+
+def test_summarize_empty_experiment() -> None:
+    """Summarize an experiment without runs."""
+
+    service = create_service()
+    with service._session_factory() as session:
+        session.add(Experiment(name="default"))
+        session.commit()
+
+    summary = service.summarize_experiment("default")
+
+    assert summary.experiment_name == "default"
+    assert summary.run_count == 0
+
+    assert summary.average_retrieval_time == 0.0
+    assert summary.average_generation_time == 0.0
+    assert summary.average_total_time == 0.0
+
+    assert summary.average_retrieved_chunks == 0.0
+
+    assert summary.average_context_length == 0.0
+    assert summary.average_prompt_length == 0.0
+    assert summary.average_response_length == 0.0
+
+    assert summary.best_distance is None
+    assert summary.worst_distance is None
+
+
+def test_summarize_experiment() -> None:
+    """Summarize multiple completed runs."""
+
+    service = create_service()
+    run1 = service.start_run(experiment_name="default")
+    service.complete_run(
+        run1,
+        create_metrics(),
+    )
+
+    metrics = create_metrics().model_copy(
+        update={
+            "retrieved_chunks": 4,
+            "best_distance": 0.20,
+            "worst_distance": 0.40,
+            "retrieval_time": 0.030,
+            "generation_time": 1.000,
+            "total_time": 1.030,
+            "context_length": 300,
+            "prompt_length": 500,
+            "response_length": 150,
+        }
+    )
+
+    run2 = service.start_run(experiment_name="default")
+    service.complete_run(
+        run2,
+        metrics,
+    )
+
+    summary = service.summarize_experiment("default")
+
+    assert summary.run_count == 2
+
+    assert summary.average_retrieved_chunks == 3.0
+
+    assert summary.average_retrieval_time == 0.0225
+    assert summary.average_generation_time == 0.925
+    assert summary.average_total_time == 0.9525
+
+    assert summary.average_context_length == 275.0
+    assert summary.average_prompt_length == 460.0
+    assert summary.average_response_length == 135.0
+
+    assert summary.best_distance == 0.11
+    assert summary.worst_distance == 0.40

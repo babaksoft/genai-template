@@ -58,7 +58,9 @@ class RagService:
             Generated answer.
         """
 
-        run = self._experiment_service.start_run()
+        run = self._experiment_service.start_run(
+            experiment_name=settings.EXPERIMENT_NAME,
+        )
 
         with Timer() as total_timer:
             with Timer() as retrieval_timer:

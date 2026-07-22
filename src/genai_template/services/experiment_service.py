@@ -1,14 +1,14 @@
 """Experiment tracking service."""
 
 import logging
+import statistics
 from collections.abc import Callable
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from genai_template.config import settings
 from genai_template.db.models import Experiment, Run
-from genai_template.schemas import RunMetrics
+from genai_template.schemas import ExperimentSummary, RunMetrics
 from genai_template.utils import utc_now
 
 logger = logging.getLogger(__name__)
@@ -30,8 +30,15 @@ class ExperimentService:
 
         self._session_factory = session_factory
 
-    def start_run(self) -> Run:
+    def start_run(
+        self,
+        experiment_name: str,
+    ) -> Run:
         """Start a new run for the configured experiment.
+
+        Args:
+            experiment_name:
+                Experiment name for the new run.
 
         Returns:
             Newly created run.
@@ -43,7 +50,10 @@ class ExperimentService:
         """
 
         with self._session_factory() as session:
-            experiment = self._get_or_create_experiment(session)
+            experiment = self._get_or_create_experiment(
+                session=session,
+                experiment_name=experiment_name,
+            )
 
             run = Run(
                 experiment_id=experiment.id,
@@ -110,22 +120,103 @@ class ExperimentService:
                 persisted_run.id,
             )
 
+    def summarize_experiment(
+        self,
+        experiment_name: str,
+    ) -> ExperimentSummary:
+        """Summarize all runs for an experiment.
+
+        Args:
+            experiment_name:
+                Experiment name.
+
+        Returns:
+            Summary statistics for the experiment.
+
+        Raises:
+            ValueError:
+                If the experiment does not exist.
+        """
+
+        with self._session_factory() as session:
+            experiment = session.scalar(
+                select(Experiment).where(Experiment.name == experiment_name)
+            )
+
+            if experiment is None:
+                raise ValueError(f"Experiment '{experiment_name}' does not exist.")
+
+            runs = session.scalars(
+                select(Run).where(Run.experiment_id == experiment.id)
+            ).all()
+
+        if not runs:
+            return ExperimentSummary(
+                experiment_name=experiment_name,
+                run_count=0,
+                average_retrieval_time=0.0,
+                average_generation_time=0.0,
+                average_total_time=0.0,
+                average_retrieved_chunks=0.0,
+                average_context_length=0.0,
+                average_prompt_length=0.0,
+                average_response_length=0.0,
+                best_distance=None,
+                worst_distance=None,
+            )
+
+        distances = [
+            distance for run in runs if (distance := run.best_distance) is not None
+        ]
+        distances.extend(
+            distance for run in runs if (distance := run.worst_distance) is not None
+        )
+
+        return ExperimentSummary(
+            experiment_name=experiment_name,
+            run_count=len(runs),
+            average_retrieval_time=statistics.fmean(run.retrieval_time for run in runs),
+            average_generation_time=statistics.fmean(
+                run.generation_time for run in runs
+            ),
+            average_total_time=statistics.fmean(run.total_time for run in runs),
+            average_retrieved_chunks=statistics.fmean(
+                run.retrieved_chunks for run in runs
+            ),
+            average_context_length=statistics.fmean(run.context_length for run in runs),
+            average_prompt_length=statistics.fmean(run.prompt_length for run in runs),
+            average_response_length=statistics.fmean(
+                run.response_length for run in runs
+            ),
+            best_distance=min(distances) if distances else None,
+            worst_distance=max(distances) if distances else None,
+        )
+
     def _get_or_create_experiment(
         self,
         session: Session,
+        experiment_name: str,
     ) -> Experiment:
-        """Get or create the configured experiment."""
+        """Get or create the configured experiment.
 
-        statement = select(Experiment).where(
-            Experiment.name == settings.EXPERIMENT_NAME,
+        Args:
+            session:
+                SQLAlchemy session for persistence.
+
+            experiment_name:
+                Name of experiment to get or create.
+
+        Returns:
+            An existing or a newly created experiment.
+        """
+
+        experiment = session.scalar(
+            select(Experiment).where(Experiment.name == experiment_name)
         )
-        experiment = session.scalar(statement)
         if experiment is not None:
             return experiment
 
-        experiment = Experiment(
-            name=settings.EXPERIMENT_NAME,
-        )
+        experiment = Experiment(name=experiment_name)
 
         session.add(experiment)
         session.commit()
