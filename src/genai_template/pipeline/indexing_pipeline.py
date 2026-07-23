@@ -12,7 +12,7 @@ from genai_template.components.readers import TextReader
 from genai_template.components.splitters import (
     DocumentSplitter,
 )
-from genai_template.schemas import DocumentChunk
+from genai_template.schemas import IndexingResult
 from genai_template.stores.vector import ChromaStore
 from genai_template.utils import Timer
 
@@ -51,7 +51,7 @@ class IndexingPipeline:
     def run(
         self,
         data_dir: Path,
-    ) -> list[DocumentChunk]:
+    ) -> IndexingResult:
         """Index all supported documents in a directory.
 
         Args:
@@ -59,7 +59,7 @@ class IndexingPipeline:
                 Directory containing the documents.
 
         Returns:
-            Indexed document chunks.
+            Summary result from indexing.
         """
 
         with Timer() as timer:
@@ -75,4 +75,8 @@ class IndexingPipeline:
             timer.elapsed,
         )
 
-        return embedded_chunks
+        return IndexingResult(
+            documents_indexed=len(documents),
+            chunks_indexed=len(chunks),
+            indexing_time=timer.elapsed,
+        )

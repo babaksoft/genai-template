@@ -38,7 +38,8 @@ def test_run(
     )
     result = pipeline.run(tmp_path)
 
-    assert result == [chunk]
+    assert result.documents_indexed == 1
+    assert result.chunks_indexed == 1
 
     mock_embedder.embed.assert_called_once()
     mock_store.upsert.assert_called_once_with([chunk])
@@ -59,7 +60,8 @@ def test_run_empty_directory(
     )
     result = pipeline.run(tmp_path)
 
-    assert result == []
+    assert result.documents_indexed == 0
+    assert result.chunks_indexed == 0
 
     mock_embedder.embed.assert_called_once_with([])
     mock_store.upsert.assert_called_once_with([])
