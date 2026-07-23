@@ -2,9 +2,11 @@ from genai_template.components.context import ContextBuilder
 from genai_template.components.embeddings import FastEmbedEmbeddingModel
 from genai_template.components.language_models import OllamaLanguageModel
 from genai_template.components.prompt import PromptBuilder
+from genai_template.components.readers import TextReader
+from genai_template.components.splitters import DocumentSplitter
 from genai_template.config import settings
 from genai_template.db import SessionLocal
-from genai_template.pipeline import RetrievalPipeline
+from genai_template.pipeline import IndexingPipeline, RetrievalPipeline
 from genai_template.services import ExperimentService, RagService
 from genai_template.stores.vector import ChromaStore
 
@@ -62,4 +64,19 @@ def get_rag_service() -> RagService:
         prompt_builder=PromptBuilder(),
         language_model=create_language_model(),
         experiment_service=create_experiment_service(),
+    )
+
+
+def get_indexing_pipeline() -> IndexingPipeline:
+    """Provide the application's indexing pipeline.
+
+    Returns:
+        Configured indexing pipeline instance.
+    """
+
+    return IndexingPipeline(
+        reader=TextReader(),
+        splitter=DocumentSplitter(),
+        embedder=FastEmbedEmbeddingModel(),
+        store=ChromaStore(persist_directory=settings.CHROMA_PERSIST_DIR),
     )

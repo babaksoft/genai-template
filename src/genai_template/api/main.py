@@ -5,7 +5,7 @@ The actual application routes that call the services layer.
 from fastapi import FastAPI
 
 from genai_template.api.lifespan import lifespan
-from genai_template.api.routes import answer, health
+from genai_template.api.routes import answer, health, ingest
 
 app = FastAPI(
     title="GenAI Template API",
@@ -21,5 +21,10 @@ app.include_router(
 
 app.include_router(
     answer.router,
+    prefix="/api/v1",
+)
+
+app.include_router(
+    ingest.router,
     prefix="/api/v1",
 )

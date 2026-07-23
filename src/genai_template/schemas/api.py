@@ -37,3 +37,36 @@ class AnswerResponse(BaseModel):
         ...,
         description="Runtime metrics collected during answer generation.",
     )
+
+
+class IngestRequest(BaseModel):
+    """Request model for document indexing."""
+
+    directory: str = Field(
+        ...,
+        min_length=1,
+        description="Directory containing documents to index.",
+        examples=["data/documents"],
+    )
+
+
+class IngestResponse(BaseModel):
+    """Response model for document indexing."""
+
+    documents_indexed: int = Field(
+        ...,
+        ge=0,
+        description="Number of indexed documents.",
+    )
+
+    chunks_indexed: int = Field(
+        ...,
+        ge=0,
+        description="Number of indexed chunks.",
+    )
+
+    indexing_time: float = Field(
+        ...,
+        ge=0,
+        description="Indexing duration in seconds.",
+    )

@@ -4,6 +4,8 @@ from genai_template.schemas.api import (
     AnswerRequest,
     AnswerResponse,
     HealthResponse,
+    IngestRequest,
+    IngestResponse,
 )
 from genai_template.schemas.chunk import DocumentChunk
 from genai_template.schemas.experiment_summary import ExperimentSummary
@@ -19,6 +21,8 @@ __all__ = [
     "ExperimentSummary",
     "HealthResponse",
     "IndexingResult",
+    "IngestRequest",
+    "IngestResponse",
     "RagResult",
     "RetrievedChunk",
     "RunMetrics",
