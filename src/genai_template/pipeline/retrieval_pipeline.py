@@ -7,6 +7,7 @@ import logging
 from genai_template.components.embeddings.fastembed import (
     FastEmbedEmbeddingModel,
 )
+from genai_template.config import settings
 from genai_template.schemas import RetrievedChunk
 from genai_template.stores.vector import ChromaStore
 from genai_template.utils import Timer
@@ -37,7 +38,7 @@ class RetrievalPipeline:
     def retrieve(
         self,
         query: str,
-        top_k: int = 5,
+        top_k: int = settings.TOP_K,
     ) -> list[RetrievedChunk]:
         """Retrieve relevant document chunks.
 

@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock
 
+from genai_template.config import settings
 from genai_template.schemas import RetrievedChunk
 from genai_template.services import RagService
 
@@ -30,9 +31,12 @@ def test_answer_orchestrates_rag_workflow() -> None:
         experiment_service=experiment_service,
     )
 
-    answer = service.answer("What is RAG?")
+    result = service.answer("What is RAG?")
 
-    retrieval_pipeline.retrieve.assert_called_once_with("What is RAG?")
+    retrieval_pipeline.retrieve.assert_called_once_with(
+        "What is RAG?",
+        settings.TOP_K,
+    )
     context_builder.build.assert_called_once_with(retrieved_chunks)
     prompt_builder.build.assert_called_once_with(
         query="What is RAG?",
@@ -40,4 +44,4 @@ def test_answer_orchestrates_rag_workflow() -> None:
     )
     language_model.generate.assert_called_once_with("prompt")
 
-    assert answer == "final answer"
+    assert result.answer == "final answer"

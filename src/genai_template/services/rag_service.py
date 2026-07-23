@@ -9,7 +9,7 @@ from genai_template.components.language_models import (
 from genai_template.components.prompt import PromptBuilder
 from genai_template.config import settings
 from genai_template.pipeline import RetrievalPipeline
-from genai_template.schemas import RunMetrics
+from genai_template.schemas import RagResult, RunMetrics
 from genai_template.services import ExperimentService
 from genai_template.utils import Timer
 
@@ -47,7 +47,7 @@ class RagService:
         self._language_model = language_model
         self._experiment_service = experiment_service
 
-    def answer(self, query: str) -> str:
+    def answer(self, query: str) -> RagResult:
         """Answer a user query using Retrieval-Augmented Generation.
 
         Args:
@@ -55,7 +55,7 @@ class RagService:
                 User query.
 
         Returns:
-            Generated answer.
+            RAG result that includes generated answer, run metrics, etc.
         """
 
         run = self._experiment_service.start_run(
@@ -64,7 +64,9 @@ class RagService:
 
         with Timer() as total_timer:
             with Timer() as retrieval_timer:
-                retrieved_chunks = self._retrieval_pipeline.retrieve(query)
+                retrieved_chunks = self._retrieval_pipeline.retrieve(
+                    query, settings.TOP_K
+                )
 
             context = self._context_builder.build(retrieved_chunks)
             prompt = self._prompt_builder.build(
@@ -104,4 +106,7 @@ class RagService:
             total_timer.elapsed,
         )
 
-        return response
+        return RagResult(
+            answer=response,
+            metrics=metrics,
+        )
