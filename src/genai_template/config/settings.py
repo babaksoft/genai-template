@@ -8,7 +8,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 PKG_ROOT = Path(__file__).resolve().parent.parent
 
 # API settings
-URL_PREFIX = "/api/v1"
+API_BASE_URL = "http://127.0.0.1:8000"
+API_URL_PREFIX = "/api/v1"
 
 # Logging settings
 LOG_DIR = REPO_ROOT / "logs"

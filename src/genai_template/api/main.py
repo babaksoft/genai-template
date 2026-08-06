@@ -13,15 +13,15 @@ app = FastAPI(
 
 app.include_router(
     health.router,
-    prefix=settings.URL_PREFIX,
+    prefix=settings.API_URL_PREFIX,
 )
 
 app.include_router(
     answer.router,
-    prefix=settings.URL_PREFIX,
+    prefix=settings.API_URL_PREFIX,
 )
 
 app.include_router(
     ingest.router,
-    prefix=settings.URL_PREFIX,
+    prefix=settings.API_URL_PREFIX,
 )

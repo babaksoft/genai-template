@@ -14,6 +14,7 @@ class ApiClient:
             base_url:
                 Base URL of the GenAI Template API.
         """
+
         self._base_url = base_url.rstrip("/")
 
     def answer(self, query: str) -> AnswerResponse:
@@ -30,8 +31,9 @@ class ApiClient:
             httpx.HTTPStatusError:
                 If the API returns an unsuccessful HTTP status code.
         """
+
         response = httpx.post(
-            f"{self._base_url}{settings.URL_PREFIX}/answer",
+            f"{self._base_url}{settings.API_URL_PREFIX}/answer",
             json={"query": query},
         )
         response.raise_for_status()
