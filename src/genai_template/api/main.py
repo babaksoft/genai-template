@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from genai_template.api.lifespan import lifespan
 from genai_template.api.routes import answer, health, ingest
+from genai_template.config import settings
 
 app = FastAPI(
     title="GenAI Template API",
@@ -12,15 +13,15 @@ app = FastAPI(
 
 app.include_router(
     health.router,
-    prefix="/api/v1",
+    prefix=settings.URL_PREFIX,
 )
 
 app.include_router(
     answer.router,
-    prefix="/api/v1",
+    prefix=settings.URL_PREFIX,
 )
 
 app.include_router(
     ingest.router,
-    prefix="/api/v1",
+    prefix=settings.URL_PREFIX,
 )

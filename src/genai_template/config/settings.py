@@ -7,6 +7,9 @@ from genai_template.common.types import VectorDistance
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 PKG_ROOT = Path(__file__).resolve().parent.parent
 
+# API settings
+URL_PREFIX = "/api/v1"
+
 # Logging settings
 LOG_DIR = REPO_ROOT / "logs"
 LOG_FILE = LOG_DIR / "genai_template.log"
