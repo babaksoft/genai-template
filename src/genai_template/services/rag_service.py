@@ -109,4 +109,5 @@ class RagService:
         return RagResult(
             answer=response,
             metrics=metrics,
+            retrieved_chunks=retrieved_chunks,
         )

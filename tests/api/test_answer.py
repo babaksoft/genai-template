@@ -44,6 +44,7 @@ def test_answer_returns_generated_response(
     mock_service.answer.return_value = RagResult(
         answer="Generated answer.",
         metrics=get_test_metrics(),
+        retrieved_chunks=[],
     )
 
     app.dependency_overrides[get_rag_service] = lambda: mock_service
