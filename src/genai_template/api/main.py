@@ -1,7 +1,3 @@
-"""
-The actual application routes that call the services layer.
-"""
-
 from fastapi import FastAPI
 
 from genai_template.api.lifespan import lifespan

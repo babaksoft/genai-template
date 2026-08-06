@@ -19,7 +19,7 @@ DATABASE_URL = "sqlite:///db/genai_template.db"
 DATA_DIR = REPO_ROOT / "data"
 
 # LLM settings
-LLM_MODEL = "llama3.2"
+LLM_MODEL = "llama3.2:3b"
 OLLAMA_BASE_URL = "http://localhost:11434"
 
 # Embedding settings

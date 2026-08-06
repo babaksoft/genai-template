@@ -6,7 +6,7 @@ from genai_template.components.readers import TextReader
 from genai_template.components.splitters import DocumentSplitter
 from genai_template.config import settings
 from genai_template.db import SessionLocal
-from genai_template.pipeline import IndexingPipeline, RetrievalPipeline
+from genai_template.pipelines import IndexingPipeline, RetrievalPipeline
 from genai_template.services import ExperimentService, RagService
 from genai_template.stores.vector import ChromaStore
 

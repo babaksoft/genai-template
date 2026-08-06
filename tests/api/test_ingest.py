@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from genai_template.api.dependencies import get_indexing_pipeline
 from genai_template.api.main import app
-from genai_template.pipeline import IndexingPipeline
+from genai_template.pipelines import IndexingPipeline
 from genai_template.schemas import IndexingResult
 
 

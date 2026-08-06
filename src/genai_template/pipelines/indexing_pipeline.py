@@ -68,15 +68,17 @@ class IndexingPipeline:
             embedded_chunks = self._embedder.embed(chunks)
             self._store.upsert(embedded_chunks)
 
-        logger.info(
-            "Indexed %d document(s) into %d chunk(s) in %.3f second(s).",
-            len(documents),
-            len(chunks),
-            timer.elapsed,
-        )
-
-        return IndexingResult(
+        result = IndexingResult(
             documents_indexed=len(documents),
             chunks_indexed=len(chunks),
             indexing_time=timer.elapsed,
         )
+
+        logger.info(
+            "Indexed %d document(s) into %d chunk(s) in %.3f second(s).",
+            result.documents_indexed,
+            result.chunks_indexed,
+            result.indexing_time,
+        )
+
+        return result

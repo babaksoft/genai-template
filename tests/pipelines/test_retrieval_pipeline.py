@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from genai_template.pipeline import RetrievalPipeline
+from genai_template.pipelines import RetrievalPipeline
 from genai_template.schemas import DocumentChunk, RetrievedChunk
 
 

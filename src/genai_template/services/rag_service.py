@@ -8,7 +8,7 @@ from genai_template.components.language_models import (
 )
 from genai_template.components.prompt import PromptBuilder
 from genai_template.config import settings
-from genai_template.pipeline import RetrievalPipeline
+from genai_template.pipelines import RetrievalPipeline
 from genai_template.schemas import RagResult, RunMetrics
 from genai_template.services import ExperimentService
 from genai_template.utils import Timer

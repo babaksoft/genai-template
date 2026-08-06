@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from genai_template.api.dependencies import get_indexing_pipeline
-from genai_template.pipeline import IndexingPipeline
+from genai_template.pipelines import IndexingPipeline
 from genai_template.schemas import IngestRequest, IngestResponse
 
 router = APIRouter()

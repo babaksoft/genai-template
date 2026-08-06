@@ -13,7 +13,7 @@ from genai_template.components.language_models import (
 from genai_template.components.prompt import PromptBuilder
 from genai_template.components.readers import TextReader
 from genai_template.components.splitters import DocumentSplitter
-from genai_template.pipeline import IndexingPipeline, RetrievalPipeline
+from genai_template.pipelines import IndexingPipeline, RetrievalPipeline
 from genai_template.services import RagService
 from genai_template.stores.vector import ChromaStore
 
