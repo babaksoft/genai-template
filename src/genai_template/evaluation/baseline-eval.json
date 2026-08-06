@@ -1,0 +1,141 @@
+[
+  {
+    "question": "What is the difference between a list and a tuple in Python?",
+    "expected_documents": ["python-development.md"]
+  },
+  {
+    "question": "How can Python applications reduce memory usage when processing large datasets?",
+    "expected_documents": [
+      "python-development.md",
+      "performance-scalability.md"
+    ]
+  },
+  {
+    "question": "What is an index in a relational database and why does it improve query performance?",
+    "expected_documents": [
+      "database-systems.md",
+      "performance-scalability.md"
+    ]
+  },
+  {
+    "question": "How do database transactions help maintain consistency?",
+    "expected_documents": [
+      "database-systems.md",
+      "application-reliability.md"
+    ]
+  },
+  {
+    "question": "What is the purpose of a Docker container?",
+    "expected_documents": ["docker-containerization.md"]
+  },
+  {
+    "question": "How do CPU and memory limits affect applications running in containers?",
+    "expected_documents": [
+      "docker-containerization.md",
+      "performance-scalability.md"
+    ]
+  },
+  {
+    "question": "Why are health checks important for containerized services?",
+    "expected_documents": [
+      "docker-containerization.md",
+      "application-reliability.md"
+    ]
+  },
+  {
+    "question": "What factors can affect the latency of a machine-learning inference request?",
+    "expected_documents": [
+      "ml-systems.md",
+      "performance-scalability.md"
+    ]
+  },
+  {
+    "question": "Why is loading a machine-learning model for every request inefficient?",
+    "expected_documents": [
+      "ml-systems.md",
+      "performance-scalability.md"
+    ]
+  },
+  {
+    "question": "What is the difference between synchronous and asynchronous communication?",
+    "expected_documents": [
+      "distributed-systems.md",
+      "application-reliability.md"
+    ]
+  },
+  {
+    "question": "Why can retries make an overloaded distributed service less stable?",
+    "expected_documents": [
+      "distributed-systems.md",
+      "application-reliability.md"
+    ]
+  },
+  {
+    "question": "What is backpressure and why is it useful in distributed systems?",
+    "expected_documents": [
+      "distributed-systems.md",
+      "performance-scalability.md",
+      "application-reliability.md"
+    ]
+  },
+  {
+    "question": "How does caching improve application performance?",
+    "expected_documents": [
+      "database-systems.md",
+      "distributed-systems.md",
+      "performance-scalability.md"
+    ]
+  },
+  {
+    "question": "Why can cache invalidation be difficult in distributed applications?",
+    "expected_documents": [
+      "distributed-systems.md",
+      "performance-scalability.md",
+      "application-reliability.md"
+    ]
+  },
+  {
+    "question": "What is the difference between horizontal and vertical scaling?",
+    "expected_documents": [
+      "distributed-systems.md",
+      "performance-scalability.md"
+    ]
+  },
+  {
+    "question": "Why can adding more application instances overload a database?",
+    "expected_documents": [
+      "distributed-systems.md",
+      "performance-scalability.md"
+    ]
+  },
+  {
+    "question": "Why should network requests have explicit timeouts?",
+    "expected_documents": [
+      "distributed-systems.md",
+      "application-reliability.md"
+    ]
+  },
+  {
+    "question": "What makes an operation idempotent?",
+    "expected_documents": [
+      "distributed-systems.md",
+      "application-reliability.md"
+    ]
+  },
+  {
+    "question": "How can structured logging, metrics, and tracing complement each other?",
+    "expected_documents": [
+      "distributed-systems.md",
+      "application-reliability.md",
+      "performance-scalability.md"
+    ]
+  },
+  {
+    "question": "What techniques can prevent unlimited concurrency from exhausting application resources?",
+    "expected_documents": [
+      "performance-scalability.md",
+      "distributed-systems.md",
+      "application-reliability.md"
+    ]
+  }
+]
