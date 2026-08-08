@@ -4,15 +4,10 @@ import json
 import logging
 from pathlib import Path
 
-from genai_template.components.context import ContextBuilder
-from genai_template.components.language_models import OllamaLanguageModel
-from genai_template.components.prompt import PromptBuilder
 from genai_template.config import settings
 from genai_template.config.logging import configure_logging
-from genai_template.db import SessionLocal
 from genai_template.pipelines import RetrievalPipeline
 from genai_template.schemas import RetrievalTest
-from genai_template.services import ExperimentService, RagService
 
 logger = logging.getLogger(__name__)
 
@@ -136,15 +131,15 @@ def extract_document_name(source: str) -> str:
 
 
 def evaluate_test(
-    rag_service: RagService,
+    pipeline: RetrievalPipeline,
     test: RetrievalTest,
     k: int,
 ) -> tuple[bool, float, float]:
     """Evaluate retrieval for a single test case.
 
     Args:
-        rag_service:
-            RAG service used to execute the test query.
+        pipeline:
+            RAG retrieval pipeline used to execute the test query.
 
         test:
             Retrieval evaluation case.
@@ -156,15 +151,15 @@ def evaluate_test(
         Tuple containing Hit@K, Recall@K, and Precision@K.
     """
 
-    logger.info("Evaluating RAG pipeline: query='%s'", test.question)
+    logger.info("Evaluating RAG retrieval: query='%s'", test.question)
 
-    result = rag_service.answer(test.question)
+    retrieved_chunks = pipeline.retrieve(query=test.question, top_k=k)
     retrieved_documents = [
         extract_document_name(str(retrieved_chunk.chunk.metadata["file_path"]))
-        for retrieved_chunk in result.retrieved_chunks
+        for retrieved_chunk in retrieved_chunks
     ]
 
-    logger.info("Retrieved %d chunk(s).", len(result.retrieved_chunks))
+    logger.info("Retrieved %d chunk(s).", len(retrieved_chunks))
 
     return (
         calculate_hit_at_k(
@@ -189,22 +184,12 @@ def main() -> None:
     """Run baseline retrieval evaluation."""
 
     tests = load_evaluation_tests(settings.EVALUATION_DATA_PATH)
-
-    rag_service = RagService(
-        retrieval_pipeline=RetrievalPipeline(),
-        context_builder=ContextBuilder(),
-        prompt_builder=PromptBuilder(),
-        language_model=OllamaLanguageModel(settings.LLM_MODEL),
-        experiment_service=ExperimentService(
-            session_factory=SessionLocal,
-        ),
-    )
-
     k = settings.TOP_K
 
+    retrieval_pipeline = RetrievalPipeline()
     results = [
         evaluate_test(
-            rag_service=rag_service,
+            pipeline=retrieval_pipeline,
             test=test,
             k=k,
         )
