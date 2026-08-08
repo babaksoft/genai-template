@@ -44,3 +44,6 @@ CHROMA_DISTANCE = VectorDistance.COSINE
 
 # Experiment settings
 EXPERIMENT_NAME = "Baseline RAG"
+
+# Evaluation settings
+EVALUATION_DATA_PATH = PKG_ROOT / "evaluation" / "baseline-eval.json"

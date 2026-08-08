@@ -17,7 +17,7 @@ def test_init_creates_ollama_instance(mock_ollama: MagicMock) -> None:
 
     OllamaLanguageModel(model_name=LLM_MODEL)
 
-    mock_ollama.assert_called_once_with(model=LLM_MODEL)
+    mock_ollama.assert_called_once_with(model=LLM_MODEL, request_timeout=180)
 
 
 @patch("genai_template.components.language_models.ollama_language_model.Ollama")

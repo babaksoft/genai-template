@@ -32,15 +32,20 @@ class RagService:
         Args:
             retrieval_pipeline:
                 Retrieval pipeline.
+
             context_builder:
                 Context builder.
+
             prompt_builder:
                 Prompt builder.
+
             language_model:
                 Language model.
+
             experiment_service:
                 Experiment tracking service.
         """
+
         self._retrieval_pipeline = retrieval_pipeline
         self._context_builder = context_builder
         self._prompt_builder = prompt_builder

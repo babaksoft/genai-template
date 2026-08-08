@@ -22,7 +22,10 @@ class OllamaLanguageModel:
         """
 
         self._model_name = model_name
-        self._llm = Ollama(model=model_name)
+        self._llm = Ollama(
+            model=model_name,
+            request_timeout=180,
+        )
 
     def generate(self, prompt: str) -> str:
         """
