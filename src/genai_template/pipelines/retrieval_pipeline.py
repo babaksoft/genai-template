@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from genai_template.components.embeddings.fastembed import (
+from genai_template.components.embeddings import (
     FastEmbedEmbeddingModel,
 )
 from genai_template.config import settings
@@ -45,11 +45,12 @@ class RetrievalPipeline:
         Args:
             query:
                 User query.
+
             top_k:
                 Maximum number of retrieved chunks. Default is 5.
 
         Returns:
-            Returns retrieved chunks in the order returned by the underlying
+            Retrieved chunks in the order returned by the underlying
             vector store (typically increasing distance).
         """
 
