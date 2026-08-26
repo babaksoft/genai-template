@@ -4,6 +4,8 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI
 
+from genai_template.config.logging import configure_logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -16,6 +18,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             FastAPI application instance.
     """
 
+    configure_logging()
     logger.info("Starting GenAI Template API")
 
     yield

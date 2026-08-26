@@ -1,4 +1,4 @@
-import httpx
+from httpx import post
 
 from genai_template.config import settings
 from genai_template.schemas import AnswerResponse
@@ -32,9 +32,10 @@ class ApiClient:
                 If the API returns an unsuccessful HTTP status code.
         """
 
-        response = httpx.post(
+        response = post(
             f"{self._base_url}{settings.API_URL_PREFIX}/answer",
             json={"query": query},
+            timeout=settings.REQUEST_TIMEOUT,
         )
         response.raise_for_status()
 

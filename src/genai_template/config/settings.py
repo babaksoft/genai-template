@@ -23,8 +23,11 @@ DATABASE_URL = "sqlite:///db/genai_template.db"
 DATA_DIR = REPO_ROOT / "data"
 
 # LLM settings
-LLM_MODEL = "llama3.2:3b"
+LLM_MODEL = "gpt-oss:20b-cloud"
 OLLAMA_BASE_URL = "http://localhost:11434"
+
+# HTTP client settings
+REQUEST_TIMEOUT = 180
 
 # Embedding settings
 EMBEDDING_MODEL = "BAAI/bge-base-en-v1.5"
