@@ -7,7 +7,7 @@ name = "genai-template"
 version = "0.1.0"
 description = "A starter project promoting system design for Generative AI applications"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.13"
 license = "MIT"
 authors = [
   { name="babaksoft", email="babak.eslamieh@gmail.com" },
@@ -22,27 +22,18 @@ classifiers = [
 license-files = ["LICEN[CS]E*"]
 
 dependencies = [
-    "arize-phoenix",
-    "boto3",
-    "chromadb",
+    "alembic",
     "dvc[s3]",
     "fastapi[standard]",
-    "langfuse",
-    "llama-index",
-    "llama-index-callbacks-arize-phoenix",
+    "fastembed",
+    "httpx",
+    "llama-index-core",
     "llama-index-embeddings-fastembed",
-    "llama-index-embeddings-huggingface",
-    "llama-index-embeddings-openai",
     "llama-index-llms-ollama",
-    "llama-index-llms-openai",
     "llama-index-vector-stores-chroma",
-    "llama-index-vector-stores-qdrant",
-    "ollama",
-    "openinference-instrumentation-llama-index",
+    "pydantic",
     "python-dotenv",
-    "qdrant-client[fastembed]",
-    "requests",
-    "sentence-transformers",
+    "SQLAlchemy",
     "streamlit",
 ]
 
@@ -69,10 +60,14 @@ target-version = ["py312"]
 
 [tool.isort]
 profile = "black"
+src_paths = ["src", "tests"]
 known_third_party = [
     "alembic",
     "sqlalchemy",
 ]
+
+[tool.ruff]
+src = ["src", "tests"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
@@ -86,3 +81,12 @@ sources = ["src"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/genai_template"]
+
+[dependency-groups]
+dev = [
+    "black>=26.5.1",
+    "isort>=9.0.0",
+    "mypy>=2.3.1",
+    "pytest>=9.1.1",
+    "ruff>=0.16.4",
+]

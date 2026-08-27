@@ -22,12 +22,6 @@ logger = logging.getLogger(__name__)
 class ChromaStore:
     """Persistent Chroma vector store."""
 
-    _DISTANCE_MAP = {
-        VectorDistance.COSINE: "cosine",
-        VectorDistance.L2: "l2",
-        VectorDistance.INNER_PRODUCT: "ip",
-    }
-
     def __init__(self, persist_directory: Path | None = None) -> None:
         """
         Initialize the Chroma collection.
@@ -36,6 +30,12 @@ class ChromaStore:
             persist_directory:
                 Directory to store persisted data.
         """
+
+        self._DISTANCE_MAP = {
+            VectorDistance.COSINE: "cosine",
+            VectorDistance.L2: "l2",
+            VectorDistance.INNER_PRODUCT: "ip",
+        }
 
         persist_directory = persist_directory or settings.CHROMA_PERSIST_DIR
 
