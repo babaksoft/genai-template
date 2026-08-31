@@ -76,6 +76,9 @@ markers = [
     "integration: marks tests requiring external services",
 ]
 
+[tool.uv]
+link-mode = "copy"
+
 [tool.hatch.build]
 sources = ["src"]
 
