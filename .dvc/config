@@ -1,4 +1,0 @@
-[core]
-    remote = aws_storage
-['remote "aws_storage"']
-    url = s3://babaksoft/ml-portfolio/genai-template/dvc_sync
