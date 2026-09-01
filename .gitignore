@@ -12,3 +12,5 @@ __pycache__/
 
 # Application logs
 **/logs/
+/storage
+/db
