@@ -59,6 +59,8 @@ Create a ``.env`` at the repository root (or edit the existing one) with the req
 OPENAI_API_KEY=…
 # Optional: use a specific Ollama service instead of automatic discovery.
 OLLAMA_BASE_URL=http://ollama.example:11434
+# Optional: send FastAPI request traces to a locally running Phoenix instance.
+PHOENIX_ENABLED=true
 ```
 The project reads these variables via ``python‑dotenv``.
 
@@ -68,6 +70,25 @@ python -m uvicorn genai_template.api.main:app \
     --host 0.0.0.0 --port 8000
 ```
 The API lives under the prefix defined in ``settings.API_URL_PREFIX`` (default `/api/v1`).
+
+### Local Phoenix tracing
+
+Phoenix is included as a project dependency. In a separate terminal, start the local
+server with:
+
+```bash
+uv run phoenix serve
+```
+
+Then set ``PHOENIX_ENABLED=true`` before starting the API. FastAPI request traces, retrieval,
+Chroma search, context/prompt construction, and LlamaIndex embedding/LLM spans are sent
+to ``http://localhost:6006/v1/traces`` and appear at
+``http://localhost:6006`` under the ``genai-template`` project. Override the defaults
+with ``PHOENIX_COLLECTOR_ENDPOINT`` and ``PHOENIX_PROJECT_NAME`` if needed.
+
+Phoenix tracing is intended for local experimentation: traces retain full user queries,
+retrieved chunk contents, prompts, and generated answers. Do not enable it with sensitive
+data unless the local Phoenix storage is appropriately protected.
 
 ### 4️⃣ (Optional) Launch the UI
 ```bash

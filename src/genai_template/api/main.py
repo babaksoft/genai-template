@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from genai_template.api.lifespan import lifespan
+from genai_template.api.observability import initialize_observability
 from genai_template.api.routes import answer, health, ingest
 from genai_template.config import settings
 
@@ -10,6 +11,8 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+app.state.tracer_provider = initialize_observability(app)
 
 app.include_router(
     health.router,

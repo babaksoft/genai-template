@@ -8,6 +8,7 @@ from genai_template.components.language_models import (
 )
 from genai_template.components.prompt import PromptBuilder
 from genai_template.config import settings
+from genai_template.observability import INPUT_VALUE, OUTPUT_VALUE, application_span
 from genai_template.pipelines import RetrievalPipeline
 from genai_template.schemas import RagResult, RunMetrics
 from genai_template.services import ExperimentService
@@ -67,39 +68,45 @@ class RagService:
             experiment_name=settings.EXPERIMENT_NAME,
         )
 
-        with Timer() as total_timer:
-            with Timer() as retrieval_timer:
-                retrieved_chunks = self._retrieval_pipeline.retrieve(
-                    query, settings.TOP_K
+        with application_span(
+            "rag.answer",
+            "CHAIN",
+            {INPUT_VALUE: query, "rag.top_k": settings.TOP_K},
+        ) as span:
+            with Timer() as total_timer:
+                with Timer() as retrieval_timer:
+                    retrieved_chunks = self._retrieval_pipeline.retrieve(
+                        query, settings.TOP_K
+                    )
+
+                context = self._context_builder.build(retrieved_chunks)
+                prompt = self._prompt_builder.build(
+                    query=query,
+                    context=context,
                 )
 
-            context = self._context_builder.build(retrieved_chunks)
-            prompt = self._prompt_builder.build(
+                with Timer() as generation_timer:
+                    response = self._language_model.generate(prompt)
+
+            distances = [chunk.distance for chunk in retrieved_chunks]
+
+            metrics = RunMetrics(
                 query=query,
-                context=context,
+                embedding_model=settings.EMBEDDING_MODEL,
+                vector_store=settings.VECTOR_STORE,
+                llm_model=settings.LLM_MODEL,
+                top_k=settings.TOP_K,
+                retrieved_chunks=len(retrieved_chunks),
+                best_distance=min(distances) if distances else None,
+                worst_distance=max(distances) if distances else None,
+                context_length=len(context),
+                prompt_length=len(prompt),
+                response_length=len(response),
+                retrieval_time=retrieval_timer.elapsed,
+                generation_time=generation_timer.elapsed,
+                total_time=total_timer.elapsed,
             )
-
-            with Timer() as generation_timer:
-                response = self._language_model.generate(prompt)
-
-        distances = [chunk.distance for chunk in retrieved_chunks]
-
-        metrics = RunMetrics(
-            query=query,
-            embedding_model=settings.EMBEDDING_MODEL,
-            vector_store=settings.VECTOR_STORE,
-            llm_model=settings.LLM_MODEL,
-            top_k=settings.TOP_K,
-            retrieved_chunks=len(retrieved_chunks),
-            best_distance=min(distances) if distances else None,
-            worst_distance=max(distances) if distances else None,
-            context_length=len(context),
-            prompt_length=len(prompt),
-            response_length=len(response),
-            retrieval_time=retrieval_timer.elapsed,
-            generation_time=generation_timer.elapsed,
-            total_time=total_timer.elapsed,
-        )
+            span.set_attribute(OUTPUT_VALUE, response)
 
         self._experiment_service.complete_run(
             run=run,

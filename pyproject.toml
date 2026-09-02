@@ -23,6 +23,8 @@ license-files = ["LICEN[CS]E*"]
 
 dependencies = [
     "alembic",
+    "arize-phoenix",
+    "arize-phoenix-otel",
     "dvc[s3]",
     "fastapi[standard]",
     "fastembed",
@@ -31,10 +33,12 @@ dependencies = [
     "llama-index-embeddings-fastembed",
     "llama-index-llms-ollama",
     "llama-index-vector-stores-chroma",
+    "openinference-instrumentation-llama-index",
     "pydantic",
     "python-dotenv",
     "SQLAlchemy",
     "streamlit",
+    "opentelemetry-instrumentation-fastapi",
 ]
 
 [project.urls]

@@ -24,3 +24,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
     logger.info("Stopping GenAI Template API")
+    tracer_provider = getattr(app.state, "tracer_provider", None)
+    if tracer_provider is not None:
+        tracer_provider.shutdown()

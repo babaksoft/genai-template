@@ -13,6 +13,12 @@ from chromadb.api.types import Embeddings, Metadatas
 
 from genai_template.common.types import VectorDistance
 from genai_template.config import settings
+from genai_template.observability import (
+    INPUT_VALUE,
+    RETRIEVAL_DOCUMENTS,
+    application_span,
+    retrieved_documents_attribute,
+)
 from genai_template.schemas import DocumentChunk, RetrievedChunk
 from genai_template.utils import Timer
 
@@ -108,6 +114,7 @@ class ChromaStore:
         self,
         embedding: list[float],
         top_k: int,
+        query: str | None = None,
     ) -> list[RetrievedChunk]:
         """Search for similar document chunks.
 
@@ -123,7 +130,14 @@ class ChromaStore:
 
         logger.info("Searching vector store for similar chunks: top_k=%d", top_k)
 
-        with Timer() as timer:
+        with (
+            application_span(
+                "rag.chroma.search",
+                "RETRIEVER",
+                {INPUT_VALUE: query, "rag.top_k": top_k},
+            ) as span,
+            Timer() as timer,
+        ):
             result = self._collection.query(
                 query_embeddings=cast(Embeddings, [embedding]),
                 n_results=top_k,
@@ -134,31 +148,43 @@ class ChromaStore:
             metadatas = result.get("metadatas") or []
             distances = result.get("distances") or []
 
-            if not ids:
-                return []
-
             retrieved_chunks: list[RetrievedChunk] = []
-
-            for chunk_id, text, metadata, distance in zip(
-                ids[0],
-                documents[0],
-                metadatas[0],
-                distances[0],
-                strict=True,
-            ):
-                document_chunk = DocumentChunk(
-                    id=chunk_id,
-                    document_id=str(metadata["document_id"]),
-                    text=text,
-                    metadata=json.loads(str(metadata["metadata"])),
-                )
-
-                retrieved_chunks.append(
-                    RetrievedChunk(
-                        chunk=document_chunk,
-                        distance=distance,
+            if ids:
+                for chunk_id, text, metadata, distance in zip(
+                    ids[0],
+                    documents[0],
+                    metadatas[0],
+                    distances[0],
+                    strict=True,
+                ):
+                    document_chunk = DocumentChunk(
+                        id=chunk_id,
+                        document_id=str(metadata["document_id"]),
+                        text=text,
+                        metadata=json.loads(str(metadata["metadata"])),
                     )
-                )
+
+                    retrieved_chunks.append(
+                        RetrievedChunk(
+                            chunk=document_chunk,
+                            distance=distance,
+                        )
+                    )
+            span.set_attribute("rag.result_count", len(retrieved_chunks))
+            span.set_attribute(
+                RETRIEVAL_DOCUMENTS,
+                retrieved_documents_attribute(
+                    [
+                        {
+                            "id": item.chunk.id,
+                            "document_id": item.chunk.document_id,
+                            "content": item.chunk.text,
+                            "distance": item.distance,
+                        }
+                        for item in retrieved_chunks
+                    ]
+                ),
+            )
 
         self._log_stats(retrieved_chunks, timer)
 

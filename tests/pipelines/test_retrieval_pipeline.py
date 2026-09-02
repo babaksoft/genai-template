@@ -48,4 +48,5 @@ def test_retrieve() -> None:
     store.search.assert_called_once_with(
         embedding=embedding,
         top_k=3,
+        query="What is FastAPI?",
     )

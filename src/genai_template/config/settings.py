@@ -1,6 +1,7 @@
 """Application-wide configuration."""
 
 import logging
+import os
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -17,6 +18,18 @@ load_dotenv(REPO_ROOT / ".env")
 # API settings
 API_BASE_URL = "http://localhost:8000"
 API_URL_PREFIX = "/api/v1"
+
+# Observability settings
+PHOENIX_ENABLED = os.getenv("PHOENIX_ENABLED", "false").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+PHOENIX_COLLECTOR_ENDPOINT = os.getenv(
+    "PHOENIX_COLLECTOR_ENDPOINT", "http://localhost:6006/v1/traces"
+)
+PHOENIX_PROJECT_NAME = os.getenv("PHOENIX_PROJECT_NAME", "genai-template")
 
 # Logging settings
 LOG_DIR = REPO_ROOT / "logs"

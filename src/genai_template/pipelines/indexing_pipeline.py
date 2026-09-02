@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from opentelemetry.instrumentation.utils import suppress_instrumentation
+
 from genai_template.components.embeddings import (
     FastEmbedEmbeddingModel,
 )
@@ -62,7 +64,8 @@ class IndexingPipeline:
             Summary result from indexing.
         """
 
-        with Timer() as timer:
+        # Indexing is intentionally outside the answer-path observability scope.
+        with suppress_instrumentation(), Timer() as timer:
             documents = self._reader.load(data_dir)
             chunks = self._splitter.split(documents)
             embedded_chunks = self._embedder.embed(chunks)

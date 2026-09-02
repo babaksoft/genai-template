@@ -8,6 +8,12 @@ from genai_template.components.embeddings import (
     FastEmbedEmbeddingModel,
 )
 from genai_template.config import settings
+from genai_template.observability import (
+    INPUT_VALUE,
+    RETRIEVAL_DOCUMENTS,
+    application_span,
+    retrieved_documents_attribute,
+)
 from genai_template.schemas import RetrievedChunk
 from genai_template.stores.vector import ChromaStore
 from genai_template.utils import Timer
@@ -54,11 +60,32 @@ class RetrievalPipeline:
             vector store (typically increasing distance).
         """
 
-        with Timer() as timer:
-            embedding = self._embedder.embed_query(query)
-            retrieved_chunks = self._store.search(
-                embedding=embedding,
-                top_k=top_k,
+        with application_span(
+            "rag.retrieval",
+            "RETRIEVER",
+            {INPUT_VALUE: query, "rag.top_k": top_k},
+        ) as span:
+            with Timer() as timer:
+                embedding = self._embedder.embed_query(query)
+                retrieved_chunks = self._store.search(
+                    embedding=embedding,
+                    top_k=top_k,
+                    query=query,
+                )
+            span.set_attribute("rag.result_count", len(retrieved_chunks))
+            span.set_attribute(
+                RETRIEVAL_DOCUMENTS,
+                retrieved_documents_attribute(
+                    [
+                        {
+                            "id": item.chunk.id,
+                            "document_id": item.chunk.document_id,
+                            "content": item.chunk.text,
+                            "distance": item.distance,
+                        }
+                        for item in retrieved_chunks
+                    ]
+                ),
             )
 
         logger.info(
