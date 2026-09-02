@@ -12,12 +12,25 @@ LLM_MODEL = "llama3"
 
 
 @patch("genai_template.components.language_models.ollama_language_model.Ollama")
-def test_init_creates_ollama_instance(mock_ollama: MagicMock) -> None:
+@patch(
+    "genai_template.components.language_models.ollama_language_model."
+    "resolve_ollama_base_url",
+    return_value="http://ollama.test:11434",
+)
+def test_init_creates_ollama_instance(
+    mock_resolve_base_url: MagicMock,
+    mock_ollama: MagicMock,
+) -> None:
     """The adapter should create an Ollama instance."""
 
     OllamaLanguageModel(model_name=LLM_MODEL)
 
-    mock_ollama.assert_called_once_with(model=LLM_MODEL, request_timeout=180)
+    mock_resolve_base_url.assert_called_once_with()
+    mock_ollama.assert_called_once_with(
+        model=LLM_MODEL,
+        base_url="http://ollama.test:11434",
+        request_timeout=180,
+    )
 
 
 @patch("genai_template.components.language_models.ollama_language_model.Ollama")

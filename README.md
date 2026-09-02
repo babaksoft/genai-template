@@ -57,8 +57,8 @@ pip install -c constraints.txt -e ".[dev]"
 Create a ``.env`` at the repository root (or edit the existing one) with the required keys, e.g.:
 ```
 OPENAI_API_KEY=…
-LANGFUSE_SECRET_KEY=…
-TAVILY_API_KEY=…
+# Optional: use a specific Ollama service instead of automatic discovery.
+OLLAMA_BASE_URL=http://ollama.example:11434
 ```
 The project reads these variables via ``python‑dotenv``.
 
@@ -91,7 +91,7 @@ This indexes all markdown files under ``data/`` into the default Chroma store (`
   ```bash
   pytest -m integration -v
   ```
-  The integration suite creates a temporary Chroma collection and uses ``OllamaLanguageModel``; ensure Ollama is reachable at ``settings.OLLAMA_BASE_URL`` (default ``http://localhost:11434``).
+  The integration suite creates a temporary Chroma collection and uses ``OllamaLanguageModel``; ensure Ollama is reachable.
 
 ## Code Quality Checks
 ```bash
@@ -111,9 +111,23 @@ Run these before committing.
 - ``API_BASE_URL = "http://127.0.0.1:8000"``
 - ``API_URL_PREFIX = "/api/v1"``
 - ``LLM_MODEL = "llama3.2:3b"`` – default Ollama model.
+- ``OLLAMA_BASE_URL`` – optional explicit Ollama endpoint. When unset, the app
+  uses a reachable localhost service or, in WSL NAT mode, discovers the current
+  Windows-host gateway automatically.
 - ``EMBEDDING_MODEL = "BAAI/bge-base-en-v1.5"``
 - ``CHROMA_COLLECTION = "documents"``
 - Other tunable knobs: chunk size/overlap, top‑k retrieval, distance metric.
+
+### Ollama from WSL NAT
+
+No host IP needs to be committed or kept in ``.env``. When localhost does not
+serve Ollama, the app derives WSL's current default-route gateway and connects
+to that Windows-host address. Set ``OLLAMA_BASE_URL`` only to select a custom
+endpoint or bypass discovery.
+
+The Windows Ollama service must be reachable from WSL on port 11434. If you
+change its ``OLLAMA_HOST`` binding to expose it beyond localhost, restrict the
+Windows firewall to trusted networks; do not expose the service publicly.
 
 ## Extending the Template
 The repository is deliberately modular:

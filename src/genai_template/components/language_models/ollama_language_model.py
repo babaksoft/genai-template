@@ -4,6 +4,7 @@ import logging
 
 from llama_index.llms.ollama import Ollama
 
+from genai_template.config.ollama import resolve_ollama_base_url
 from genai_template.utils import Timer
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,7 @@ class OllamaLanguageModel:
         self._model_name = model_name
         self._llm = Ollama(
             model=model_name,
+            base_url=resolve_ollama_base_url(),
             request_timeout=180,
         )
 

@@ -1,5 +1,9 @@
+"""Application-wide configuration."""
+
 import logging
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 from genai_template.common.types import VectorDistance
 
@@ -7,8 +11,11 @@ from genai_template.common.types import VectorDistance
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 PKG_ROOT = Path(__file__).resolve().parent.parent
 
+# Shell environment values take precedence over values kept in the local .env.
+load_dotenv(REPO_ROOT / ".env")
+
 # API settings
-API_BASE_URL = "http://127.0.0.1:8000"
+API_BASE_URL = "http://localhost:8000"
 API_URL_PREFIX = "/api/v1"
 
 # Logging settings
