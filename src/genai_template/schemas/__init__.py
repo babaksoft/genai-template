@@ -3,9 +3,10 @@
 from genai_template.schemas.api import (
     AnswerRequest,
     AnswerResponse,
+    CreateSourceRequest,
     HealthResponse,
-    IngestRequest,
-    IngestResponse,
+    SourceCandidateResponse,
+    SourceResponse,
 )
 from genai_template.schemas.chunk import DocumentChunk
 from genai_template.schemas.experiment_summary import ExperimentSummary
@@ -18,14 +19,15 @@ from genai_template.schemas.run_metrics import RunMetrics
 __all__ = [
     "AnswerRequest",
     "AnswerResponse",
+    "CreateSourceRequest",
     "DocumentChunk",
     "ExperimentSummary",
     "HealthResponse",
     "IndexingResult",
-    "IngestRequest",
-    "IngestResponse",
     "RagResult",
     "RetrievalTest",
     "RetrievedChunk",
     "RunMetrics",
+    "SourceCandidateResponse",
+    "SourceResponse",
 ]

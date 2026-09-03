@@ -87,9 +87,7 @@ def evaluate_test(
 def main() -> None:
     """Run baseline retrieval evaluation."""
 
-    tests = load_evaluation_tests(
-        settings.EVALUATION_DATA_DIR / "baseline-eval.json"
-    )
+    tests = load_evaluation_tests(settings.EVALUATION_DATA_DIR / "baseline-eval.json")
     k = settings.TOP_K
 
     retrieval_pipeline = RetrievalPipeline(
