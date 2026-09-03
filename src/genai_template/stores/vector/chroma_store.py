@@ -28,13 +28,20 @@ logger = logging.getLogger(__name__)
 class ChromaStore:
     """Persistent Chroma vector store."""
 
-    def __init__(self, persist_directory: Path | None = None) -> None:
+    def __init__(
+        self,
+        persist_directory: Path | None = None,
+        collection_name: str | None = None,
+    ) -> None:
         """
         Initialize the Chroma collection.
 
         Args:
             persist_directory:
                 Directory to store persisted data.
+            collection_name:
+                Name of the collection to use. Defaults to the configured
+                application collection.
         """
 
         self._DISTANCE_MAP = {
@@ -44,10 +51,11 @@ class ChromaStore:
         }
 
         persist_directory = persist_directory or settings.CHROMA_PERSIST_DIR
+        collection_name = collection_name or settings.CHROMA_COLLECTION
 
         client = chromadb.PersistentClient(path=persist_directory)
         self._collection: Collection = client.get_or_create_collection(
-            name=settings.CHROMA_COLLECTION,
+            name=collection_name,
             metadata={
                 "hnsw:space": self._DISTANCE_MAP[settings.CHROMA_DISTANCE],
             },
@@ -55,7 +63,7 @@ class ChromaStore:
 
         logger.info(
             "Connected to Chroma collection '%s'.",
-            settings.CHROMA_COLLECTION,
+            collection_name,
         )
 
     def upsert(

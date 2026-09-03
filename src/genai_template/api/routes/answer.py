@@ -1,3 +1,5 @@
+"""Answer generation API routes."""
+
 from typing import Annotated
 
 from fastapi import APIRouter, Depends

@@ -6,6 +6,11 @@ from pathlib import Path
 
 from genai_template.config import settings
 from genai_template.config.logging import configure_logging
+from genai_template.evaluation.metrics.baseline_metrics import (
+    calculate_hit_at_k,
+    calculate_precision_at_k,
+    calculate_recall_at_k,
+)
 from genai_template.pipelines import RetrievalPipeline
 from genai_template.schemas import RetrievalTest
 
@@ -29,107 +34,6 @@ def load_evaluation_tests(path: Path) -> list[RetrievalTest]:
     return [RetrievalTest.model_validate(item) for item in data]
 
 
-def calculate_hit_at_k(
-    retrieved_documents: list[str],
-    expected_documents: list[str],
-    k: int,
-) -> bool:
-    """Calculate whether at least one relevant document appears in top K.
-
-    Args:
-        retrieved_documents:
-            Document names returned by retrieval in ranked order.
-
-        expected_documents:
-            Document names considered relevant.
-
-        k:
-            Number of top-ranked documents to evaluate.
-
-    Returns:
-        True when at least one relevant document appears in top K.
-    """
-
-    retrieved = set(retrieved_documents[:k])
-    expected = set(expected_documents)
-
-    return bool(retrieved & expected)
-
-
-def calculate_recall_at_k(
-    retrieved_documents: list[str],
-    expected_documents: list[str],
-    k: int,
-) -> float:
-    """Calculate retrieval recall at K.
-
-    Args:
-        retrieved_documents:
-            Document names returned by retrieval in ranked order.
-
-        expected_documents:
-            Document names considered relevant.
-
-        k:
-            Number of top-ranked documents to evaluate.
-
-    Returns:
-        Proportion of relevant documents retrieved in top K.
-    """
-
-    expected = set(expected_documents)
-    if not expected:
-        return 0.0
-
-    retrieved = set(retrieved_documents[:k])
-
-    return len(retrieved & expected) / len(expected)
-
-
-def calculate_precision_at_k(
-    retrieved_documents: list[str],
-    expected_documents: list[str],
-    k: int,
-) -> float:
-    """Calculate retrieval precision at K.
-
-    Args:
-        retrieved_documents:
-            Document names returned by retrieval in ranked order.
-
-        expected_documents:
-            Document names considered relevant.
-
-        k:
-            Number of top-ranked documents to evaluate.
-
-    Returns:
-        Proportion of top-K retrieved documents that are relevant.
-    """
-
-    retrieved = retrieved_documents[:k]
-    if not retrieved:
-        return 0.0
-
-    expected = set(expected_documents)
-
-    return sum(document in expected for document in retrieved) / len(retrieved)
-
-
-def extract_document_name(source: str) -> str:
-    """Extract document filename from a chunk source path.
-
-    Args:
-        source:
-            Source path associated with a retrieved chunk.
-
-    Returns:
-        Document filename.
-    """
-
-    return Path(source).name
-
-
 def evaluate_test(
     pipeline: RetrievalPipeline,
     test: RetrievalTest,
@@ -140,10 +44,8 @@ def evaluate_test(
     Args:
         pipeline:
             RAG retrieval pipeline used to execute the test query.
-
         test:
             Retrieval evaluation case.
-
         k:
             Number of top-ranked chunks to evaluate.
 
@@ -155,7 +57,7 @@ def evaluate_test(
 
     retrieved_chunks = pipeline.retrieve(query=test.question, top_k=k)
     retrieved_documents = [
-        extract_document_name(str(retrieved_chunk.chunk.metadata["file_path"]))
+        Path(str(retrieved_chunk.chunk.metadata["file_path"])).name
         for retrieved_chunk in retrieved_chunks
     ]
 
@@ -183,7 +85,9 @@ def evaluate_test(
 def main() -> None:
     """Run baseline retrieval evaluation."""
 
-    tests = load_evaluation_tests(settings.EVALUATION_DATA_PATH)
+    tests = load_evaluation_tests(
+        settings.EVALUATION_DATA_DIR / "baseline-eval.json"
+    )
     k = settings.TOP_K
 
     retrieval_pipeline = RetrievalPipeline()

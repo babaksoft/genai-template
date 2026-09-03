@@ -1,3 +1,5 @@
+"""Health check API route."""
+
 from fastapi import APIRouter
 
 from genai_template.schemas import HealthResponse

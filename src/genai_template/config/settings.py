@@ -39,8 +39,8 @@ LOG_LEVEL = logging.DEBUG
 # Database settings
 DATABASE_URL = "sqlite:///db/genai_template.db"
 
-# Document settings
-DATA_DIR = REPO_ROOT / "data"
+# Corpora settings
+CORPORA_DIR = REPO_ROOT / "data"
 
 # LLM settings
 LLM_MODEL = "gpt-oss:20b-cloud"
@@ -69,4 +69,4 @@ CHROMA_DISTANCE = VectorDistance.COSINE
 EXPERIMENT_NAME = "Baseline RAG"
 
 # Evaluation settings
-EVALUATION_DATA_PATH = PKG_ROOT / "evaluation" / "baseline-eval.json"
+EVALUATION_DATA_DIR = PKG_ROOT / "evaluation" / "datasets"

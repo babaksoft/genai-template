@@ -25,7 +25,7 @@ class ExperimentService:
 
         Args:
             session_factory:
-                SQLAlchemy session factory.
+                Factory that creates database sessions.
         """
 
         self._session_factory = session_factory
@@ -81,7 +81,6 @@ class ExperimentService:
         Args:
             run:
                 Run to update.
-
             metrics:
                 Collected run metrics.
         """
@@ -202,7 +201,6 @@ class ExperimentService:
         Args:
             session:
                 SQLAlchemy session for persistence.
-
             experiment_name:
                 Name of experiment to get or create.
 
