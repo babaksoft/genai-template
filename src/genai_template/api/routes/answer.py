@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from genai_template.api.dependencies import get_rag_service
 from genai_template.schemas import AnswerRequest, AnswerResponse
@@ -32,7 +32,13 @@ async def answer(
         Generated answer and runtime metrics.
     """
 
-    result = rag_service.answer(request.query)
+    try:
+        result = rag_service.answer(request.query, request.source_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
 
     return AnswerResponse(
         answer=result.answer,

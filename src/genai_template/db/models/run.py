@@ -21,6 +21,11 @@ class Run(Base):
         nullable=False,
     )
 
+    source_id: Mapped[int] = mapped_column(
+        ForeignKey("sources.id"),
+        nullable=False,
+    )
+
     started_at: Mapped[datetime] = mapped_column(
         default=utc_now,
         nullable=False,

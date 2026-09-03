@@ -53,6 +53,7 @@ def test_answer_returns_generated_response(
         "/api/v1/answer",
         json={
             "query": "What is RAG?",
+            "source_id": 1,
         },
     )
 
@@ -62,6 +63,7 @@ def test_answer_returns_generated_response(
 
     assert body["answer"] == "Generated answer."
     assert body["metrics"]["retrieved_chunks"] == 2
+    mock_service.answer.assert_called_once_with("What is RAG?", 1)
 
     app.dependency_overrides.clear()
 
@@ -80,7 +82,31 @@ def test_answer_rejects_empty_query(
         "/api/v1/answer",
         json={
             "query": "",
+            "source_id": 1,
         },
     )
 
     assert response.status_code == 422  # i.e. Unprocessable Entity
+
+
+def test_answer_rejects_missing_source(client: TestClient) -> None:
+    """Verify unknown source identifiers return a not-found response.
+
+    Args:
+        client:
+            FastAPI test client.
+    """
+
+    mock_service = Mock(spec=RagService)
+    mock_service.answer.side_effect = ValueError("Source 99 does not exist.")
+    app.dependency_overrides[get_rag_service] = lambda: mock_service
+
+    response = client.post(
+        "/api/v1/answer",
+        json={"query": "What is RAG?", "source_id": 99},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Source 99 does not exist."
+
+    app.dependency_overrides.clear()

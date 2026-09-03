@@ -37,7 +37,7 @@ LOG_FILE = LOG_DIR / "genai_template.log"
 LOG_LEVEL = logging.DEBUG
 
 # Database settings
-DATABASE_URL = "sqlite:///db/genai_template.db"
+DATABASE_URL = "sqlite:///db/genai_template.sqlite3"
 
 # Corpora settings
 CORPORA_DIR = REPO_ROOT / "data"

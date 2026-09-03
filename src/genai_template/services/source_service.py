@@ -71,6 +71,29 @@ class SourceService:
         with self._session_factory() as session:
             return list(session.scalars(select(Source).order_by(Source.name)))
 
+    def get_source(self, source_id: int) -> Source:
+        """Get an ingested source by identifier.
+
+        Args:
+            source_id:
+                Unique identifier of the requested source.
+
+        Returns:
+            Persisted source metadata.
+
+        Raises:
+            ValueError:
+                If no source has the supplied identifier.
+        """
+
+        with self._session_factory() as session:
+            source = session.get(Source, source_id)
+
+        if source is None:
+            raise ValueError(f"Source {source_id} does not exist.")
+
+        return source
+
     def ingest(self, directory_name: str) -> Source:
         """Ingest one previously prepared corpus directory.
 

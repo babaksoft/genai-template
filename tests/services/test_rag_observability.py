@@ -13,6 +13,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 
 from genai_template.components.context import ContextBuilder
 from genai_template.components.prompt import PromptBuilder
+from genai_template.db.models import Source
 from genai_template.observability import trace as observability_trace
 from genai_template.pipelines import RetrievalPipeline
 from genai_template.services import RagService
@@ -44,11 +45,29 @@ def test_answer_emits_nested_rag_spans(mock_client_class: MagicMock) -> None:
     language_model.generate.return_value = "FastAPI is a web framework."
 
     service = RagService(
-        retrieval_pipeline=RetrievalPipeline(embedder=embedder, store=ChromaStore()),
+        retrieval_pipeline_factory=MagicMock(
+            return_value=RetrievalPipeline(
+                embedder=embedder,
+                store=ChromaStore(collection_name="source-fastapi"),
+            )
+        ),
         context_builder=ContextBuilder(),
         prompt_builder=PromptBuilder(),
         language_model=language_model,
         experiment_service=MagicMock(),
+        source_service=MagicMock(
+            get_source=MagicMock(
+                return_value=Source(
+                    id=1,
+                    name="fastapi",
+                    directory="/corpora/fastapi",
+                    collection_name="source-fastapi",
+                    documents_indexed=1,
+                    chunks_indexed=1,
+                    indexing_time=0.1,
+                )
+            )
+        ),
     )
 
     with patch.object(
@@ -56,7 +75,7 @@ def test_answer_emits_nested_rag_spans(mock_client_class: MagicMock) -> None:
         "get_tracer",
         side_effect=lambda name: provider.get_tracer(name),
     ):
-        service.answer("What is FastAPI?")
+        service.answer("What is FastAPI?", source_id=1)
 
     spans = {span.name: span for span in exporter.get_finished_spans()}
     assert set(spans) == {

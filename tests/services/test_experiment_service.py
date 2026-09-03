@@ -4,7 +4,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from genai_template.db.base import Base
-from genai_template.db.models import Experiment, Run
+from genai_template.db.models import Experiment, Run, Source
 from genai_template.schemas import RunMetrics
 from genai_template.services import ExperimentService
 
@@ -44,11 +44,39 @@ def create_metrics() -> RunMetrics:
     )
 
 
+def create_source(service: ExperimentService) -> Source:
+    """Create a source that can be assigned to test runs.
+
+    Args:
+        service:
+            Experiment service with the target database session factory.
+
+    Returns:
+        Persisted source.
+    """
+
+    with service._session_factory() as session:
+        source = Source(
+            name="test-source",
+            directory="/corpora/test-source",
+            collection_name="source-test-source",
+            documents_indexed=1,
+            chunks_indexed=1,
+            indexing_time=0.1,
+        )
+        session.add(source)
+        session.commit()
+        session.refresh(source)
+
+    return source
+
+
 def test_start_run_creates_experiment_when_missing() -> None:
     """Starting the first run should create the configured experiment."""
 
     service = create_service()
-    run = service.start_run(experiment_name="default")
+    source = create_source(service)
+    run = service.start_run(experiment_name="default", source_id=source.id)
 
     with service._session_factory() as session:
         experiments = list(session.scalars(select(Experiment)))
@@ -59,6 +87,7 @@ def test_start_run_creates_experiment_when_missing() -> None:
 
     assert run.id == runs[0].id
     assert runs[0].experiment_id == experiments[0].id
+    assert runs[0].source_id == source.id
     assert runs[0].started_at is not None
     assert runs[0].finished_at is None
 
@@ -67,8 +96,9 @@ def test_start_run_reuses_existing_experiment() -> None:
     """Starting multiple runs should reuse the same experiment."""
 
     service = create_service()
-    first = service.start_run(experiment_name="default")
-    second = service.start_run(experiment_name="default")
+    source = create_source(service)
+    first = service.start_run(experiment_name="default", source_id=source.id)
+    second = service.start_run(experiment_name="default", source_id=source.id)
 
     with service._session_factory() as session:
         experiments = list(session.scalars(select(Experiment)))
@@ -85,8 +115,9 @@ def test_complete_run_updates_metrics() -> None:
 
     service = create_service()
     metrics = create_metrics()
+    source = create_source(service)
 
-    run = service.start_run(experiment_name="default")
+    run = service.start_run(experiment_name="default", source_id=source.id)
     service.complete_run(run, metrics)
 
     with service._session_factory() as session:
@@ -147,7 +178,8 @@ def test_summarize_experiment() -> None:
     """Summarize multiple completed runs."""
 
     service = create_service()
-    run1 = service.start_run(experiment_name="default")
+    source = create_source(service)
+    run1 = service.start_run(experiment_name="default", source_id=source.id)
     service.complete_run(
         run1,
         create_metrics(),
@@ -167,7 +199,7 @@ def test_summarize_experiment() -> None:
         }
     )
 
-    run2 = service.start_run(experiment_name="default")
+    run2 = service.start_run(experiment_name="default", source_id=source.id)
     service.complete_run(
         run2,
         metrics,

@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import select
 
 from genai_template.db import create_session
-from genai_template.db.models import Experiment, Run
+from genai_template.db.models import Experiment, Run, Source
 
 
 @pytest.mark.integration
@@ -58,8 +58,20 @@ def test_can_persist_run() -> None:
         session.add(experiment)
         session.flush()
 
+        source = Source(
+            name="Smoke Test Source",
+            directory="/corpora/smoke-test",
+            collection_name="source-smoke-test",
+            documents_indexed=1,
+            chunks_indexed=1,
+            indexing_time=0.1,
+        )
+        session.add(source)
+        session.flush()
+
         run = Run(
             experiment_id=experiment.id,
+            source_id=source.id,
             started_at=datetime.now(UTC),
             finished_at=datetime.now(UTC),
             query="What is the capital of France?",
@@ -91,6 +103,7 @@ def test_can_persist_run() -> None:
 
         assert retrieved is not None
         assert retrieved.experiment_id == experiment.id
+        assert retrieved.source_id == source.id
         assert retrieved.query == run.query
         assert retrieved.retrieved_chunks == run.retrieved_chunks
         assert retrieved.total_time == run.total_time

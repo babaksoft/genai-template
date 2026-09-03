@@ -33,12 +33,15 @@ class ExperimentService:
     def start_run(
         self,
         experiment_name: str,
+        source_id: int,
     ) -> Run:
         """Start a new run for the configured experiment.
 
         Args:
             experiment_name:
                 Experiment name for the new run.
+            source_id:
+                Identifier of the source used by the new run.
 
         Returns:
             Newly created run.
@@ -57,6 +60,7 @@ class ExperimentService:
 
             run = Run(
                 experiment_id=experiment.id,
+                source_id=source_id,
                 started_at=utc_now(),
             )
 

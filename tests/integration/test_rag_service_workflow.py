@@ -13,6 +13,7 @@ from genai_template.components.language_models import (
 from genai_template.components.prompt import PromptBuilder
 from genai_template.components.readers import TextReader
 from genai_template.components.splitters import DocumentSplitter
+from genai_template.db.models import Source
 from genai_template.pipelines import IndexingPipeline, RetrievalPipeline
 from genai_template.services import RagService
 from genai_template.stores.vector import ChromaStore
@@ -44,16 +45,29 @@ def test_rag_service_answers_question(tmp_path: Path) -> None:
     )
 
     rag_service = RagService(
-        retrieval_pipeline=retrieval_pipeline,
+        retrieval_pipeline_factory=MagicMock(return_value=retrieval_pipeline),
         context_builder=ContextBuilder(),
         prompt_builder=PromptBuilder(),
         language_model=OllamaLanguageModel(
             model_name=LLM_MODEL,
         ),
         experiment_service=MagicMock(),
+        source_service=MagicMock(
+            get_source=MagicMock(
+                return_value=Source(
+                    id=1,
+                    name="resources",
+                    directory=str(documents_dir),
+                    collection_name="documents",
+                    documents_indexed=1,
+                    chunks_indexed=1,
+                    indexing_time=0.1,
+                )
+            )
+        ),
     )
 
-    answer = rag_service.answer("What is the capital of France?")
+    answer = rag_service.answer("What is the capital of France?", source_id=1)
 
     assert answer
     assert isinstance(answer, str)

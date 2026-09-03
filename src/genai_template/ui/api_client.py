@@ -21,12 +21,14 @@ class ApiClient:
 
         self._base_url = base_url.rstrip("/")
 
-    def answer(self, query: str) -> AnswerResponse:
+    def answer(self, query: str, source_id: int) -> AnswerResponse:
         """Submit a question to the RAG API.
 
         Args:
             query:
                 User question to submit.
+            source_id:
+                Identifier of the source used for retrieval.
 
         Returns:
             API response containing the generated answer and metrics.
@@ -38,7 +40,7 @@ class ApiClient:
 
         response = post(
             f"{self._base_url}{settings.API_URL_PREFIX}/answer",
-            json={"query": query},
+            json={"query": query, "source_id": source_id},
             timeout=settings.REQUEST_TIMEOUT,
         )
         response.raise_for_status()

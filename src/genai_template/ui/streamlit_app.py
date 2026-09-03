@@ -83,12 +83,14 @@ query = st.text_area(
 )
 
 if st.button("Ask", type="primary", disabled=active_source is None):
-    if not query.strip():
+    if active_source is None:
+        st.warning("Select an active source before asking a question.")
+    elif not query.strip():
         st.warning("Please enter a question.")
     else:
         with st.spinner("Generating answer..."):
             try:
-                result = api_client.answer(query.strip())
+                result = api_client.answer(query.strip(), active_source.id)
             except httpx.HTTPError as exc:
                 st.error(f"Unable to get an answer from the API: {exc}")
             else:

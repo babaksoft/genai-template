@@ -1,6 +1,7 @@
 """Retrieval-Augmented Generation service."""
 
 import logging
+from collections.abc import Callable
 
 from genai_template.components.context import ContextBuilder
 from genai_template.components.language_models import (
@@ -11,7 +12,8 @@ from genai_template.config import settings
 from genai_template.observability import INPUT_VALUE, OUTPUT_VALUE, application_span
 from genai_template.pipelines import RetrievalPipeline
 from genai_template.schemas import RagResult, RunMetrics
-from genai_template.services import ExperimentService
+from genai_template.services.experiment_service import ExperimentService
+from genai_template.services.source_service import SourceService
 from genai_template.utils import Timer
 
 logger = logging.getLogger(__name__)
@@ -22,17 +24,19 @@ class RagService:
 
     def __init__(
         self,
-        retrieval_pipeline: RetrievalPipeline,
+        retrieval_pipeline_factory: Callable[[str], RetrievalPipeline],
         context_builder: ContextBuilder,
         prompt_builder: PromptBuilder,
         language_model: OllamaLanguageModel,
         experiment_service: ExperimentService,
+        source_service: SourceService,
     ) -> None:
         """Initialize the RAG service.
 
         Args:
-            retrieval_pipeline:
-                Retrieval pipeline.
+            retrieval_pipeline_factory:
+                Factory that creates a retrieval pipeline for a source
+                collection.
 
             context_builder:
                 Context builder.
@@ -45,27 +49,36 @@ class RagService:
 
             experiment_service:
                 Experiment tracking service.
+            source_service:
+                Service used to resolve active sources.
         """
 
-        self._retrieval_pipeline = retrieval_pipeline
+        self._retrieval_pipeline_factory = retrieval_pipeline_factory
         self._context_builder = context_builder
         self._prompt_builder = prompt_builder
         self._language_model = language_model
         self._experiment_service = experiment_service
+        self._source_service = source_service
 
-    def answer(self, query: str) -> RagResult:
+    def answer(self, query: str, source_id: int) -> RagResult:
         """Answer a user query using Retrieval-Augmented Generation.
 
         Args:
             query:
                 User query.
+            source_id:
+                Identifier of the source to retrieve from.
 
         Returns:
             RAG result that includes generated answer, run metrics, etc.
         """
 
+        source = self._source_service.get_source(source_id)
+        retrieval_pipeline = self._retrieval_pipeline_factory(source.collection_name)
+
         run = self._experiment_service.start_run(
             experiment_name=settings.EXPERIMENT_NAME,
+            source_id=source.id,
         )
 
         with application_span(
@@ -75,7 +88,7 @@ class RagService:
         ) as span:
             with Timer() as total_timer:
                 with Timer() as retrieval_timer:
-                    retrieved_chunks = self._retrieval_pipeline.retrieve(
+                    retrieved_chunks = retrieval_pipeline.retrieve(
                         query, settings.TOP_K
                     )
 

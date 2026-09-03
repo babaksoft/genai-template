@@ -25,6 +25,13 @@ class AnswerRequest(BaseModel):
         examples=["What is Retrieval-Augmented Generation?"],
     )
 
+    source_id: int = Field(
+        ...,
+        ge=1,
+        description="Identifier of the source used for retrieval.",
+        examples=[1],
+    )
+
 
 class AnswerResponse(BaseModel):
     """Response model for answer generation."""

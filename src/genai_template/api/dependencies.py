@@ -9,9 +9,12 @@ from genai_template.services import ExperimentService, RagService, SourceService
 from genai_template.stores.vector import ChromaStore
 
 
-def create_retrieval_pipeline() -> RetrievalPipeline:
-    """
-    Create retrieval pipeline using the active application configuration.
+def create_retrieval_pipeline(collection_name: str) -> RetrievalPipeline:
+    """Create a source-specific retrieval pipeline.
+
+    Args:
+        collection_name:
+            Chroma collection name for the active source.
 
     Returns:
         Configured retrieval pipeline.
@@ -21,6 +24,7 @@ def create_retrieval_pipeline() -> RetrievalPipeline:
         embedder=FastEmbedEmbeddingModel(),
         store=ChromaStore(
             persist_directory=settings.CHROMA_PERSIST_DIR,
+            collection_name=collection_name,
         ),
     )
 
@@ -57,11 +61,12 @@ def get_rag_service() -> RagService:
     """
 
     return RagService(
-        retrieval_pipeline=create_retrieval_pipeline(),
+        retrieval_pipeline_factory=create_retrieval_pipeline,
         context_builder=ContextBuilder(),
         prompt_builder=PromptBuilder(),
         language_model=create_language_model(),
         experiment_service=create_experiment_service(),
+        source_service=get_source_service(),
     )
 
 
