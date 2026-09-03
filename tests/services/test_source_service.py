@@ -135,3 +135,104 @@ def test_ingest_rejects_duplicate_source_name(
 
     with pytest.raises(ValueError, match="already exists"):
         service.ingest("product-docs")
+
+
+def test_refresh_replaces_source_collection_and_metadata(
+    tmp_path: Path,
+    session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Refreshing a source should switch to a newly rebuilt collection."""
+
+    corpus_directory = tmp_path / "product-docs"
+    corpus_directory.mkdir()
+    source = Source(
+        name="product-docs",
+        directory=str(corpus_directory.resolve()),
+        collection_name="source-original",
+        documents_indexed=1,
+        chunks_indexed=2,
+        indexing_time=0.1,
+    )
+    with session_factory() as session:
+        session.add(source)
+        session.commit()
+        session.refresh(source)
+
+    pipeline = MagicMock(spec=IndexingPipeline)
+    pipeline.run.return_value = IndexingResult(
+        documents_indexed=3,
+        chunks_indexed=9,
+        indexing_time=0.4,
+    )
+    delete_collection = MagicMock()
+    service = SourceService(
+        session_factory=session_factory,
+        corpora_dir=tmp_path,
+    )
+    monkeypatch.setattr(
+        service,
+        "_create_indexing_pipeline",
+        MagicMock(return_value=pipeline),
+    )
+    monkeypatch.setattr(service, "_delete_collection", delete_collection)
+
+    refreshed = service.refresh(source.id)
+
+    assert refreshed.collection_name != "source-original"
+    assert refreshed.documents_indexed == 3
+    assert refreshed.chunks_indexed == 9
+    assert refreshed.indexing_time == 0.4
+    pipeline.run.assert_called_once_with(corpus_directory.resolve())
+    delete_collection.assert_called_once_with("source-original")
+
+
+def test_refresh_preserves_source_when_rebuild_fails(
+    tmp_path: Path,
+    session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A failed refresh must leave the currently active source unchanged."""
+
+    corpus_directory = tmp_path / "product-docs"
+    corpus_directory.mkdir()
+    source = Source(
+        name="product-docs",
+        directory=str(corpus_directory.resolve()),
+        collection_name="source-original",
+        documents_indexed=1,
+        chunks_indexed=2,
+        indexing_time=0.1,
+    )
+    with session_factory() as session:
+        session.add(source)
+        session.commit()
+        session.refresh(source)
+
+    pipeline = MagicMock(spec=IndexingPipeline)
+    pipeline.run.side_effect = RuntimeError("embedding failed")
+    delete_collection = MagicMock()
+    service = SourceService(
+        session_factory=session_factory,
+        corpora_dir=tmp_path,
+    )
+    monkeypatch.setattr(
+        service,
+        "_create_indexing_pipeline",
+        MagicMock(return_value=pipeline),
+    )
+    monkeypatch.setattr(service, "_delete_collection", delete_collection)
+
+    with pytest.raises(RuntimeError, match="embedding failed"):
+        service.refresh(source.id)
+
+    with session_factory() as session:
+        persisted_source = session.get(Source, source.id)
+
+    assert persisted_source is not None
+    assert persisted_source.collection_name == "source-original"
+    assert persisted_source.documents_indexed == 1
+    assert persisted_source.chunks_indexed == 2
+    replacement_collection_name = delete_collection.call_args.args[0]
+    assert replacement_collection_name.startswith("source-")
+    assert replacement_collection_name != "source-original"

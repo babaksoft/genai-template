@@ -53,8 +53,9 @@ class ChromaStore:
         persist_directory = persist_directory or settings.CHROMA_PERSIST_DIR
         collection_name = collection_name or settings.CHROMA_COLLECTION
 
-        client = chromadb.PersistentClient(path=persist_directory)
-        self._collection: Collection = client.get_or_create_collection(
+        self._client = chromadb.PersistentClient(path=persist_directory)
+        self._collection_name = collection_name
+        self._collection: Collection = self._client.get_or_create_collection(
             name=collection_name,
             metadata={
                 "hnsw:space": self._DISTANCE_MAP[settings.CHROMA_DISTANCE],
@@ -65,6 +66,11 @@ class ChromaStore:
             "Connected to Chroma collection '%s'.",
             collection_name,
         )
+
+    def delete(self) -> None:
+        """Delete this store's Chroma collection."""
+
+        self._client.delete_collection(name=self._collection_name)
 
     def upsert(
         self,

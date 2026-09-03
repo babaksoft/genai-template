@@ -90,6 +90,38 @@ async def ingest_source(
     return _source_response(source)
 
 
+@router.post("/{source_id}/refresh", response_model=SourceResponse)
+async def refresh_source(
+    source_id: int,
+    source_service: Annotated[SourceService, Depends(get_source_service)],
+) -> SourceResponse:
+    """Rebuild an existing source from its prepared directory.
+
+    Args:
+        source_id:
+            Identifier of the source to refresh.
+        source_service:
+            Configured source service.
+
+    Returns:
+        Refreshed source metadata.
+
+    Raises:
+        HTTPException:
+            If the source or its directory cannot be found.
+    """
+
+    try:
+        source = source_service.refresh(source_id)
+    except (FileNotFoundError, NotADirectoryError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+    return _source_response(source)
+
+
 def _source_response(source: object) -> SourceResponse:
     """Convert a source ORM instance to its API response.
 

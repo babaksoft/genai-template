@@ -34,7 +34,7 @@
   - `kv`, `document`, `index` (placeholders for future stores).
 - **`src/genai_template/api`** – FastAPI app (`main.py`) with routers for:
   - `answer` – POST `/answer` returns generated answer + metrics.
-  - `ingest` – POST `/ingest` runs baseline ingestion.
+  - `sources` – browse, ingest, and refresh isolated document corpora.
   - `health` – GET `/health` health‑check endpoint.
 - **`src/genai_template/ui`** – Streamlit front‑end (`streamlit_app.py`) that talks to the API.
 - **`src/genai_template/evaluation`** – Baseline evaluation script and metrics.
@@ -96,11 +96,28 @@ streamlit run src/genai_template/ui/streamlit_app.py
 ```
 The UI expects the API at ``http://127.0.0.1:8000``.
 
-### 5️⃣ Ingest a corpus (baseline)
+### 5️⃣ Prepare and ingest a corpus
+
+Place each corpus in its own directory under ``data/`` (the default
+``CORPORA_DIR``). Documents cannot be placed directly in the corpus root:
+
+```text
+data/
+  baseline/
+  product-docs/
+  handbook/
+```
+
+Use the **Sources** expander in the Streamlit sidebar to ingest a prepared
+directory and select it for questions. Each source has its own Chroma
+collection, and **Refresh active source** rebuilds it from the directory.
+
+The baseline CLI utility remains available for evaluation setup:
+
 ```bash
 python -m genai_template.ingest
 ```
-This indexes all markdown files under ``data/`` into the default Chroma store (`storage/chroma`).
+It indexes ``data/baseline/`` into the baseline Chroma collection.
 
 ## Testing
 
@@ -124,7 +141,8 @@ mypy .
 Run these before committing.
 
 ## Data & Persistence
-- **Corpus** – Markdown files under the top‑level ``data/`` directory.
+- **Corpora** – Each immediate subdirectory of ``CORPORA_DIR`` is a corpus;
+  Markdown and text documents must live inside that directory.
 - **Vector store** – Chroma files under ``storage/chroma`` (configurable via ``settings.CHROMA_PERSIST_DIR``).
 - **SQLite DB** – Experiment metadata stored at ``db/genai_template.db`` (`settings.DATABASE_URL`).
 

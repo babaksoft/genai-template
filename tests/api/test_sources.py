@@ -134,3 +134,61 @@ def test_ingest_source_rejects_duplicate_name(app: FastAPI) -> None:
     assert response.json()["detail"] == "Source 'product-docs' already exists."
 
     app.dependency_overrides.clear()
+
+
+def test_refresh_source_returns_refreshed_metadata(app: FastAPI) -> None:
+    """The refresh endpoint should return the replacement source metadata.
+
+    Args:
+        app:
+            FastAPI application instance.
+    """
+
+    source = Source(
+        id=4,
+        name="product-docs",
+        directory="/corpora/product-docs",
+        collection_name="source-refreshed",
+        documents_indexed=3,
+        chunks_indexed=12,
+        indexed_at=datetime(2026, 9, 3, tzinfo=UTC),
+        indexing_time=0.4,
+    )
+    source_service = Mock(spec=SourceService)
+    source_service.refresh.return_value = source
+
+    app.dependency_overrides[get_source_service] = lambda: source_service
+
+    client = TestClient(app)
+    response = client.post("/api/v1/sources/4/refresh")
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "product-docs"
+    assert response.json()["chunks_indexed"] == 12
+    source_service.refresh.assert_called_once_with(4)
+
+    app.dependency_overrides.clear()
+
+
+def test_refresh_source_rejects_missing_directory(app: FastAPI) -> None:
+    """The refresh endpoint should report a missing source directory.
+
+    Args:
+        app:
+            FastAPI application instance.
+    """
+
+    source_service = Mock(spec=SourceService)
+    source_service.refresh.side_effect = FileNotFoundError(
+        "Directory does not exist: product-docs"
+    )
+
+    app.dependency_overrides[get_source_service] = lambda: source_service
+
+    client = TestClient(app)
+    response = client.post("/api/v1/sources/4/refresh")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Directory does not exist: product-docs"
+
+    app.dependency_overrides.clear()

@@ -111,3 +111,26 @@ class ApiClient:
         response.raise_for_status()
 
         return SourceResponse.model_validate(response.json())
+
+    def refresh_source(self, source_id: int) -> SourceResponse:
+        """Rebuild an existing source from its prepared directory.
+
+        Args:
+            source_id:
+                Identifier of the source to refresh.
+
+        Returns:
+            Refreshed source metadata.
+
+        Raises:
+            httpx.HTTPStatusError:
+                If the API returns an unsuccessful HTTP status code.
+        """
+
+        response = post(
+            f"{self._base_url}{settings.API_URL_PREFIX}/sources/{source_id}/refresh",
+            timeout=settings.REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+
+        return SourceResponse.model_validate(response.json())

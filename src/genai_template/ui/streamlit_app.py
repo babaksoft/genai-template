@@ -71,6 +71,20 @@ with st.sidebar:
                 f"{active_source.documents_indexed} document(s) · "
                 f"{active_source.chunks_indexed} chunk(s)"
             )
+            if st.button("Refresh active source"):
+                with st.spinner("Rebuilding source..."):
+                    try:
+                        refreshed = api_client.refresh_source(active_source.id)
+                    except httpx.HTTPError as exc:
+                        st.error(f"Unable to refresh source: {exc}")
+                    else:
+                        st.session_state.active_source_name = refreshed.name
+                        st.success(
+                            f"Refreshed {refreshed.name}: "
+                            f"{refreshed.documents_indexed} document(s), "
+                            f"{refreshed.chunks_indexed} chunk(s)."
+                        )
+                        st.rerun()
         else:
             st.info("Ingest a corpus to make it an active source.")
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from pathlib import Path
 from uuid import uuid4
@@ -15,6 +16,8 @@ from genai_template.db.models import Source
 from genai_template.pipelines import IndexingPipeline
 from genai_template.stores.vector import ChromaStore
 from genai_template.utils import utc_now
+
+logger = logging.getLogger(__name__)
 
 
 class SourceService:
@@ -148,6 +151,68 @@ class SourceService:
 
         return source
 
+    def refresh(self, source_id: int) -> Source:
+        """Rebuild one source in a replacement vector collection.
+
+        Args:
+            source_id:
+                Identifier of the source to rebuild.
+
+        Returns:
+            Refreshed source metadata.
+
+        Raises:
+            ValueError:
+                If no source has the supplied identifier.
+            FileNotFoundError:
+                If the source directory no longer exists.
+            NotADirectoryError:
+                If the source path is no longer a directory.
+        """
+
+        source = self.get_source(source_id)
+        directory = self._resolve_directory(source.name)
+        replacement_collection_name = f"source-{uuid4().hex}"
+
+        try:
+            result = self._create_indexing_pipeline(replacement_collection_name).run(
+                directory
+            )
+        except Exception:
+            try:
+                self._delete_collection(replacement_collection_name)
+            except Exception:
+                logger.exception(
+                    "Could not delete failed replacement collection '%s'.",
+                    replacement_collection_name,
+                )
+            raise
+
+        old_collection_name = source.collection_name
+        with self._session_factory() as session:
+            persisted_source = session.get(Source, source.id)
+            if persisted_source is None:
+                raise ValueError(f"Source {source.id} does not exist.")
+
+            persisted_source.collection_name = replacement_collection_name
+            persisted_source.documents_indexed = result.documents_indexed
+            persisted_source.chunks_indexed = result.chunks_indexed
+            persisted_source.indexed_at = utc_now()
+            persisted_source.indexing_time = result.indexing_time
+            session.commit()
+            session.refresh(persisted_source)
+
+        try:
+            self._delete_collection(old_collection_name)
+        except Exception:
+            logger.exception(
+                "Refreshed source %d but could not delete old collection '%s'.",
+                source.id,
+                old_collection_name,
+            )
+
+        return persisted_source
+
     def _create_indexing_pipeline(self, collection_name: str) -> IndexingPipeline:
         """Create an indexing pipeline for one source collection.
 
@@ -165,6 +230,19 @@ class SourceService:
                 collection_name=collection_name,
             ),
         )
+
+    def _delete_collection(self, collection_name: str) -> None:
+        """Delete a source-specific Chroma collection.
+
+        Args:
+            collection_name:
+                Name of the collection to delete.
+        """
+
+        ChromaStore(
+            persist_directory=settings.CHROMA_PERSIST_DIR,
+            collection_name=collection_name,
+        ).delete()
 
     def _resolve_directory(self, directory_name: str) -> Path:
         """Resolve and validate one immediate corpus directory.
