@@ -4,6 +4,7 @@ import json
 import logging
 from pathlib import Path
 
+from genai_template.components.embeddings import FastEmbedEmbeddingModel
 from genai_template.config import settings
 from genai_template.config.logging import configure_logging
 from genai_template.evaluation.metrics.baseline_metrics import (
@@ -13,6 +14,7 @@ from genai_template.evaluation.metrics.baseline_metrics import (
 )
 from genai_template.pipelines import RetrievalPipeline
 from genai_template.schemas import RetrievalTest
+from genai_template.stores.vector import ChromaStore
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +92,13 @@ def main() -> None:
     )
     k = settings.TOP_K
 
-    retrieval_pipeline = RetrievalPipeline()
+    retrieval_pipeline = RetrievalPipeline(
+        embedder=FastEmbedEmbeddingModel(),
+        store=ChromaStore(
+            persist_directory=settings.CHROMA_PERSIST_DIR,
+            collection_name="baseline_corpus",
+        ),
+    )
     results = [
         evaluate_test(
             pipeline=retrieval_pipeline,

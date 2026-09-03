@@ -51,7 +51,6 @@ class RetrievalPipeline:
         Args:
             query:
                 User query.
-
             top_k:
                 Maximum number of retrieved chunks. Default is 5.
 
