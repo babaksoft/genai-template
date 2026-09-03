@@ -3,30 +3,43 @@
 from datetime import UTC, datetime
 from unittest.mock import Mock
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from genai_template.api.dependencies import get_source_service
-from genai_template.api.main import app
 from genai_template.db.models import Source
 from genai_template.services import SourceService
 
 
-def test_list_source_candidates(client: TestClient) -> None:
-    """The candidates endpoint should return browsable corpus directories."""
+def test_list_source_candidates(app: FastAPI) -> None:
+    """The candidates endpoint should return browsable corpus directories.
+
+    Args:
+        app:
+            FastAPI application instance.
+    """
 
     source_service = Mock(spec=SourceService)
     source_service.list_candidates.return_value = ["handbook", "product-docs"]
+
     app.dependency_overrides[get_source_service] = lambda: source_service
 
+    client = TestClient(app)
     response = client.get("/api/v1/sources/candidates")
 
     assert response.status_code == 200
     assert response.json() == [{"name": "handbook"}, {"name": "product-docs"}]
+
     app.dependency_overrides.clear()
 
 
-def test_list_sources(client: TestClient) -> None:
-    """The sources endpoint should serialize persisted source metadata."""
+def test_list_sources(app: FastAPI) -> None:
+    """The sources endpoint should serialize persisted source metadata.
+
+    Args:
+        app:
+            FastAPI application instance.
+    """
 
     source = Source(
         id=4,
@@ -40,8 +53,10 @@ def test_list_sources(client: TestClient) -> None:
     )
     source_service = Mock(spec=SourceService)
     source_service.list_sources.return_value = [source]
+
     app.dependency_overrides[get_source_service] = lambda: source_service
 
+    client = TestClient(app)
     response = client.get("/api/v1/sources")
 
     assert response.status_code == 200
@@ -56,11 +71,17 @@ def test_list_sources(client: TestClient) -> None:
             "indexing_time": 0.3,
         }
     ]
+
     app.dependency_overrides.clear()
 
 
-def test_ingest_source_returns_source(client: TestClient) -> None:
-    """The source ingestion endpoint should return persisted source metadata."""
+def test_ingest_source_returns_source(app: FastAPI) -> None:
+    """The source ingestion endpoint should return persisted source metadata.
+
+    Args:
+        app:
+            FastAPI application instance.
+    """
 
     source = Source(
         id=4,
@@ -74,8 +95,10 @@ def test_ingest_source_returns_source(client: TestClient) -> None:
     )
     source_service = Mock(spec=SourceService)
     source_service.ingest.return_value = source
+
     app.dependency_overrides[get_source_service] = lambda: source_service
 
+    client = TestClient(app)
     response = client.post("/api/v1/sources", json={"directory": "product-docs"})
 
     assert response.status_code == 201
@@ -85,20 +108,29 @@ def test_ingest_source_returns_source(client: TestClient) -> None:
     assert response.json()["indexing_time"] == 0.3
 
     source_service.ingest.assert_called_once_with("product-docs")
+
     app.dependency_overrides.clear()
 
 
-def test_ingest_source_rejects_duplicate_name(client: TestClient) -> None:
-    """The source ingestion endpoint should report duplicate source names."""
+def test_ingest_source_rejects_duplicate_name(app: FastAPI) -> None:
+    """The source ingestion endpoint should report duplicate source names.
+
+    Args:
+        app:
+            FastAPI application instance.
+    """
 
     source_service = Mock(spec=SourceService)
     source_service.ingest.side_effect = ValueError(
         "Source 'product-docs' already exists."
     )
+
     app.dependency_overrides[get_source_service] = lambda: source_service
 
+    client = TestClient(app)
     response = client.post("/api/v1/sources", json={"directory": "product-docs"})
 
     assert response.status_code == 409
     assert response.json()["detail"] == "Source 'product-docs' already exists."
+
     app.dependency_overrides.clear()

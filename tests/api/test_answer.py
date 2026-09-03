@@ -1,9 +1,9 @@
 from unittest.mock import Mock
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from genai_template.api.dependencies import get_rag_service
-from genai_template.api.main import app
 from genai_template.schemas import RagResult, RunMetrics
 from genai_template.services import RagService
 
@@ -28,14 +28,11 @@ def get_test_metrics() -> RunMetrics:
 
 
 def test_answer_returns_generated_response(
-    client: TestClient,
+    app: FastAPI,
 ) -> None:
     """Verify the answer endpoint returns generated content.
 
     Args:
-        client:
-            FastAPI test client.
-
         app:
             FastAPI application instance.
     """
@@ -49,6 +46,7 @@ def test_answer_returns_generated_response(
 
     app.dependency_overrides[get_rag_service] = lambda: mock_service
 
+    client = TestClient(app)
     response = client.post(
         "/api/v1/answer",
         json={
@@ -89,18 +87,20 @@ def test_answer_rejects_empty_query(
     assert response.status_code == 422  # i.e. Unprocessable Entity
 
 
-def test_answer_rejects_missing_source(client: TestClient) -> None:
+def test_answer_rejects_missing_source(app: FastAPI) -> None:
     """Verify unknown source identifiers return a not-found response.
 
     Args:
-        client:
-            FastAPI test client.
+        app:
+            FastAPI application instance.
     """
 
     mock_service = Mock(spec=RagService)
     mock_service.answer.side_effect = ValueError("Source 99 does not exist.")
+
     app.dependency_overrides[get_rag_service] = lambda: mock_service
 
+    client = TestClient(app)
     response = client.post(
         "/api/v1/answer",
         json={"query": "What is RAG?", "source_id": 99},

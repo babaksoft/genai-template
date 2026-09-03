@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from genai_template.api.observability import initialize_observability
 from genai_template.config.logging import configure_logging
 
 logger = logging.getLogger(__name__)
@@ -20,6 +21,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     configure_logging()
     logger.info("Starting GenAI Template API")
+
+    phoenix_enabled = getattr(app.state, "phoenix_enabled", False)
+    if phoenix_enabled:
+        app.state.tracer_provider = initialize_observability(app)
 
     yield
 
