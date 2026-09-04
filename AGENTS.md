@@ -1,4 +1,4 @@
-# AGENTS.md – Quick‑Reference for OpenCode Agents
+# AGENTS.md – Quick‑Reference for Coding Agents
 
 **Only the facts that an agent would otherwise miss**
 
@@ -17,8 +17,8 @@
 ---
 
 ## Quality standards
-- Complete Google-styl docstrings is required in all functions and methods.
-- Keep docstrings consistent with existing source, but don't change existing sources wholesale. 
+- Complete Google-style docstrings is required in all functions, classes and methods. `None` return value is omitted from docstrings.
+- Keep docstrings consistent with existing modules, but don't make wholesale changes to existing modules. 
 
 ---
 
@@ -29,7 +29,7 @@
   uv run uvicorn genai_template.api.main:app --host 0.0.0.0 --port 8000
   ```
 - Start local Phoenix tracing with `uv run phoenix serve`; enable API request tracing with `PHOENIX_ENABLED=true`.
-- The UI (`src/genai_template/ui/streamlit_app.py`) expects the API at `http://127.0.0.1:8000`; it can be launched with:
+- The UI (`src/genai_template/ui/streamlit_app.py`) expects the API at `http://localhost:8000`; it can be launched with:
   ```bash
   uv run streamlit run src/genai_template/ui/streamlit_app.py
   ```

@@ -94,7 +94,7 @@ data unless the local Phoenix storage is appropriately protected.
 ```bash
 streamlit run src/genai_template/ui/streamlit_app.py
 ```
-The UI expects the API at ``http://127.0.0.1:8000``.
+The UI expects the API at ``http://localhost:8000``.
 
 ### 5️⃣ Prepare and ingest a corpus
 
@@ -144,12 +144,12 @@ Run these before committing.
 - **Corpora** – Each immediate subdirectory of ``CORPORA_DIR`` is a corpus;
   Markdown and text documents must live inside that directory.
 - **Vector store** – Chroma files under ``storage/chroma`` (configurable via ``settings.CHROMA_PERSIST_DIR``).
-- **SQLite DB** – Experiment metadata stored at ``db/genai_template.db`` (`settings.DATABASE_URL`).
+- **SQLite DB** – Experiment metadata stored at ``db/genai_template.sqlite3`` (`settings.DATABASE_URL`).
 
 ## Configuration Highlights (`src/genai_template/config/settings.py`)
 - ``API_BASE_URL = "http://127.0.0.1:8000"``
 - ``API_URL_PREFIX = "/api/v1"``
-- ``LLM_MODEL = "llama3.2:3b"`` – default Ollama model.
+- ``LLM_MODEL = "gpt-oss:20b-cloud"`` – default Ollama model.
 - ``OLLAMA_BASE_URL`` – optional explicit Ollama endpoint. When unset, the app
   uses a reachable localhost service or, in WSL NAT mode, discovers the current
   Windows-host gateway automatically.

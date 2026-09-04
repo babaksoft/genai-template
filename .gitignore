@@ -5,6 +5,7 @@ __pycache__/
 .mypy_cache/
 .pytest_cache/
 .idea/
+.vscode/
 
 # Common virtual environment and Jupyter notebook stuff
 .ipynb_checkpoints/
