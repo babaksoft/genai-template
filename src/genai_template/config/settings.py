@@ -20,12 +20,7 @@ API_BASE_URL = "http://localhost:8000"
 API_URL_PREFIX = "/api/v1"
 
 # Observability settings
-PHOENIX_ENABLED = os.getenv("PHOENIX_ENABLED", "false").lower() in {
-    "1",
-    "true",
-    "yes",
-    "on",
-}
+PHOENIX_ENABLED = os.getenv("PHOENIX_ENABLED", "false").lower() == "true"
 PHOENIX_COLLECTOR_ENDPOINT = os.getenv(
     "PHOENIX_COLLECTOR_ENDPOINT", "http://localhost:6006/v1/traces"
 )

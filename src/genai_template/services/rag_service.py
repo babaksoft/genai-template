@@ -35,18 +35,13 @@ class RagService:
 
         Args:
             retrieval_pipeline_factory:
-                Factory that creates a retrieval pipeline for a source
-                collection.
-
+                Factory that creates a retrieval pipeline for a source collection.
             context_builder:
                 Context builder.
-
             prompt_builder:
                 Prompt builder.
-
             language_model:
                 Language model.
-
             experiment_service:
                 Experiment tracking service.
             source_service:

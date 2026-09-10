@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 def initialize_observability(app: FastAPI) -> TracerProvider | None:
     """Configure Phoenix request tracing when it is explicitly enabled."""
 
-    if not settings.PHOENIX_ENABLED:
+    phoenix_enabled = getattr(app.state, "phoenix_enabled", False)
+    if not phoenix_enabled:
         return None
 
     # Imported only when tracing is enabled so the default API startup has no
@@ -34,4 +35,5 @@ def initialize_observability(app: FastAPI) -> TracerProvider | None:
     )
     LlamaIndexInstrumentor().instrument(tracer_provider=tracer_provider)
     logger.info("Phoenix tracing enabled for project %s", settings.PHOENIX_PROJECT_NAME)
+
     return tracer_provider

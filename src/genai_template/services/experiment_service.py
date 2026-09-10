@@ -35,7 +35,7 @@ class ExperimentService:
         experiment_name: str,
         source_id: int,
     ) -> Run:
-        """Start a new run for the configured experiment.
+        """Start a new run for the supplied experiment.
 
         Args:
             experiment_name:

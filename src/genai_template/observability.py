@@ -26,6 +26,17 @@ def application_span(
 
     The OpenTelemetry proxy provider makes this a no-op when Phoenix tracing is
     disabled, so the answer path does not need a configuration branch.
+
+    Args:
+        name:
+            Span name.
+        kind:
+            Open Telemetry kind of the span.
+        attributes:
+            Attributes exposed by the span.
+
+    Yields:
+        The created span, which is automatically ended when the context exits.
     """
 
     tracer = trace.get_tracer("genai_template.rag")
@@ -38,6 +49,11 @@ def application_span(
 
 
 def retrieved_documents_attribute(documents: list[dict[str, Any]]) -> str:
-    """Serialize retrieved chunks for the OpenInference retrieval attribute."""
+    """Serialize retrieved chunks for the OpenInference retrieval attribute.
+
+    Args:
+        documents:
+            List of retrieved documents.
+    """
 
     return json.dumps(documents, default=str)

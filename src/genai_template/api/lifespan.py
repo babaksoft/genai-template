@@ -20,7 +20,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
 
     configure_logging()
-    logger.info("Starting GenAI Template API")
+    logger.info("Starting GenAI Template API.")
 
     phoenix_enabled = getattr(app.state, "phoenix_enabled", False)
     if phoenix_enabled:
@@ -28,7 +28,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     yield
 
-    logger.info("Stopping GenAI Template API")
+    logger.info("Stopping GenAI Template API.")
     tracer_provider = getattr(app.state, "tracer_provider", None)
     if tracer_provider is not None:
         tracer_provider.shutdown()

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import Callable
 from pathlib import Path
 from uuid import uuid4
@@ -33,7 +34,6 @@ class SourceService:
         Args:
             session_factory:
                 Factory that creates database sessions.
-
             corpora_dir:
                 Root directory containing one directory per corpus.
         """
@@ -52,7 +52,7 @@ class SourceService:
             return []
 
         with self._session_factory() as session:
-            ingested_names = set(session.scalars(select(Source.name)))
+            source_names = set(session.scalars(select(Source.name)))
 
         return sorted(
             path.name
@@ -60,7 +60,7 @@ class SourceService:
             if (
                 path.is_dir()
                 and path.resolve().parent == self._corpora_dir
-                and path.name not in ingested_names
+                and path.name not in source_names
             )
         )
 
@@ -152,7 +152,7 @@ class SourceService:
         return source
 
     def refresh(self, source_id: int) -> Source:
-        """Rebuild one source in a replacement vector collection.
+        """Rebuild one source in a new vector collection.
 
         Args:
             source_id:
@@ -163,7 +163,8 @@ class SourceService:
 
         Raises:
             ValueError:
-                If no source has the supplied identifier.
+                If no source has the supplied identifier or
+                if the source directory is no longer valid.
             FileNotFoundError:
                 If the source directory no longer exists.
             NotADirectoryError:
@@ -172,29 +173,28 @@ class SourceService:
 
         source = self.get_source(source_id)
         directory = self._resolve_directory(source.name)
-        replacement_collection_name = f"source-{uuid4().hex}"
+        new_collection_name = f"source-{uuid4().hex}"
 
         try:
-            result = self._create_indexing_pipeline(replacement_collection_name).run(
-                directory
-            )
+            indexing_pipeline = self._create_indexing_pipeline(new_collection_name)
+            result = indexing_pipeline.run(directory)
         except Exception:
             try:
-                self._delete_collection(replacement_collection_name)
+                self._delete_collection(new_collection_name)
             except Exception:
                 logger.exception(
-                    "Could not delete failed replacement collection '%s'.",
-                    replacement_collection_name,
+                    "Could not rollback new collection '%s'.",
+                    new_collection_name,
                 )
             raise
 
         old_collection_name = source.collection_name
         with self._session_factory() as session:
-            persisted_source = session.get(Source, source.id)
+            persisted_source = session.get(Source, source_id)
             if persisted_source is None:
-                raise ValueError(f"Source {source.id} does not exist.")
+                raise ValueError(f"Source {source_id} does not exist.")
 
-            persisted_source.collection_name = replacement_collection_name
+            persisted_source.collection_name = new_collection_name
             persisted_source.documents_indexed = result.documents_indexed
             persisted_source.chunks_indexed = result.chunks_indexed
             persisted_source.indexed_at = utc_now()
@@ -207,7 +207,7 @@ class SourceService:
         except Exception:
             logger.exception(
                 "Refreshed source %d but could not delete old collection '%s'.",
-                source.id,
+                source_id,
                 old_collection_name,
             )
 
@@ -263,15 +263,14 @@ class SourceService:
                 If the path is not a directory.
         """
 
-        supplied_path = Path(directory_name)
-        if supplied_path.name != directory_name or directory_name in {".", ".."}:
+        if (
+            not directory_name
+            or directory_name in {".", ".."}
+            or os.path.sep in directory_name
+        ):
             raise ValueError("Corpus directory must be an immediate child directory.")
 
-        directory = (self._corpora_dir / supplied_path).resolve()
-        if directory.parent != self._corpora_dir:
-            raise ValueError(
-                "Corpus directory must be inside the configured corpus root."
-            )
+        directory = self._corpora_dir / directory_name
         if not directory.exists():
             raise FileNotFoundError(f"Directory does not exist: {directory_name}")
         if not directory.is_dir():

@@ -42,10 +42,8 @@ def test_initialize_observability_configures_phoenix(
     """Enabled tracing uses the configured Phoenix destination and project."""
 
     app = FastAPI()
+    app.state.phoenix_enabled = True
     tracer_provider = MagicMock()
-    monkeypatch.setattr(
-        "genai_template.api.observability.settings.PHOENIX_ENABLED", True
-    )
     monkeypatch.setattr(
         "genai_template.api.observability.settings.PHOENIX_COLLECTOR_ENDPOINT",
         "http://localhost:6006/v1/traces",

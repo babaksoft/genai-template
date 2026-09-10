@@ -137,6 +137,8 @@ class ChromaStore:
                 Query embedding.
             top_k:
                 Maximum number of results.
+            query:
+                Optional query string for observability span attributes.
 
         Returns:
             Retrieved chunks ordered by increasing distance.

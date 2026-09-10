@@ -24,7 +24,6 @@ async def answer(
     Args:
         request:
             Answer generation request.
-
         rag_service:
             Configured RAG service.
 
