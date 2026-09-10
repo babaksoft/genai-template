@@ -120,7 +120,7 @@ def test_configuration_models_are_immutable() -> None:
 def test_documented_baseline_matches_defaults() -> None:
     """The documented baseline file remains equivalent to application defaults."""
 
-    baseline_path = settings.PKG_ROOT / "experiments" / "configs" / "baseline.yaml"
+    baseline_path = settings.PKG_ROOT / "experiments" / "configs" / "baseline.yml"
 
     assert load_rag_config(baseline_path) == load_rag_config()
     assert load_rag_config().vector_store.distance is VectorDistance.COSINE

@@ -119,6 +119,20 @@ python -m genai_template.ingest
 ```
 It indexes ``data/baseline/`` into the baseline Chroma collection.
 
+Run a retrieval evaluation with the defaults, or override the resolved RAG
+configuration, corpus, and dataset from the command line:
+
+```bash
+uv run python -m genai_template.evaluation.evaluators.baseline_eval
+uv run python -m genai_template.evaluation.evaluators.baseline_eval \
+  --config src/genai_template/experiments/configs/baseline.yaml \
+  --corpus data/baseline \
+  --dataset src/genai_template/evaluation/datasets/baseline-eval.json
+```
+
+Each invocation rebuilds a dedicated evaluation collection before calculating
+the configured retrieval metrics.
+
 ## Testing
 
 - **Unit tests** (fast, no external services):

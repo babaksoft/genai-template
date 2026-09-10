@@ -62,6 +62,7 @@ CHROMA_DISTANCE = VectorDistance.COSINE
 
 # Experiment settings
 EXPERIMENT_NAME = "Baseline RAG"
+EXPERIMENT_CONFIG_DIR = PKG_ROOT / "experiments" / "configs"
 
 # Evaluation settings
 EVALUATION_DATA_DIR = PKG_ROOT / "evaluation" / "datasets"
