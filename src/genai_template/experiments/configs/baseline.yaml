@@ -1,0 +1,29 @@
+# Baseline RAG experiment. Every setting below matches config/settings.py.
+# Any section or individual value may be omitted to retain its application default.
+experiment:
+  name: Baseline RAG
+
+splitter:
+  type: sentence
+  chunk_size: 1024
+  chunk_overlap: 20
+
+embedder:
+  type: fastembed
+  model_name: BAAI/bge-base-en-v1.5
+
+vector_store:
+  type: chroma
+  collection_name: documents
+  # Relative filesystem paths are resolved from the repository root.
+  persist_directory: storage/chroma
+  distance: cosine
+
+retrieval:
+  top_k: 5
+
+llm:
+  type: ollama
+  model_name: gpt-oss:20b-cloud
+  base_url: http://localhost:11434
+  request_timeout: 180

@@ -1,0 +1,215 @@
+"""Validated configuration for RAG experiments."""
+
+from __future__ import annotations
+
+from copy import deepcopy
+from pathlib import Path
+from typing import Any, Literal
+
+import yaml
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from genai_template.common.types import VectorDistance
+from genai_template.config import settings
+
+
+class _ImmutableConfig(BaseModel):
+    """Base model for immutable configuration sections."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+class ExperimentConfig(_ImmutableConfig):
+    """Experiment identity configuration."""
+
+    name: str = Field(min_length=1)
+
+
+class SplitterConfig(_ImmutableConfig):
+    """Document splitting configuration."""
+
+    type: Literal["sentence"]
+    chunk_size: int = Field(gt=0)
+    chunk_overlap: int = Field(ge=0)
+
+    @model_validator(mode="after")
+    def validate_overlap(self) -> SplitterConfig:
+        """Ensure overlap leaves some unique content in every chunk.
+
+        Returns:
+            The validated splitter configuration.
+
+        Raises:
+            ValueError:
+                If chunk overlap is not smaller than chunk size.
+        """
+
+        if self.chunk_overlap >= self.chunk_size:
+            raise ValueError("chunk_overlap must be smaller than chunk_size")
+        return self
+
+
+class EmbedderConfig(_ImmutableConfig):
+    """Embedding model configuration."""
+
+    type: Literal["fastembed"]
+    model_name: str = Field(min_length=1)
+
+
+class VectorStoreConfig(_ImmutableConfig):
+    """Vector store configuration."""
+
+    type: Literal["chroma"]
+    collection_name: str = Field(min_length=1)
+    persist_directory: Path
+    distance: VectorDistance
+
+
+class RetrievalConfig(_ImmutableConfig):
+    """Retrieval pipeline configuration."""
+
+    top_k: int = Field(gt=0)
+
+
+class LLMConfig(_ImmutableConfig):
+    """Language model configuration."""
+
+    type: Literal["ollama"]
+    model_name: str = Field(min_length=1)
+    base_url: str = Field(min_length=1, pattern=r"^https?://")
+    request_timeout: float = Field(gt=0)
+
+
+class RagConfig(_ImmutableConfig):
+    """Fully resolved configuration for a RAG experiment."""
+
+    experiment: ExperimentConfig
+    splitter: SplitterConfig
+    embedder: EmbedderConfig
+    vector_store: VectorStoreConfig
+    retrieval: RetrievalConfig
+    llm: LLMConfig
+
+
+def _settings_config() -> dict[str, Any]:
+    """Build configuration data from the current application settings.
+
+    Returns:
+        Nested configuration data matching :class:`RagConfig`.
+    """
+
+    return {
+        "experiment": {"name": settings.EXPERIMENT_NAME},
+        "splitter": {
+            "type": "sentence",
+            "chunk_size": settings.CHUNK_SIZE,
+            "chunk_overlap": settings.CHUNK_OVERLAP,
+        },
+        "embedder": {
+            "type": "fastembed",
+            "model_name": settings.EMBEDDING_MODEL,
+        },
+        "vector_store": {
+            "type": settings.VECTOR_STORE.lower(),
+            "collection_name": settings.CHROMA_COLLECTION,
+            "persist_directory": settings.CHROMA_PERSIST_DIR,
+            "distance": settings.CHROMA_DISTANCE,
+        },
+        "retrieval": {"top_k": settings.TOP_K},
+        "llm": {
+            "type": "ollama",
+            "model_name": settings.LLM_MODEL,
+            "base_url": settings.OLLAMA_BASE_URL,
+            "request_timeout": settings.REQUEST_TIMEOUT,
+        },
+    }
+
+
+def _merge_config(base: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:
+    """Recursively merge YAML overrides into default configuration data.
+
+    Args:
+        base:
+            Default configuration data.
+        overrides:
+            User-provided partial configuration data.
+
+    Returns:
+        Merged configuration data.
+    """
+
+    result = deepcopy(base)
+    for key, value in overrides.items():
+        existing = result.get(key)
+        if isinstance(existing, dict) and isinstance(value, dict):
+            result[key] = _merge_config(existing, value)
+        else:
+            result[key] = value
+    return result
+
+
+def _resolve_paths(data: dict[str, Any]) -> None:
+    """Resolve relative filesystem values in merged configuration data.
+
+    Args:
+        data:
+            Mutable merged configuration data.
+    """
+
+    vector_store = data.get("vector_store")
+    if not isinstance(vector_store, dict):
+        return
+
+    persist_directory = vector_store.get("persist_directory")
+    if persist_directory is None:
+        return
+
+    path = Path(persist_directory).expanduser()
+    if not path.is_absolute():
+        path = settings.REPO_ROOT / path
+    vector_store["persist_directory"] = path.resolve()
+
+
+def load_rag_config(path: Path | None = None) -> RagConfig:
+    """Load a fully resolved RAG configuration.
+
+    Application settings provide the defaults. When ``path`` is supplied, its
+    YAML mapping is recursively overlaid on those defaults before validation.
+    Relative paths are interpreted from the repository root.
+
+    Args:
+        path:
+            Optional YAML configuration file. A relative path is resolved from
+            the repository root.
+
+    Returns:
+        An immutable, validated RAG configuration.
+
+    Raises:
+        FileNotFoundError:
+            If the configuration file does not exist.
+        ValueError:
+            If the file is malformed YAML or its root is not a mapping.
+        pydantic.ValidationError:
+            If configuration keys or values are invalid.
+    """
+
+    data = _settings_config()
+    if path is not None:
+        config_path = path.expanduser()
+        if not config_path.is_absolute():
+            config_path = settings.REPO_ROOT / config_path
+
+        try:
+            loaded = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+        except yaml.YAMLError as error:
+            raise ValueError(f"Malformed YAML configuration: {config_path}") from error
+
+        if loaded is None:
+            loaded = {}
+        if not isinstance(loaded, dict):
+            raise ValueError("RAG configuration must be a YAML mapping")
+        data = _merge_config(data, loaded)
+
+    _resolve_paths(data)
+    return RagConfig.model_validate(data)
