@@ -7,9 +7,14 @@ import logging
 from collections.abc import Sequence
 from pathlib import Path
 
-from genai_template.config import settings
+from genai_template.config import (
+    RagConfig,
+    config_fingerprint,
+    index_config_fingerprint,
+    load_rag_config,
+    settings,
+)
 from genai_template.config.logging import configure_logging
-from genai_template.config.rag import RagConfig, load_rag_config
 from genai_template.evaluation.metrics.baseline_metrics import (
     calculate_hit_at_k,
     calculate_precision_at_k,
@@ -129,50 +134,85 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         default=DEFAULT_DATASET_PATH,
         help=f"Evaluation dataset (default: {DEFAULT_DATASET_PATH}).",
     )
+    parser.add_argument(
+        "--reindex",
+        action="store_true",
+        help="Delete and rebuild the matching configuration-specific index.",
+    )
 
     return parser.parse_args(argv)
 
 
-def _config_fingerprint(config: RagConfig) -> str:
-    """Calculate a stable fingerprint for a resolved configuration.
+def _corpus_fingerprint(corpus_path: Path) -> str:
+    """Fingerprint supported corpus file paths and contents deterministically.
 
     Args:
-        config:
-            Fully resolved RAG configuration.
+        corpus_path:
+            Directory containing the corpus.
 
     Returns:
-        Hexadecimal SHA-256 configuration fingerprint.
+        Hexadecimal SHA-256 corpus fingerprint.
+
+    Raises:
+        FileNotFoundError:
+            If the corpus directory does not exist.
+        NotADirectoryError:
+            If the corpus path is not a directory.
     """
 
-    canonical_json = json.dumps(
-        config.model_dump(mode="json"),
-        sort_keys=True,
-        separators=(",", ":"),
+    if not corpus_path.exists():
+        raise FileNotFoundError(f"Directory does not exist: {corpus_path}")
+    if not corpus_path.is_dir():
+        raise NotADirectoryError(f"Expected a directory: {corpus_path}")
+
+    digest = hashlib.sha256()
+    supported_files = sorted(
+        (
+            path
+            for path in corpus_path.iterdir()
+            if path.is_file() and path.suffix in {".md", ".txt"}
+        ),
+        key=lambda path: path.name,
     )
+    for path in supported_files:
+        relative_path = path.relative_to(corpus_path).as_posix().encode("utf-8")
+        contents = path.read_bytes()
+        digest.update(len(relative_path).to_bytes(8, "big"))
+        digest.update(relative_path)
+        digest.update(len(contents).to_bytes(8, "big"))
+        digest.update(contents)
 
-    return hashlib.sha256(canonical_json.encode("utf-8")).hexdigest()
+    return digest.hexdigest()
 
 
-def _evaluation_collection_name(config_fingerprint: str) -> str:
-    """Derive a dedicated collection name for an evaluation configuration.
+def _evaluation_collection_name(
+    index_fingerprint: str,
+    corpus_fingerprint: str | None = None,
+) -> str:
+    """Derive a dedicated collection name for an index and corpus.
 
     Args:
-        config_fingerprint:
-            SHA-256 fingerprint of the resolved configuration.
+        index_fingerprint:
+            SHA-256 fingerprint of index-affecting configuration.
+        corpus_fingerprint:
+            SHA-256 fingerprint of supported corpus files. If omitted, the
+            index fingerprint is also used for backward compatibility.
 
     Returns:
         Chroma collection name reserved for the evaluation run.
     """
 
-    return f"evaluation_{config_fingerprint[:16]}"
+    corpus_identity = corpus_fingerprint or index_fingerprint
+    return f"evaluation-{index_fingerprint[:16]}-{corpus_identity[:16]}"
 
 
 def run_evaluation(
     config: RagConfig,
     corpus_path: Path,
     dataset_path: Path,
+    reindex: bool = False,
 ) -> None:
-    """Rebuild an evaluation index and calculate retrieval metrics.
+    """Reuse or build an evaluation index and calculate retrieval metrics.
 
     Args:
         config:
@@ -181,14 +221,21 @@ def run_evaluation(
             Directory containing documents to index.
         dataset_path:
             JSON retrieval evaluation dataset.
+        reindex:
+            Whether to delete and rebuild the resolved experiment collection.
 
     Raises:
         ValueError:
             If the evaluation dataset contains no tests.
     """
 
-    fingerprint = _config_fingerprint(config)
-    collection_name = _evaluation_collection_name(fingerprint)
+    fingerprint = config_fingerprint(config)
+    index_fingerprint = index_config_fingerprint(config)
+    corpus_fingerprint = _corpus_fingerprint(corpus_path)
+    collection_name = _evaluation_collection_name(
+        index_fingerprint,
+        corpus_fingerprint,
+    )
     store_config = config.vector_store.model_copy(
         update={"collection_name": collection_name}
     )
@@ -201,19 +248,24 @@ def run_evaluation(
         collection_name,
     )
 
-    # Slice 3 deliberately rebuilds the dedicated collection so changes to
-    # embeddings or chunking can never query incompatible stored vectors.
-    existing_store = create_vector_store(store_config)
-    existing_store.delete()
     store = create_vector_store(store_config)
+    if reindex:
+        store.delete()
+        store = create_vector_store(store_config)
 
     embedder = create_embedder(config.embedder)
-    indexing_pipeline = IndexingPipeline(
-        splitter=create_splitter(config.splitter),
-        embedder=embedder,
-        store=store,
-    )
-    indexing_pipeline.run(corpus_path)
+    if store.count() == 0:
+        indexing_pipeline = IndexingPipeline(
+            splitter=create_splitter(config.splitter),
+            embedder=embedder,
+            store=store,
+        )
+        indexing_pipeline.run(corpus_path)
+    else:
+        logger.info(
+            "Reusing populated evaluation collection '%s'.",
+            collection_name,
+        )
 
     retrieval_pipeline = create_retrieval_pipeline(
         config.retrieval,
@@ -270,6 +322,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         config=load_rag_config(args.config),
         corpus_path=args.corpus,
         dataset_path=args.dataset,
+        reindex=args.reindex,
     )
 
 

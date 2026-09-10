@@ -72,6 +72,15 @@ class ChromaStore:
 
         self._client.delete_collection(name=self._collection_name)
 
+    def count(self) -> int:
+        """Return the number of records in this store's collection.
+
+        Returns:
+            Number of stored vector records.
+        """
+
+        return self._collection.count()
+
     def upsert(
         self,
         chunks: list[DocumentChunk],

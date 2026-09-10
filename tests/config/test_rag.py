@@ -6,8 +6,13 @@ import pytest
 from pydantic import ValidationError
 
 from genai_template.common.types import VectorDistance
-from genai_template.config import settings
-from genai_template.config.rag import load_rag_config
+from genai_template.config import (
+    canonical_config_json,
+    config_fingerprint,
+    index_config_fingerprint,
+    load_rag_config,
+    settings,
+)
 
 
 def test_defaults_match_application_settings() -> None:
@@ -124,3 +129,53 @@ def test_documented_baseline_matches_defaults() -> None:
 
     assert load_rag_config(baseline_path) == load_rag_config()
     assert load_rag_config().vector_store.distance is VectorDistance.COSINE
+
+
+def test_canonical_serialization_and_fingerprint_are_stable() -> None:
+    """Equivalent resolved configurations have identical canonical identities."""
+
+    first = load_rag_config()
+    second = load_rag_config()
+
+    assert canonical_config_json(first) == canonical_config_json(second)
+    assert config_fingerprint(first) == config_fingerprint(second)
+    assert len(config_fingerprint(first)) == 64
+
+
+def test_answer_only_changes_do_not_change_index_fingerprint() -> None:
+    """Retrieval and generation settings should not select another index."""
+
+    config = load_rag_config()
+    changed = config.model_copy(
+        update={
+            "experiment": config.experiment.model_copy(update={"name": "renamed"}),
+            "retrieval": config.retrieval.model_copy(update={"top_k": 12}),
+            "llm": config.llm.model_copy(update={"model_name": "another-model"}),
+        }
+    )
+
+    assert config_fingerprint(config) != config_fingerprint(changed)
+    assert index_config_fingerprint(config) == index_config_fingerprint(changed)
+
+
+def test_indexing_changes_change_index_fingerprint() -> None:
+    """Chunking and embedding changes should select a different index."""
+
+    config = load_rag_config()
+    changed_splitter = config.model_copy(
+        update={
+            "splitter": config.splitter.model_copy(
+                update={"chunk_size": config.splitter.chunk_size + 1}
+            )
+        }
+    )
+    changed_embedder = config.model_copy(
+        update={"embedder": config.embedder.model_copy(update={"model_name": "other"})}
+    )
+
+    assert index_config_fingerprint(config) != index_config_fingerprint(
+        changed_splitter
+    )
+    assert index_config_fingerprint(config) != index_config_fingerprint(
+        changed_embedder
+    )

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, Literal
@@ -89,6 +91,65 @@ class RagConfig(_ImmutableConfig):
     vector_store: VectorStoreConfig
     retrieval: RetrievalConfig
     llm: LLMConfig
+
+
+def canonical_config_json(config: RagConfig) -> str:
+    """Serialize a resolved RAG configuration deterministically.
+
+    Args:
+        config:
+            Fully resolved RAG configuration.
+
+    Returns:
+        Compact JSON with stable key ordering and JSON-compatible values.
+    """
+
+    return json.dumps(
+        config.model_dump(mode="json"),
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def config_fingerprint(config: RagConfig) -> str:
+    """Calculate a stable SHA-256 fingerprint for a resolved configuration.
+
+    Args:
+        config:
+            Fully resolved RAG configuration.
+
+    Returns:
+        Hexadecimal SHA-256 configuration fingerprint.
+    """
+
+    return hashlib.sha256(canonical_config_json(config).encode("utf-8")).hexdigest()
+
+
+def index_config_fingerprint(config: RagConfig) -> str:
+    """Fingerprint settings that determine the contents of a vector index.
+
+    Storage location and collection name identify where an index lives rather
+    than how its vectors are produced, so they are intentionally excluded.
+
+    Args:
+        config:
+            Fully resolved RAG configuration.
+
+    Returns:
+        Hexadecimal SHA-256 fingerprint of index-affecting settings.
+    """
+
+    index_config = {
+        "embedder": config.embedder.model_dump(mode="json"),
+        "splitter": config.splitter.model_dump(mode="json"),
+        "vector_store": {
+            "distance": config.vector_store.distance.value,
+            "type": config.vector_store.type,
+        },
+    }
+    canonical_json = json.dumps(index_config, sort_keys=True, separators=(",", ":"))
+
+    return hashlib.sha256(canonical_json.encode("utf-8")).hexdigest()
 
 
 def _settings_config() -> dict[str, Any]:

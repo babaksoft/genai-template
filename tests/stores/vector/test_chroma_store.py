@@ -101,6 +101,20 @@ def test_upsert(
 
 
 @patch("genai_template.stores.vector.chroma_store.chromadb.PersistentClient")
+def test_count(mock_client_class: MagicMock) -> None:
+    """The vector store should expose its collection record count."""
+
+    mock_collection = (
+        mock_client_class.return_value.get_or_create_collection.return_value
+    )
+    mock_collection.count.return_value = 7
+
+    store = ChromaStore()
+
+    assert store.count() == 7
+
+
+@patch("genai_template.stores.vector.chroma_store.chromadb.PersistentClient")
 def test_upsert_empty_list(
     mock_client_class: MagicMock,
 ) -> None:

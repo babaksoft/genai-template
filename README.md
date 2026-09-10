@@ -125,13 +125,14 @@ configuration, corpus, and dataset from the command line:
 ```bash
 uv run python -m genai_template.evaluation.evaluators.baseline_eval
 uv run python -m genai_template.evaluation.evaluators.baseline_eval \
-  --config src/genai_template/experiments/configs/baseline.yaml \
+  --config src/genai_template/experiments/configs/baseline.yml \
   --corpus data/baseline \
   --dataset src/genai_template/evaluation/datasets/baseline-eval.json
 ```
 
-Each invocation rebuilds a dedicated evaluation collection before calculating
-the configured retrieval metrics.
+Evaluation collections are keyed by the indexing configuration and corpus
+contents, so a populated matching index is reused. Pass ``--reindex`` to delete
+and rebuild only that resolved collection before calculating the metrics.
 
 ## Testing
 
