@@ -28,6 +28,7 @@ class RetrievalPipeline:
         self,
         embedder: FastEmbedEmbeddingModel | None = None,
         store: ChromaStore | None = None,
+        top_k: int = settings.TOP_K,
     ) -> None:
         """Initialize the retrieval pipeline.
 
@@ -36,15 +37,18 @@ class RetrievalPipeline:
                 Embedding model.
             store:
                 Vector store.
+            top_k:
+                Default maximum number of retrieved chunks.
         """
 
         self._embedder = embedder or FastEmbedEmbeddingModel()
         self._store = store or ChromaStore()
+        self._top_k = top_k
 
     def retrieve(
         self,
         query: str,
-        top_k: int = settings.TOP_K,
+        top_k: int | None = None,
     ) -> list[RetrievedChunk]:
         """Retrieve relevant document chunks.
 
@@ -52,23 +56,26 @@ class RetrievalPipeline:
             query:
                 User query.
             top_k:
-                Maximum number of retrieved chunks. Default is 5.
+                Maximum number of retrieved chunks. When omitted, use the
+                value configured for this pipeline.
 
         Returns:
             Retrieved chunks in the order returned by the underlying
             vector store (typically increasing distance).
         """
 
+        resolved_top_k = self._top_k if top_k is None else top_k
+
         with application_span(
             "rag.retrieval",
             "RETRIEVER",
-            {INPUT_VALUE: query, "rag.top_k": top_k},
+            {INPUT_VALUE: query, "rag.top_k": resolved_top_k},
         ) as span:
             with Timer() as timer:
                 embedding = self._embedder.embed_query(query)
                 retrieved_chunks = self._store.search(
                     embedding=embedding,
-                    top_k=top_k,
+                    top_k=resolved_top_k,
                     query=query,
                 )
             span.set_attribute("rag.result_count", len(retrieved_chunks))

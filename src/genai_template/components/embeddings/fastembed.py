@@ -16,16 +16,21 @@ logger = logging.getLogger(__name__)
 class FastEmbedEmbeddingModel:
     """Generates embeddings using FastEmbed."""
 
-    def __init__(self) -> None:
-        """Initialize the embedding model."""
+    def __init__(self, model_name: str = settings.EMBEDDING_MODEL) -> None:
+        """Initialize the embedding model.
+
+        Args:
+            model_name:
+                Name of the FastEmbed model.
+        """
 
         self._embed_model = FastEmbedEmbedding(
-            model_name=settings.EMBEDDING_MODEL,
+            model_name=model_name,
         )
 
         logger.info(
             "Initialized FastEmbed model '%s'.",
-            settings.EMBEDDING_MODEL,
+            model_name,
         )
 
     def embed(

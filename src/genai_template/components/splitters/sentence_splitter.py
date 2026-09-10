@@ -17,12 +17,23 @@ logger = logging.getLogger(__name__)
 class DocumentSplitter:
     """Splits documents into canonical document chunks."""
 
-    def __init__(self) -> None:
-        """Initialize the document splitter."""
+    def __init__(
+        self,
+        chunk_size: int = settings.CHUNK_SIZE,
+        chunk_overlap: int = settings.CHUNK_OVERLAP,
+    ) -> None:
+        """Initialize the document splitter.
+
+        Args:
+            chunk_size:
+                Maximum size of each chunk in tokens.
+            chunk_overlap:
+                Number of tokens shared by adjacent chunks.
+        """
 
         self._splitter = SentenceSplitter(
-            chunk_size=settings.CHUNK_SIZE,
-            chunk_overlap=settings.CHUNK_OVERLAP,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
         )
 
     def split(

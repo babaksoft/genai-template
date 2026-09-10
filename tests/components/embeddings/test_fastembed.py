@@ -6,10 +6,19 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from genai_template.components.embeddings import (
-    FastEmbedEmbeddingModel,
-)
+from genai_template.components.embeddings import FastEmbedEmbeddingModel
 from genai_template.schemas import DocumentChunk
+
+
+def test_constructor_accepts_explicit_model_name() -> None:
+    """An explicit model name should reach the FastEmbed adapter."""
+
+    with patch(
+        "genai_template.components.embeddings.fastembed.FastEmbedEmbedding"
+    ) as mock_embedder:
+        FastEmbedEmbeddingModel(model_name="custom-embedder")
+
+    mock_embedder.assert_called_once_with(model_name="custom-embedder")
 
 
 def test_embed_populates_embeddings() -> None:

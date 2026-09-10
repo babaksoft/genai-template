@@ -30,8 +30,9 @@ class ChromaStore:
 
     def __init__(
         self,
-        persist_directory: Path | None = None,
-        collection_name: str | None = None,
+        persist_directory: Path = settings.CHROMA_PERSIST_DIR,
+        collection_name: str = settings.CHROMA_COLLECTION,
+        distance: VectorDistance = settings.CHROMA_DISTANCE,
     ) -> None:
         """
         Initialize the Chroma collection.
@@ -42,6 +43,8 @@ class ChromaStore:
             collection_name:
                 Name of the collection to use. Defaults to the configured
                 application collection.
+            distance:
+                Distance metric for a newly created collection.
         """
 
         self._DISTANCE_MAP = {
@@ -50,15 +53,12 @@ class ChromaStore:
             VectorDistance.INNER_PRODUCT: "ip",
         }
 
-        persist_directory = persist_directory or settings.CHROMA_PERSIST_DIR
-        collection_name = collection_name or settings.CHROMA_COLLECTION
-
         self._client = chromadb.PersistentClient(path=persist_directory)
         self._collection_name = collection_name
         self._collection: Collection = self._client.get_or_create_collection(
             name=collection_name,
             metadata={
-                "hnsw:space": self._DISTANCE_MAP[settings.CHROMA_DISTANCE],
+                "hnsw:space": self._DISTANCE_MAP[distance],
             },
         )
 

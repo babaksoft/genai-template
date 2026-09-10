@@ -50,3 +50,21 @@ def test_retrieve() -> None:
         top_k=3,
         query="What is FastAPI?",
     )
+
+
+def test_retrieve_uses_configured_top_k() -> None:
+    """Retrieval should use the pipeline top-k when no override is supplied."""
+
+    embedder = MagicMock()
+    embedder.embed_query.return_value = [0.1]
+    store = MagicMock()
+    store.search.return_value = []
+    pipeline = RetrievalPipeline(embedder=embedder, store=store, top_k=7)
+
+    pipeline.retrieve(query="Configured query")
+
+    store.search.assert_called_once_with(
+        embedding=[0.1],
+        top_k=7,
+        query="Configured query",
+    )

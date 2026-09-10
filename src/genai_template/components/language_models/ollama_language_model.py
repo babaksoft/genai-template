@@ -4,6 +4,7 @@ import logging
 
 from llama_index.llms.ollama import Ollama
 
+from genai_template.config import settings
 from genai_template.config.ollama import resolve_ollama_base_url
 from genai_template.utils import Timer
 
@@ -13,20 +14,30 @@ logger = logging.getLogger(__name__)
 class OllamaLanguageModel:
     """Language model adapter backed by Ollama."""
 
-    def __init__(self, model_name: str) -> None:
+    def __init__(
+        self,
+        model_name: str = settings.LLM_MODEL,
+        base_url: str | None = None,
+        request_timeout: float = settings.REQUEST_TIMEOUT,
+    ) -> None:
         """
         Initialize the language model.
 
         Args:
             model_name:
                 Name of the Ollama model.
+            base_url:
+                Ollama server URL. When omitted, resolve the application
+                default for the current environment.
+            request_timeout:
+                Maximum number of seconds to wait for an Ollama request.
         """
 
         self._model_name = model_name
         self._llm = Ollama(
             model=model_name,
-            base_url=resolve_ollama_base_url(),
-            request_timeout=180,
+            base_url=base_url or resolve_ollama_base_url(),
+            request_timeout=request_timeout,
         )
 
     def generate(self, prompt: str) -> str:

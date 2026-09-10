@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from genai_template.common.types import VectorDistance
 from genai_template.config import settings
 from genai_template.schemas import DocumentChunk
 from genai_template.stores.vector import ChromaStore
@@ -35,6 +37,28 @@ def test_constructor(
         metadata={
             "hnsw:space": "cosine",
         },
+    )
+
+
+@patch("genai_template.stores.vector.chroma_store.chromadb.PersistentClient")
+def test_constructor_accepts_explicit_distance(
+    mock_client_class: MagicMock,
+    tmp_path: Path,
+) -> None:
+    """Explicit storage settings should reach Chroma initialization."""
+
+    mock_client = mock_client_class.return_value
+
+    ChromaStore(
+        persist_directory=tmp_path,
+        collection_name="experiment",
+        distance=VectorDistance.L2,
+    )
+
+    mock_client_class.assert_called_once_with(path=tmp_path)
+    mock_client.get_or_create_collection.assert_called_once_with(
+        name="experiment",
+        metadata={"hnsw:space": "l2"},
     )
 
 

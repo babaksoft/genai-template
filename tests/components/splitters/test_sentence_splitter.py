@@ -1,10 +1,19 @@
 """Unit tests for the document splitter."""
 
+from unittest.mock import MagicMock, patch
+
 from llama_index.core import Document
 
-from genai_template.components.splitters import (
-    DocumentSplitter,
-)
+from genai_template.components.splitters import DocumentSplitter
+
+
+@patch("genai_template.components.splitters.sentence_splitter.SentenceSplitter")
+def test_constructor_accepts_explicit_values(mock_splitter: MagicMock) -> None:
+    """Explicit chunk settings should reach the underlying splitter."""
+
+    DocumentSplitter(chunk_size=384, chunk_overlap=24)
+
+    mock_splitter.assert_called_once_with(chunk_size=384, chunk_overlap=24)
 
 
 def test_split_single_document() -> None:

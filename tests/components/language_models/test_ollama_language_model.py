@@ -34,6 +34,31 @@ def test_init_creates_ollama_instance(
 
 
 @patch("genai_template.components.language_models.ollama_language_model.Ollama")
+@patch(
+    "genai_template.components.language_models.ollama_language_model."
+    "resolve_ollama_base_url"
+)
+def test_init_accepts_explicit_connection_settings(
+    mock_resolve_base_url: MagicMock,
+    mock_ollama: MagicMock,
+) -> None:
+    """Explicit connection settings should bypass environment resolution."""
+
+    OllamaLanguageModel(
+        model_name=LLM_MODEL,
+        base_url="http://ollama.example:11434",
+        request_timeout=30,
+    )
+
+    mock_resolve_base_url.assert_not_called()
+    mock_ollama.assert_called_once_with(
+        model=LLM_MODEL,
+        base_url="http://ollama.example:11434",
+        request_timeout=30,
+    )
+
+
+@patch("genai_template.components.language_models.ollama_language_model.Ollama")
 def test_generate_calls_complete(
     mock_ollama: MagicMock,
 ) -> None:
