@@ -2,9 +2,10 @@
 
 from genai_template.components.splitters import DocumentSplitter
 from genai_template.config.rag import SplitterConfig
+from genai_template.protocols import Splitter
 
 
-def create_splitter(config: SplitterConfig) -> DocumentSplitter:
+def create_splitter(config: SplitterConfig) -> Splitter:
     """Create a document splitter from validated configuration.
 
     Args:

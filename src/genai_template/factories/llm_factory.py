@@ -2,9 +2,10 @@
 
 from genai_template.components.language_models import OllamaLanguageModel
 from genai_template.config.rag import LLMConfig
+from genai_template.protocols import LanguageModel
 
 
-def create_llm(config: LLMConfig) -> OllamaLanguageModel:
+def create_llm(config: LLMConfig) -> LanguageModel:
     """Create a language model from validated configuration.
 
     Args:

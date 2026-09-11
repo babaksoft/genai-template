@@ -3,9 +3,6 @@
 import logging
 
 from genai_template.components.context import ContextBuilder
-from genai_template.components.language_models import (
-    OllamaLanguageModel,
-)
 from genai_template.components.prompt import PromptBuilder
 from genai_template.config import RagConfig, config_fingerprint
 from genai_template.factories import (
@@ -14,7 +11,7 @@ from genai_template.factories import (
     create_vector_store,
 )
 from genai_template.observability import INPUT_VALUE, OUTPUT_VALUE, application_span
-from genai_template.pipelines import RetrievalPipeline
+from genai_template.protocols import LanguageModel, Retriever
 from genai_template.schemas import RagResult, RunMetrics
 from genai_template.services.experiment_service import ExperimentService
 from genai_template.services.source_service import SourceService
@@ -30,7 +27,7 @@ class RagService:
         self,
         context_builder: ContextBuilder,
         prompt_builder: PromptBuilder,
-        language_model: OllamaLanguageModel,
+        language_model: LanguageModel,
         experiment_service: ExperimentService,
         source_service: SourceService,
         config: RagConfig,
@@ -146,7 +143,7 @@ class RagService:
             retrieved_chunks=retrieved_chunks,
         )
 
-    def _get_retrieval_pipeline(self, collection_name: str) -> RetrievalPipeline:
+    def _get_retrieval_pipeline(self, collection_name: str) -> Retriever:
         """Create a retrieval pipeline for a source-owned collection.
 
         Args:

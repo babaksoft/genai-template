@@ -2,9 +2,10 @@
 
 from genai_template.components.embeddings import FastEmbedEmbeddingModel
 from genai_template.config.rag import EmbedderConfig
+from genai_template.protocols import Embedder
 
 
-def create_embedder(config: EmbedderConfig) -> FastEmbedEmbeddingModel:
+def create_embedder(config: EmbedderConfig) -> Embedder:
     """Create an embedding model from validated configuration.
 
     Args:

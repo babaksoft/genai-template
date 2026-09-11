@@ -14,6 +14,7 @@ from genai_template.observability import (
     application_span,
     retrieved_documents_attribute,
 )
+from genai_template.protocols import Embedder, VectorStore
 from genai_template.schemas import RetrievedChunk
 from genai_template.stores.vector import ChromaStore
 from genai_template.utils import Timer
@@ -26,8 +27,8 @@ class RetrievalPipeline:
 
     def __init__(
         self,
-        embedder: FastEmbedEmbeddingModel | None = None,
-        store: ChromaStore | None = None,
+        embedder: Embedder | None = None,
+        store: VectorStore | None = None,
         top_k: int = settings.TOP_K,
     ) -> None:
         """Initialize the retrieval pipeline.

@@ -14,6 +14,7 @@ from genai_template.components.readers import TextReader
 from genai_template.components.splitters import (
     DocumentSplitter,
 )
+from genai_template.protocols import Embedder, Splitter, VectorStore
 from genai_template.schemas import IndexingResult
 from genai_template.stores.vector import ChromaStore
 from genai_template.utils import Timer
@@ -27,9 +28,9 @@ class IndexingPipeline:
     def __init__(
         self,
         reader: TextReader | None = None,
-        splitter: DocumentSplitter | None = None,
-        embedder: FastEmbedEmbeddingModel | None = None,
-        store: ChromaStore | None = None,
+        splitter: Splitter | None = None,
+        embedder: Embedder | None = None,
+        store: VectorStore | None = None,
     ) -> None:
         """
         Initialize the indexing pipeline.

@@ -27,7 +27,8 @@ from genai_template.factories import (
     create_splitter,
     create_vector_store,
 )
-from genai_template.pipelines import IndexingPipeline, RetrievalPipeline
+from genai_template.pipelines import IndexingPipeline
+from genai_template.protocols import Retriever
 from genai_template.schemas import RetrievalTest
 from genai_template.services import ExperimentService
 
@@ -56,7 +57,7 @@ def load_evaluation_tests(path: Path) -> list[RetrievalTest]:
 
 
 def evaluate_test(
-    pipeline: RetrievalPipeline,
+    pipeline: Retriever,
     test: RetrievalTest,
     k: int,
 ) -> tuple[bool, float, float]:
