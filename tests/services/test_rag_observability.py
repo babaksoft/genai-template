@@ -59,12 +59,6 @@ def test_answer_emits_nested_rag_spans(mock_client_class: MagicMock) -> None:
     )
 
     service = RagService(
-        retrieval_pipeline_factory=MagicMock(
-            return_value=RetrievalPipeline(
-                embedder=embedder,
-                store=ChromaStore(collection_name="source-fastapi"),
-            )
-        ),
         context_builder=ContextBuilder(),
         prompt_builder=PromptBuilder(),
         language_model=language_model,
@@ -84,11 +78,22 @@ def test_answer_emits_nested_rag_spans(mock_client_class: MagicMock) -> None:
         ),
         config=config,
     )
+    retrieval_pipeline = RetrievalPipeline(
+        embedder=embedder,
+        store=ChromaStore(collection_name="source-fastapi"),
+    )
 
-    with patch.object(
-        observability_trace,
-        "get_tracer",
-        side_effect=lambda name: provider.get_tracer(name),
+    with (
+        patch.object(
+            service,
+            "_get_retrieval_pipeline",
+            return_value=retrieval_pipeline,
+        ),
+        patch.object(
+            observability_trace,
+            "get_tracer",
+            side_effect=lambda name: provider.get_tracer(name),
+        ),
     ):
         service.answer("What is FastAPI?", source_id=1)
 

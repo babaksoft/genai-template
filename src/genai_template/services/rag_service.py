@@ -1,7 +1,6 @@
 """Retrieval-Augmented Generation service."""
 
 import logging
-from collections.abc import Callable
 
 from genai_template.components.context import ContextBuilder
 from genai_template.components.language_models import (
@@ -9,6 +8,11 @@ from genai_template.components.language_models import (
 )
 from genai_template.components.prompt import PromptBuilder
 from genai_template.config import RagConfig, config_fingerprint
+from genai_template.factories import (
+    create_embedder,
+    create_retrieval_pipeline,
+    create_vector_store,
+)
 from genai_template.observability import INPUT_VALUE, OUTPUT_VALUE, application_span
 from genai_template.pipelines import RetrievalPipeline
 from genai_template.schemas import RagResult, RunMetrics
@@ -24,7 +28,6 @@ class RagService:
 
     def __init__(
         self,
-        retrieval_pipeline_factory: Callable[[str], RetrievalPipeline],
         context_builder: ContextBuilder,
         prompt_builder: PromptBuilder,
         language_model: OllamaLanguageModel,
@@ -35,8 +38,6 @@ class RagService:
         """Initialize the RAG service.
 
         Args:
-            retrieval_pipeline_factory:
-                Factory that creates a retrieval pipeline for a source collection.
             context_builder:
                 Context builder.
             prompt_builder:
@@ -51,7 +52,6 @@ class RagService:
                 Fully resolved configuration for this service instance.
         """
 
-        self._retrieval_pipeline_factory = retrieval_pipeline_factory
         self._context_builder = context_builder
         self._prompt_builder = prompt_builder
         self._language_model = language_model
@@ -74,7 +74,7 @@ class RagService:
         """
 
         source = self._source_service.get_source(source_id)
-        retrieval_pipeline = self._retrieval_pipeline_factory(source.collection_name)
+        retrieval_pipeline = self._get_retrieval_pipeline(source.collection_name)
 
         run = self._experiment_service.start_run(
             experiment_name=self._config.experiment.name,
@@ -144,4 +144,25 @@ class RagService:
             answer=response,
             metrics=metrics,
             retrieved_chunks=retrieved_chunks,
+        )
+
+    def _get_retrieval_pipeline(self, collection_name: str) -> RetrievalPipeline:
+        """Create a retrieval pipeline for a source-owned collection.
+
+        Args:
+            collection_name:
+                Name of the source collection to query.
+
+        Returns:
+            Retrieval pipeline using the configured embedder and store.
+        """
+
+        store_config = self._config.vector_store.model_copy(
+            update={"collection_name": collection_name}
+        )
+
+        return create_retrieval_pipeline(
+            self._config.retrieval,
+            create_embedder(self._config.embedder),
+            create_vector_store(store_config),
         )

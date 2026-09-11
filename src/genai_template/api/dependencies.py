@@ -2,9 +2,12 @@ from typing import Annotated
 
 from fastapi import Depends
 
+from genai_template.components.context import ContextBuilder
+from genai_template.components.prompt import PromptBuilder
 from genai_template.config import RagConfig, load_rag_config, settings
 from genai_template.db import SessionLocal
-from genai_template.services import RagService, SourceService, create_rag_service
+from genai_template.factories import create_llm
+from genai_template.services import ExperimentService, RagService, SourceService
 
 
 def get_rag_config() -> RagConfig:
@@ -30,7 +33,19 @@ def get_rag_service(
         Configured RAG service instance.
     """
 
-    return create_rag_service(config)
+    source_service = SourceService(
+        session_factory=SessionLocal,
+        corpora_dir=settings.CORPORA_DIR,
+        config=config,
+    )
+    return RagService(
+        context_builder=ContextBuilder(),
+        prompt_builder=PromptBuilder(),
+        language_model=create_llm(config.llm),
+        experiment_service=ExperimentService(SessionLocal),
+        source_service=source_service,
+        config=config,
+    )
 
 
 def get_source_service(

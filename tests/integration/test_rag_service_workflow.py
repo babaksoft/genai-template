@@ -15,7 +15,7 @@ from genai_template.components.readers import TextReader
 from genai_template.components.splitters import DocumentSplitter
 from genai_template.config import load_rag_config
 from genai_template.db.models import Source
-from genai_template.pipelines import IndexingPipeline, RetrievalPipeline
+from genai_template.pipelines import IndexingPipeline
 from genai_template.services import RagService
 from genai_template.stores.vector import ChromaStore
 
@@ -40,10 +40,6 @@ def test_rag_service_answers_question(tmp_path: Path) -> None:
 
     indexing_pipeline.run(documents_dir)
 
-    retrieval_pipeline = RetrievalPipeline(
-        embedder=FastEmbedEmbeddingModel(),
-        store=vector_store,
-    )
     default_config = load_rag_config()
     config = default_config.model_copy(
         update={
@@ -55,7 +51,6 @@ def test_rag_service_answers_question(tmp_path: Path) -> None:
     )
 
     rag_service = RagService(
-        retrieval_pipeline_factory=MagicMock(return_value=retrieval_pipeline),
         context_builder=ContextBuilder(),
         prompt_builder=PromptBuilder(),
         language_model=OllamaLanguageModel(
@@ -81,8 +76,7 @@ def test_rag_service_answers_question(tmp_path: Path) -> None:
     answer = rag_service.answer("What is the capital of France?", source_id=1)
 
     assert answer
-    assert isinstance(answer, str)
-    assert "Paris" in answer
+    assert "Paris" in answer.answer
 
 
 if __name__ == "__main__":
