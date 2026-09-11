@@ -13,6 +13,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 
 from genai_template.components.context import ContextBuilder
 from genai_template.components.prompt import PromptBuilder
+from genai_template.config import config_fingerprint, load_rag_config
 from genai_template.db.models import Source
 from genai_template.observability import trace as observability_trace
 from genai_template.pipelines import RetrievalPipeline
@@ -43,6 +44,19 @@ def test_answer_emits_nested_rag_spans(mock_client_class: MagicMock) -> None:
     embedder.embed_query.return_value = [0.1, 0.2]
     language_model = MagicMock()
     language_model.generate.return_value = "FastAPI is a web framework."
+    default_config = load_rag_config()
+    config = default_config.model_copy(
+        update={
+            "experiment": default_config.experiment.model_copy(
+                update={"name": "Trace experiment"}
+            ),
+            "embedder": default_config.embedder.model_copy(
+                update={"model_name": "trace-embedder"}
+            ),
+            "retrieval": default_config.retrieval.model_copy(update={"top_k": 3}),
+            "llm": default_config.llm.model_copy(update={"model_name": "trace-llm"}),
+        }
+    )
 
     service = RagService(
         retrieval_pipeline_factory=MagicMock(
@@ -68,6 +82,7 @@ def test_answer_emits_nested_rag_spans(mock_client_class: MagicMock) -> None:
                 )
             )
         ),
+        config=config,
     )
 
     with patch.object(
@@ -116,7 +131,7 @@ def test_answer_emits_nested_rag_spans(mock_client_class: MagicMock) -> None:
     assert isinstance(prompt_output, str)
     documents = json.loads(retrieval_documents)
     assert retrieval_attributes["input.value"] == "What is FastAPI?"
-    assert retrieval_attributes["rag.top_k"] == 5
+    assert retrieval_attributes["rag.top_k"] == 3
     assert documents == [
         {
             "id": "chunk-001",
@@ -128,3 +143,11 @@ def test_answer_emits_nested_rag_spans(mock_client_class: MagicMock) -> None:
     assert chroma_attributes["rag.result_count"] == 1
     assert context_output.startswith("Chunk 1")
     assert prompt_output
+    answer_attributes = answer_span.attributes
+    assert answer_attributes is not None
+    assert answer_attributes["rag.top_k"] == 3
+    assert answer_attributes["rag.experiment.name"] == "Trace experiment"
+    assert answer_attributes["rag.config.fingerprint"] == config_fingerprint(config)
+    assert answer_attributes["rag.embedding.model"] == "trace-embedder"
+    assert answer_attributes["rag.vector_store.type"] == "chroma"
+    assert answer_attributes["rag.llm.model"] == "trace-llm"

@@ -1,77 +1,46 @@
-from genai_template.components.context import ContextBuilder
-from genai_template.components.embeddings import FastEmbedEmbeddingModel
-from genai_template.components.language_models import OllamaLanguageModel
-from genai_template.components.prompt import PromptBuilder
-from genai_template.config import settings
+from typing import Annotated
+
+from fastapi import Depends
+
+from genai_template.config import RagConfig, load_rag_config, settings
 from genai_template.db import SessionLocal
-from genai_template.pipelines import RetrievalPipeline
-from genai_template.services import ExperimentService, RagService, SourceService
-from genai_template.stores.vector import ChromaStore
+from genai_template.services import RagService, SourceService, create_rag_service
 
 
-def create_retrieval_pipeline(collection_name: str) -> RetrievalPipeline:
-    """Create a source-specific retrieval pipeline.
+def get_rag_config() -> RagConfig:
+    """Provide the default RAG configuration derived from application settings.
+
+    Returns:
+        Fully resolved default RAG configuration.
+    """
+
+    return load_rag_config()
+
+
+def get_rag_service(
+    config: Annotated[RagConfig, Depends(get_rag_config)],
+) -> RagService:
+    """Provide the application's RAG service.
 
     Args:
-        collection_name:
-            Chroma collection name for the active source.
-
-    Returns:
-        Configured retrieval pipeline.
-    """
-
-    return RetrievalPipeline(
-        embedder=FastEmbedEmbeddingModel(),
-        store=ChromaStore(
-            persist_directory=settings.CHROMA_PERSIST_DIR,
-            collection_name=collection_name,
-        ),
-    )
-
-
-def create_language_model() -> OllamaLanguageModel:
-    """
-    Create language model using the active application configuration.
-
-    Returns:
-        Configured language model.
-    """
-
-    return OllamaLanguageModel(settings.LLM_MODEL)
-
-
-def create_experiment_service() -> ExperimentService:
-    """
-    Create experiment service using the active application configuration.
-
-    Returns:
-        Configured experiment service.
-    """
-
-    return ExperimentService(
-        session_factory=SessionLocal,
-    )
-
-
-def get_rag_service() -> RagService:
-    """Provide the application's RAG service.
+        config:
+            Default resolved RAG configuration.
 
     Returns:
         Configured RAG service instance.
     """
 
-    return RagService(
-        retrieval_pipeline_factory=create_retrieval_pipeline,
-        context_builder=ContextBuilder(),
-        prompt_builder=PromptBuilder(),
-        language_model=create_language_model(),
-        experiment_service=create_experiment_service(),
-        source_service=get_source_service(),
-    )
+    return create_rag_service(config)
 
 
-def get_source_service() -> SourceService:
+def get_source_service(
+    config: Annotated[RagConfig, Depends(get_rag_config)],
+) -> SourceService:
     """Provide the application's corpus source service.
+
+    Args:
+        config:
+            Default resolved RAG configuration.
 
     Returns:
         Configured source service.
@@ -80,4 +49,5 @@ def get_source_service() -> SourceService:
     return SourceService(
         session_factory=SessionLocal,
         corpora_dir=settings.CORPORA_DIR,
+        config=config,
     )

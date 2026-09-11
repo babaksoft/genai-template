@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from genai_template.config import load_rag_config
 from genai_template.db.base import Base
 from genai_template.db.models import Source
 from genai_template.pipelines import IndexingPipeline
@@ -236,3 +237,48 @@ def test_refresh_preserves_source_when_rebuild_fails(
     replacement_collection_name = delete_collection.call_args.args[0]
     assert replacement_collection_name.startswith("source-")
     assert replacement_collection_name != "source-original"
+
+
+def test_indexing_pipeline_uses_configured_factories(
+    tmp_path: Path,
+    session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Source indexing should construct every index component from its config."""
+
+    config = load_rag_config()
+    create_splitter = MagicMock()
+    create_embedder = MagicMock()
+    create_store = MagicMock()
+    pipeline_class = MagicMock()
+    monkeypatch.setattr(
+        "genai_template.services.source_service.create_splitter", create_splitter
+    )
+    monkeypatch.setattr(
+        "genai_template.services.source_service.create_embedder", create_embedder
+    )
+    monkeypatch.setattr(
+        "genai_template.services.source_service.create_vector_store", create_store
+    )
+    monkeypatch.setattr(
+        "genai_template.services.source_service.IndexingPipeline", pipeline_class
+    )
+    service = SourceService(
+        session_factory=session_factory,
+        corpora_dir=tmp_path,
+        config=config,
+    )
+
+    result = service._create_indexing_pipeline("source-configured")
+
+    assert result is pipeline_class.return_value
+    create_splitter.assert_called_once_with(config.splitter)
+    create_embedder.assert_called_once_with(config.embedder)
+    store_config = create_store.call_args.args[0]
+    assert store_config.collection_name == "source-configured"
+    assert store_config.distance == config.vector_store.distance
+    pipeline_class.assert_called_once_with(
+        splitter=create_splitter.return_value,
+        embedder=create_embedder.return_value,
+        store=create_store.return_value,
+    )

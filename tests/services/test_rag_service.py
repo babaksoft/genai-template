@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock
 
-from genai_template.config import settings
+from genai_template.config import load_rag_config
 from genai_template.db.models import Source
 from genai_template.schemas import RetrievedChunk
 from genai_template.services import RagService
@@ -34,6 +34,21 @@ def test_answer_orchestrates_rag_workflow() -> None:
         indexing_time=0.1,
     )
     retrieval_pipeline_factory = MagicMock(return_value=retrieval_pipeline)
+    default_config = load_rag_config()
+    config = default_config.model_copy(
+        update={
+            "experiment": default_config.experiment.model_copy(
+                update={"name": "Configured experiment"}
+            ),
+            "embedder": default_config.embedder.model_copy(
+                update={"model_name": "configured-embedder"}
+            ),
+            "retrieval": default_config.retrieval.model_copy(update={"top_k": 9}),
+            "llm": default_config.llm.model_copy(
+                update={"model_name": "configured-llm"}
+            ),
+        }
+    )
 
     service = RagService(
         retrieval_pipeline_factory=retrieval_pipeline_factory,
@@ -42,13 +57,14 @@ def test_answer_orchestrates_rag_workflow() -> None:
         language_model=language_model,
         experiment_service=experiment_service,
         source_service=source_service,
+        config=config,
     )
 
     result = service.answer("What is RAG?", source_id=7)
 
     retrieval_pipeline.retrieve.assert_called_once_with(
         "What is RAG?",
-        settings.TOP_K,
+        9,
     )
     context_builder.build.assert_called_once_with(retrieved_chunks)
     prompt_builder.build.assert_called_once_with(
@@ -59,8 +75,13 @@ def test_answer_orchestrates_rag_workflow() -> None:
     source_service.get_source.assert_called_once_with(7)
     retrieval_pipeline_factory.assert_called_once_with("source-product-docs")
     experiment_service.start_run.assert_called_once_with(
-        experiment_name=settings.EXPERIMENT_NAME,
+        experiment_name="Configured experiment",
         source_id=7,
+        config=config,
     )
 
     assert result.answer == "final answer"
+    assert result.metrics.embedding_model == "configured-embedder"
+    assert result.metrics.vector_store == "Chroma"
+    assert result.metrics.llm_model == "configured-llm"
+    assert result.metrics.top_k == 9

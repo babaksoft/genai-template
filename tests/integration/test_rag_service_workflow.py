@@ -13,6 +13,7 @@ from genai_template.components.language_models import (
 from genai_template.components.prompt import PromptBuilder
 from genai_template.components.readers import TextReader
 from genai_template.components.splitters import DocumentSplitter
+from genai_template.config import load_rag_config
 from genai_template.db.models import Source
 from genai_template.pipelines import IndexingPipeline, RetrievalPipeline
 from genai_template.services import RagService
@@ -43,6 +44,15 @@ def test_rag_service_answers_question(tmp_path: Path) -> None:
         embedder=FastEmbedEmbeddingModel(),
         store=vector_store,
     )
+    default_config = load_rag_config()
+    config = default_config.model_copy(
+        update={
+            "llm": default_config.llm.model_copy(update={"model_name": LLM_MODEL}),
+            "vector_store": default_config.vector_store.model_copy(
+                update={"persist_directory": tmp_path}
+            ),
+        }
+    )
 
     rag_service = RagService(
         retrieval_pipeline_factory=MagicMock(return_value=retrieval_pipeline),
@@ -65,6 +75,7 @@ def test_rag_service_answers_question(tmp_path: Path) -> None:
                 )
             )
         ),
+        config=config,
     )
 
     answer = rag_service.answer("What is the capital of France?", source_id=1)

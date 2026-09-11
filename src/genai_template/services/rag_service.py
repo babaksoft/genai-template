@@ -8,7 +8,7 @@ from genai_template.components.language_models import (
     OllamaLanguageModel,
 )
 from genai_template.components.prompt import PromptBuilder
-from genai_template.config import settings
+from genai_template.config import RagConfig, config_fingerprint
 from genai_template.observability import INPUT_VALUE, OUTPUT_VALUE, application_span
 from genai_template.pipelines import RetrievalPipeline
 from genai_template.schemas import RagResult, RunMetrics
@@ -30,6 +30,7 @@ class RagService:
         language_model: OllamaLanguageModel,
         experiment_service: ExperimentService,
         source_service: SourceService,
+        config: RagConfig,
     ) -> None:
         """Initialize the RAG service.
 
@@ -46,6 +47,8 @@ class RagService:
                 Experiment tracking service.
             source_service:
                 Service used to resolve active sources.
+            config:
+                Fully resolved configuration for this service instance.
         """
 
         self._retrieval_pipeline_factory = retrieval_pipeline_factory
@@ -54,6 +57,8 @@ class RagService:
         self._language_model = language_model
         self._experiment_service = experiment_service
         self._source_service = source_service
+        self._config = config
+        self._config_fingerprint = config_fingerprint(config)
 
     def answer(self, query: str, source_id: int) -> RagResult:
         """Answer a user query using Retrieval-Augmented Generation.
@@ -72,19 +77,28 @@ class RagService:
         retrieval_pipeline = self._retrieval_pipeline_factory(source.collection_name)
 
         run = self._experiment_service.start_run(
-            experiment_name=settings.EXPERIMENT_NAME,
+            experiment_name=self._config.experiment.name,
             source_id=source.id,
+            config=self._config,
         )
 
         with application_span(
             "rag.answer",
             "CHAIN",
-            {INPUT_VALUE: query, "rag.top_k": settings.TOP_K},
+            {
+                INPUT_VALUE: query,
+                "rag.top_k": self._config.retrieval.top_k,
+                "rag.experiment.name": self._config.experiment.name,
+                "rag.config.fingerprint": self._config_fingerprint,
+                "rag.embedding.model": self._config.embedder.model_name,
+                "rag.vector_store.type": self._config.vector_store.type,
+                "rag.llm.model": self._config.llm.model_name,
+            },
         ) as span:
             with Timer() as total_timer:
                 with Timer() as retrieval_timer:
                     retrieved_chunks = retrieval_pipeline.retrieve(
-                        query, settings.TOP_K
+                        query, self._config.retrieval.top_k
                     )
 
                 context = self._context_builder.build(retrieved_chunks)
@@ -100,10 +114,10 @@ class RagService:
 
             metrics = RunMetrics(
                 query=query,
-                embedding_model=settings.EMBEDDING_MODEL,
-                vector_store=settings.VECTOR_STORE,
-                llm_model=settings.LLM_MODEL,
-                top_k=settings.TOP_K,
+                embedding_model=self._config.embedder.model_name,
+                vector_store=self._config.vector_store.type.capitalize(),
+                llm_model=self._config.llm.model_name,
+                top_k=self._config.retrieval.top_k,
                 retrieved_chunks=len(retrieved_chunks),
                 best_distance=min(distances) if distances else None,
                 worst_distance=max(distances) if distances else None,

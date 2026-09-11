@@ -12,10 +12,12 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from genai_template.config import settings
+from genai_template.config import RagConfig, load_rag_config
 from genai_template.db.models import Source
+from genai_template.factories.embedder_factory import create_embedder
+from genai_template.factories.splitter_factory import create_splitter
+from genai_template.factories.vector_store_factory import create_vector_store
 from genai_template.pipelines import IndexingPipeline
-from genai_template.stores.vector import ChromaStore
 from genai_template.utils import utc_now
 
 logger = logging.getLogger(__name__)
@@ -28,6 +30,7 @@ class SourceService:
         self,
         session_factory: Callable[[], Session],
         corpora_dir: Path,
+        config: RagConfig | None = None,
     ) -> None:
         """Initialize the source service.
 
@@ -36,10 +39,14 @@ class SourceService:
                 Factory that creates database sessions.
             corpora_dir:
                 Root directory containing one directory per corpus.
+            config:
+                Resolved RAG configuration used to construct source indexes.
+                Application defaults are loaded when omitted.
         """
 
         self._session_factory = session_factory
         self._corpora_dir = corpora_dir.resolve()
+        self._config = config or load_rag_config()
 
     def list_candidates(self) -> list[str]:
         """List immediate corpus directories available for ingestion.
@@ -225,9 +232,12 @@ class SourceService:
         """
 
         return IndexingPipeline(
-            store=ChromaStore(
-                persist_directory=settings.CHROMA_PERSIST_DIR,
-                collection_name=collection_name,
+            splitter=create_splitter(self._config.splitter),
+            embedder=create_embedder(self._config.embedder),
+            store=create_vector_store(
+                self._config.vector_store.model_copy(
+                    update={"collection_name": collection_name}
+                )
             ),
         )
 
@@ -239,9 +249,10 @@ class SourceService:
                 Name of the collection to delete.
         """
 
-        ChromaStore(
-            persist_directory=settings.CHROMA_PERSIST_DIR,
-            collection_name=collection_name,
+        create_vector_store(
+            self._config.vector_store.model_copy(
+                update={"collection_name": collection_name}
+            )
         ).delete()
 
     def _resolve_directory(self, directory_name: str) -> Path:
