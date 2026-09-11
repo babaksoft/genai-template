@@ -26,6 +26,17 @@ class Experiment(Base):
         nullable=True,
     )
 
+    config_json: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    config_fingerprint: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+        index=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         default=utc_now,
         nullable=False,

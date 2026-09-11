@@ -61,9 +61,11 @@ def test_parse_args_accepts_all_path_overrides() -> None:
 
 
 @patch("genai_template.evaluation.evaluators.baseline_eval.run_evaluation")
+@patch("genai_template.evaluation.evaluators.baseline_eval.ExperimentService")
 @patch("genai_template.evaluation.evaluators.baseline_eval.load_rag_config")
 def test_main_loads_config_and_forwards_paths(
     mock_load_config: MagicMock,
+    mock_experiment_service: MagicMock,
     mock_run_evaluation: MagicMock,
 ) -> None:
     """The CLI should load YAML and forward all resolved arguments."""
@@ -84,6 +86,9 @@ def test_main_loads_config_and_forwards_paths(
     )
 
     mock_load_config.assert_called_once_with(Path("experiment.yml"))
+    mock_experiment_service.return_value.register_experiment.assert_called_once_with(
+        config
+    )
     mock_run_evaluation.assert_called_once_with(
         config=config,
         corpus_path=Path("corpus"),

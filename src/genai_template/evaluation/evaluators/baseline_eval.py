@@ -15,6 +15,7 @@ from genai_template.config import (
     settings,
 )
 from genai_template.config.logging import configure_logging
+from genai_template.db import SessionLocal
 from genai_template.evaluation.metrics.baseline_metrics import (
     calculate_hit_at_k,
     calculate_precision_at_k,
@@ -28,6 +29,7 @@ from genai_template.factories import (
 )
 from genai_template.pipelines import IndexingPipeline, RetrievalPipeline
 from genai_template.schemas import RetrievalTest
+from genai_template.services import ExperimentService
 
 logger = logging.getLogger(__name__)
 
@@ -318,8 +320,10 @@ def main(argv: Sequence[str] | None = None) -> None:
     """
 
     args = parse_args(argv)
+    config = load_rag_config(args.config)
+    ExperimentService(SessionLocal).register_experiment(config)
     run_evaluation(
-        config=load_rag_config(args.config),
+        config=config,
         corpus_path=args.corpus,
         dataset_path=args.dataset,
         reindex=args.reindex,

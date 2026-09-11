@@ -7,6 +7,7 @@ from collections.abc import Callable
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from genai_template.config import RagConfig, canonical_config_json, config_fingerprint
 from genai_template.db.models import Experiment, Run
 from genai_template.schemas import ExperimentSummary, RunMetrics
 from genai_template.utils import utc_now
@@ -34,6 +35,7 @@ class ExperimentService:
         self,
         experiment_name: str,
         source_id: int,
+        config: RagConfig | None = None,
     ) -> Run:
         """Start a new run for the supplied experiment.
 
@@ -42,6 +44,10 @@ class ExperimentService:
                 Experiment name for the new run.
             source_id:
                 Identifier of the source used by the new run.
+            config:
+                Optional resolved configuration to associate with the run's
+                experiment. When omitted, a legacy name-only experiment is
+                used.
 
         Returns:
             Newly created run.
@@ -53,10 +59,17 @@ class ExperimentService:
         """
 
         with self._session_factory() as session:
-            experiment = self._get_or_create_experiment(
-                session=session,
-                experiment_name=experiment_name,
-            )
+            if config is not None and config.experiment.name != experiment_name:
+                raise ValueError(
+                    "Experiment name does not match the resolved configuration."
+                )
+
+            experiment = self._register_config(session, config) if config else None
+            if experiment is None:
+                experiment = self._get_or_create_legacy_experiment(
+                    session=session,
+                    experiment_name=experiment_name,
+                )
 
             run = Run(
                 experiment_id=experiment.id,
@@ -74,6 +87,45 @@ class ExperimentService:
             )
 
             return run
+
+    def register_experiment(self, config: RagConfig) -> Experiment:
+        """Register or resolve an experiment's immutable configuration.
+
+        Args:
+            config:
+                Fully resolved RAG configuration to persist.
+
+        Returns:
+            Existing or newly registered experiment for the configuration.
+        """
+
+        with self._session_factory() as session:
+            return self._register_config(session, config)
+
+    def resolve_experiment(
+        self,
+        experiment_name: str,
+        fingerprint: str | None = None,
+    ) -> Experiment:
+        """Resolve an experiment by name and optional configuration fingerprint.
+
+        Args:
+            experiment_name:
+                Experiment name to resolve.
+            fingerprint:
+                Optional exact configuration fingerprint. Name-only resolution
+                is rejected when more than one matching record exists.
+
+        Returns:
+            The matching experiment.
+
+        Raises:
+            ValueError:
+                If no experiment matches or name-only resolution is ambiguous.
+        """
+
+        with self._session_factory() as session:
+            return self._resolve_experiment(session, experiment_name, fingerprint)
 
     def complete_run(
         self,
@@ -126,28 +178,31 @@ class ExperimentService:
     def summarize_experiment(
         self,
         experiment_name: str,
+        fingerprint: str | None = None,
     ) -> ExperimentSummary:
         """Summarize all runs for an experiment.
 
         Args:
             experiment_name:
                 Experiment name.
+            fingerprint:
+                Optional exact configuration fingerprint.
 
         Returns:
             Summary statistics for the experiment.
 
         Raises:
             ValueError:
-                If the experiment does not exist.
+                If the experiment does not exist or name-only lookup is
+                ambiguous.
         """
 
         with self._session_factory() as session:
-            experiment = session.scalar(
-                select(Experiment).where(Experiment.name == experiment_name)
+            experiment = self._resolve_experiment(
+                session,
+                experiment_name,
+                fingerprint,
             )
-
-            if experiment is None:
-                raise ValueError(f"Experiment '{experiment_name}' does not exist.")
 
             runs = session.scalars(
                 select(Run).where(Run.experiment_id == experiment.id)
@@ -195,7 +250,104 @@ class ExperimentService:
             worst_distance=max(distances) if distances else None,
         )
 
-    def _get_or_create_experiment(
+    def _register_config(
+        self,
+        session: Session,
+        config: RagConfig,
+    ) -> Experiment:
+        """Register a resolved configuration within an existing session.
+
+        Args:
+            session:
+                SQLAlchemy session for persistence.
+            config:
+                Fully resolved configuration to register.
+
+        Returns:
+            Existing or newly registered experiment.
+        """
+
+        snapshot = canonical_config_json(config)
+        fingerprint = config_fingerprint(config)
+        experiment = session.scalar(
+            select(Experiment).where(
+                Experiment.name == config.experiment.name,
+                Experiment.config_fingerprint == fingerprint,
+            )
+        )
+        if experiment is not None:
+            if experiment.config_json != snapshot:
+                raise ValueError(
+                    "Stored experiment configuration does not match its fingerprint."
+                )
+            return experiment
+
+        experiment = Experiment(
+            name=config.experiment.name,
+            config_json=snapshot,
+            config_fingerprint=fingerprint,
+        )
+        session.add(experiment)
+        session.commit()
+        session.refresh(experiment)
+
+        logger.info(
+            "Registered experiment '%s' with config fingerprint %s.",
+            experiment.name,
+            fingerprint,
+        )
+
+        return experiment
+
+    def _resolve_experiment(
+        self,
+        session: Session,
+        experiment_name: str,
+        fingerprint: str | None,
+    ) -> Experiment:
+        """Resolve one experiment within an existing session.
+
+        Args:
+            session:
+                SQLAlchemy session for persistence.
+            experiment_name:
+                Experiment name to resolve.
+            fingerprint:
+                Optional exact configuration fingerprint.
+
+        Returns:
+            Matching experiment.
+
+        Raises:
+            ValueError:
+                If no experiment matches or name-only resolution is ambiguous.
+        """
+
+        statement = select(Experiment).where(Experiment.name == experiment_name)
+        if fingerprint is not None:
+            statement = statement.where(
+                Experiment.config_fingerprint == fingerprint,
+            )
+
+        experiments = list(session.scalars(statement))
+        if not experiments:
+            identity = (
+                f" with config fingerprint '{fingerprint}'"
+                if fingerprint is not None
+                else ""
+            )
+            raise ValueError(
+                f"Experiment '{experiment_name}'{identity} does not exist."
+            )
+        if len(experiments) > 1:
+            raise ValueError(
+                f"Experiment '{experiment_name}' is ambiguous; provide a "
+                "config fingerprint."
+            )
+
+        return experiments[0]
+
+    def _get_or_create_legacy_experiment(
         self,
         session: Session,
         experiment_name: str,
@@ -213,7 +365,10 @@ class ExperimentService:
         """
 
         experiment = session.scalar(
-            select(Experiment).where(Experiment.name == experiment_name)
+            select(Experiment).where(
+                Experiment.name == experiment_name,
+                Experiment.config_fingerprint.is_(None),
+            )
         )
         if experiment is not None:
             return experiment
