@@ -8,6 +8,8 @@ from genai_template.config.rag import (
     EmbedderConfig,
     LLMConfig,
     MarkdownSplitterConfig,
+    OpenAIEmbedderConfig,
+    OpenAILLMConfig,
     RetrievalConfig,
     SplitterConfig,
     VectorStoreConfig,
@@ -64,6 +66,27 @@ def test_create_fastembed_embedder(mock_embedder: MagicMock) -> None:
     mock_embedder.assert_called_once_with(model_name="custom-embedder")
 
 
+@patch("genai_template.factories.embedder_factory.OpenAIEmbeddingModel")
+def test_create_openai_embedder(mock_embedder: MagicMock) -> None:
+    """The embedder factory should inject every OpenAI setting."""
+
+    config = OpenAIEmbedderConfig(
+        type="openai",
+        model_name="text-embedding-3-small",
+        dimensions=512,
+        request_timeout=30,
+    )
+
+    result = create_embedder(config)
+
+    assert result is mock_embedder.return_value
+    mock_embedder.assert_called_once_with(
+        model_name="text-embedding-3-small",
+        dimensions=512,
+        request_timeout=30.0,
+    )
+
+
 @patch("genai_template.factories.vector_store_factory.ChromaStore")
 def test_create_chroma_store(mock_store: MagicMock, tmp_path: Path) -> None:
     """The vector store factory should inject every storage setting."""
@@ -103,6 +126,25 @@ def test_create_ollama_llm(mock_llm: MagicMock) -> None:
         model_name="custom-llm",
         base_url="http://ollama.example:11434",
         request_timeout=45.0,
+    )
+
+
+@patch("genai_template.factories.llm_factory.OpenAILanguageModel")
+def test_create_openai_llm(mock_llm: MagicMock) -> None:
+    """The LLM factory should inject every OpenAI setting."""
+
+    config = OpenAILLMConfig(
+        type="openai",
+        model_name="gpt-4o-mini",
+        request_timeout=30,
+    )
+
+    result = create_llm(config)
+
+    assert result is mock_llm.return_value
+    mock_llm.assert_called_once_with(
+        model_name="gpt-4o-mini",
+        request_timeout=30.0,
     )
 
 

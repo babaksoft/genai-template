@@ -1,6 +1,9 @@
 """Factory for configured language models."""
 
-from genai_template.components.language_models import OllamaLanguageModel
+from genai_template.components.language_models import (
+    OllamaLanguageModel,
+    OpenAILanguageModel,
+)
 from genai_template.config.rag import AnyLLMConfig
 from genai_template.protocols import LanguageModel
 
@@ -24,6 +27,11 @@ def create_llm(config: AnyLLMConfig) -> LanguageModel:
         return OllamaLanguageModel(
             model_name=config.model_name,
             base_url=config.base_url,
+            request_timeout=config.request_timeout,
+        )
+    if config.type == "openai":
+        return OpenAILanguageModel(
+            model_name=config.model_name,
             request_timeout=config.request_timeout,
         )
 

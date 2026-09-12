@@ -1,6 +1,9 @@
 """Factory for configured embedding models."""
 
-from genai_template.components.embeddings import FastEmbedEmbeddingModel
+from genai_template.components.embeddings import (
+    FastEmbedEmbeddingModel,
+    OpenAIEmbeddingModel,
+)
 from genai_template.config.rag import AnyEmbedderConfig
 from genai_template.protocols import Embedder
 
@@ -22,5 +25,11 @@ def create_embedder(config: AnyEmbedderConfig) -> Embedder:
 
     if config.type == "fastembed":
         return FastEmbedEmbeddingModel(model_name=config.model_name)
+    if config.type == "openai":
+        return OpenAIEmbeddingModel(
+            model_name=config.model_name,
+            dimensions=config.dimensions,
+            request_timeout=config.request_timeout,
+        )
 
     raise ValueError(f"Unsupported embedder type: {config.type}")
