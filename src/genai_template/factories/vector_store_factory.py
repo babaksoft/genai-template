@@ -1,11 +1,11 @@
 """Factory for configured vector stores."""
 
-from genai_template.config.rag import VectorStoreConfig
+from genai_template.config.rag import AnyVectorStoreConfig
 from genai_template.protocols import VectorStore
 from genai_template.stores.vector import ChromaStore
 
 
-def create_vector_store(config: VectorStoreConfig) -> VectorStore:
+def create_vector_store(config: AnyVectorStoreConfig) -> VectorStore:
     """Create a vector store from validated configuration.
 
     Args:

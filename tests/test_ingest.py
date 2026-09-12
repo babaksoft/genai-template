@@ -3,7 +3,7 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from genai_template.config import load_rag_config
+from genai_template.config import VectorStoreConfig, load_rag_config
 from genai_template.ingest import main
 
 
@@ -23,6 +23,7 @@ def test_main_uses_default_config_factories(
     """Standard ingestion should use factories and retain its collection name."""
 
     config = load_rag_config()
+    assert isinstance(config.vector_store, VectorStoreConfig)
     mock_load_config.return_value = config
 
     with patch("genai_template.ingest.settings.CORPORA_DIR", tmp_path):

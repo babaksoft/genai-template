@@ -44,6 +44,9 @@ OLLAMA_BASE_URL = "http://localhost:11434"
 # HTTP client settings
 REQUEST_TIMEOUT = 180
 
+# Provider credentials
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+
 # Embedding settings
 EMBEDDING_MODEL = "BAAI/bge-base-en-v1.5"
 

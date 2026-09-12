@@ -7,6 +7,14 @@ from pydantic import ValidationError
 
 from genai_template.common.types import VectorDistance
 from genai_template.config import (
+    EmbedderConfig,
+    LLMConfig,
+    MarkdownSplitterConfig,
+    OpenAIEmbedderConfig,
+    OpenAILLMConfig,
+    QdrantVectorStoreConfig,
+    SplitterConfig,
+    VectorStoreConfig,
     canonical_config_json,
     config_fingerprint,
     index_config_fingerprint,
@@ -20,6 +28,10 @@ def test_defaults_match_application_settings() -> None:
 
     config = load_rag_config()
 
+    assert isinstance(config.splitter, SplitterConfig)
+    assert isinstance(config.embedder, EmbedderConfig)
+    assert isinstance(config.vector_store, VectorStoreConfig)
+    assert isinstance(config.llm, LLMConfig)
     assert config.experiment.name == settings.EXPERIMENT_NAME
     assert config.splitter.type == "sentence"
     assert config.splitter.chunk_size == settings.CHUNK_SIZE
@@ -48,10 +60,69 @@ def test_partial_overrides_are_recursively_merged(tmp_path: Path) -> None:
 
     config = load_rag_config(config_path)
 
+    assert isinstance(config.splitter, SplitterConfig)
     assert config.experiment.name == "Small chunks"
     assert config.splitter.chunk_size == 256
     assert config.splitter.chunk_overlap == settings.CHUNK_OVERLAP
     assert config.embedder.model_name == settings.EMBEDDING_MODEL
+
+
+def test_provider_sections_are_replaced_when_type_changes(tmp_path: Path) -> None:
+    """Changing a provider should not retain fields from the default provider."""
+
+    config_path = tmp_path / "providers.yaml"
+    config_path.write_text(
+        "splitter:\n"
+        "  type: markdown\n"
+        "embedder:\n"
+        "  type: openai\n"
+        "  model_name: text-embedding-3-small\n"
+        "vector_store:\n"
+        "  type: qdrant\n"
+        "  collection_name: documents\n"
+        "  distance: cosine\n"
+        "  location: local\n"
+        "  path: storage/qdrant\n"
+        "llm:\n"
+        "  type: openai\n"
+        "  model_name: gpt-4.1-mini\n",
+        encoding="utf-8",
+    )
+
+    config = load_rag_config(config_path)
+
+    assert isinstance(config.splitter, MarkdownSplitterConfig)
+    assert config.splitter.header_path_separator == "/"
+    assert isinstance(config.embedder, OpenAIEmbedderConfig)
+    assert config.embedder.dimensions is None
+    assert config.embedder.request_timeout == settings.REQUEST_TIMEOUT
+    assert isinstance(config.vector_store, QdrantVectorStoreConfig)
+    assert config.vector_store.path == settings.REPO_ROOT / "storage" / "qdrant"
+    assert isinstance(config.llm, OpenAILLMConfig)
+    assert config.llm.request_timeout == settings.REQUEST_TIMEOUT
+
+
+def test_qdrant_server_configuration_does_not_require_a_path(
+    tmp_path: Path,
+) -> None:
+    """Server Qdrant should require a URL and omit local storage settings."""
+
+    config_path = tmp_path / "qdrant-server.yaml"
+    config_path.write_text(
+        "vector_store:\n"
+        "  type: qdrant\n"
+        "  collection_name: documents\n"
+        "  distance: cosine\n"
+        "  location: server\n"
+        "  url: https://qdrant.example.com\n",
+        encoding="utf-8",
+    )
+
+    config = load_rag_config(config_path)
+
+    assert isinstance(config.vector_store, QdrantVectorStoreConfig)
+    assert config.vector_store.url == "https://qdrant.example.com"
+    assert config.vector_store.path is None
 
 
 @pytest.mark.parametrize(
@@ -59,8 +130,23 @@ def test_partial_overrides_are_recursively_merged(tmp_path: Path) -> None:
     [
         "unknown: true\n",
         "splitter:\n  type: tokens\n",
+        "splitter:\n  type: markdown\n  chunk_size: 256\n",
         "embedder:\n  type: openai\n",
+        "embedder:\n  type: openai\n  model_name: embed\n  dimensions: 0\n",
         "vector_store:\n  type: pinecone\n",
+        (
+            "vector_store:\n  type: qdrant\n  collection_name: docs\n"
+            "  distance: cosine\n  location: local\n"
+        ),
+        (
+            "vector_store:\n  type: qdrant\n  collection_name: docs\n"
+            "  distance: cosine\n  location: server\n"
+        ),
+        (
+            "vector_store:\n  type: qdrant\n  collection_name: docs\n"
+            "  distance: cosine\n  location: server\n  path: storage/qdrant\n"
+            "  url: https://qdrant.example.com\n"
+        ),
         "llm:\n  type: openai\n",
         "retrieval:\n  top_k: 0\n",
         "splitter:\n  chunk_size: 20\n  chunk_overlap: 20\n",
@@ -108,9 +194,32 @@ def test_relative_storage_path_is_resolved_from_repository_root(
 
     config = load_rag_config(config_path)
 
+    assert isinstance(config.vector_store, VectorStoreConfig)
     assert config.vector_store.persist_directory == (
         settings.REPO_ROOT / "custom" / "index"
     )
+
+
+def test_relative_qdrant_path_is_resolved_from_repository_root(
+    tmp_path: Path,
+) -> None:
+    """Relative local Qdrant paths should use the repository root."""
+
+    config_path = tmp_path / "qdrant-path.yaml"
+    config_path.write_text(
+        "vector_store:\n"
+        "  type: qdrant\n"
+        "  collection_name: documents\n"
+        "  distance: cosine\n"
+        "  location: local\n"
+        "  path: custom/qdrant\n",
+        encoding="utf-8",
+    )
+
+    config = load_rag_config(config_path)
+
+    assert isinstance(config.vector_store, QdrantVectorStoreConfig)
+    assert config.vector_store.path == settings.REPO_ROOT / "custom" / "qdrant"
 
 
 def test_configuration_models_are_immutable() -> None:
@@ -162,6 +271,7 @@ def test_indexing_changes_change_index_fingerprint() -> None:
     """Chunking and embedding changes should select a different index."""
 
     config = load_rag_config()
+    assert isinstance(config.splitter, SplitterConfig)
     changed_splitter = config.model_copy(
         update={
             "splitter": config.splitter.model_copy(
@@ -179,3 +289,23 @@ def test_indexing_changes_change_index_fingerprint() -> None:
     assert index_config_fingerprint(config) != index_config_fingerprint(
         changed_embedder
     )
+
+
+def test_openai_request_timeout_does_not_change_index_fingerprint(
+    tmp_path: Path,
+) -> None:
+    """Transport timeout should not identify embedding content."""
+
+    config_path = tmp_path / "openai.yaml"
+    config_path.write_text(
+        "embedder:\n" "  type: openai\n" "  model_name: text-embedding-3-small\n",
+        encoding="utf-8",
+    )
+    config = load_rag_config(config_path)
+    assert isinstance(config.embedder, OpenAIEmbedderConfig)
+    changed = config.model_copy(
+        update={"embedder": config.embedder.model_copy(update={"request_timeout": 12})}
+    )
+
+    assert config_fingerprint(config) != config_fingerprint(changed)
+    assert index_config_fingerprint(config) == index_config_fingerprint(changed)

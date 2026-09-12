@@ -7,6 +7,7 @@ from genai_template.api.dependencies import (
     get_rag_service,
     get_source_service,
 )
+from genai_template.config import VectorStoreConfig
 
 
 def test_get_rag_config_loads_application_defaults() -> None:
@@ -15,6 +16,7 @@ def test_get_rag_config_loads_application_defaults() -> None:
     config = get_rag_config()
 
     assert config.experiment.name
+    assert isinstance(config.vector_store, VectorStoreConfig)
     assert config.vector_store.persist_directory.is_absolute()
 
 

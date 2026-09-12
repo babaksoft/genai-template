@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
-from genai_template.config import load_rag_config
+from genai_template.config import VectorStoreConfig, load_rag_config
 from genai_template.db.models import Source
 from genai_template.schemas import RetrievedChunk
 from genai_template.services import RagService
@@ -42,6 +42,7 @@ def test_answer_orchestrates_rag_workflow(
     )
     mock_create_retrieval.return_value = retrieval_pipeline
     default_config = load_rag_config()
+    assert isinstance(default_config.vector_store, VectorStoreConfig)
     config = default_config.model_copy(
         update={
             "experiment": default_config.experiment.model_copy(
@@ -81,6 +82,7 @@ def test_answer_orchestrates_rag_workflow(
     source_service.get_source.assert_called_once_with(7)
     mock_create_embedder.assert_called_once_with(config.embedder)
     store_config = mock_create_store.call_args.args[0]
+    assert isinstance(config.vector_store, VectorStoreConfig)
     assert store_config.collection_name == "source-product-docs"
     assert store_config.persist_directory == config.vector_store.persist_directory
     mock_create_retrieval.assert_called_once_with(

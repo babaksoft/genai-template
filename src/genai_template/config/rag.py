@@ -6,7 +6,7 @@ import hashlib
 import json
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -51,11 +51,39 @@ class SplitterConfig(_ImmutableConfig):
         return self
 
 
+class MarkdownSplitterConfig(_ImmutableConfig):
+    """Markdown header-based splitting configuration."""
+
+    type: Literal["markdown"]
+    header_path_separator: str = Field(default="/", min_length=1)
+
+
+AnySplitterConfig = Annotated[
+    SplitterConfig | MarkdownSplitterConfig,
+    Field(discriminator="type"),
+]
+
+
 class EmbedderConfig(_ImmutableConfig):
     """Embedding model configuration."""
 
     type: Literal["fastembed"]
     model_name: str = Field(min_length=1)
+
+
+class OpenAIEmbedderConfig(_ImmutableConfig):
+    """OpenAI embedding model configuration."""
+
+    type: Literal["openai"]
+    model_name: str = Field(min_length=1)
+    dimensions: int | None = Field(default=None, gt=0)
+    request_timeout: float = Field(default=settings.REQUEST_TIMEOUT, gt=0)
+
+
+AnyEmbedderConfig = Annotated[
+    EmbedderConfig | OpenAIEmbedderConfig,
+    Field(discriminator="type"),
+]
 
 
 class VectorStoreConfig(_ImmutableConfig):
@@ -65,6 +93,48 @@ class VectorStoreConfig(_ImmutableConfig):
     collection_name: str = Field(min_length=1)
     persist_directory: Path
     distance: VectorDistance
+
+
+class QdrantVectorStoreConfig(_ImmutableConfig):
+    """Qdrant local or server vector-store configuration."""
+
+    type: Literal["qdrant"]
+    collection_name: str = Field(min_length=1)
+    distance: VectorDistance
+    location: Literal["local", "server"]
+    path: Path | None = None
+    url: str | None = Field(default=None, pattern=r"^https?://")
+
+    @model_validator(mode="after")
+    def validate_location(self) -> QdrantVectorStoreConfig:
+        """Ensure connection fields match the selected Qdrant location.
+
+        Returns:
+            The validated Qdrant vector-store configuration.
+
+        Raises:
+            ValueError:
+                If local and server connection fields are missing or mixed.
+        """
+
+        if self.location == "local":
+            if self.path is None:
+                raise ValueError("path is required for local Qdrant")
+            if self.url is not None:
+                raise ValueError("url is not supported for local Qdrant")
+        else:
+            if self.url is None:
+                raise ValueError("url is required for server Qdrant")
+            if self.path is not None:
+                raise ValueError("path is not supported for server Qdrant")
+
+        return self
+
+
+AnyVectorStoreConfig = Annotated[
+    VectorStoreConfig | QdrantVectorStoreConfig,
+    Field(discriminator="type"),
+]
 
 
 class RetrievalConfig(_ImmutableConfig):
@@ -82,15 +152,29 @@ class LLMConfig(_ImmutableConfig):
     request_timeout: float = Field(gt=0)
 
 
+class OpenAILLMConfig(_ImmutableConfig):
+    """OpenAI language model configuration."""
+
+    type: Literal["openai"]
+    model_name: str = Field(min_length=1)
+    request_timeout: float = Field(default=settings.REQUEST_TIMEOUT, gt=0)
+
+
+AnyLLMConfig = Annotated[
+    LLMConfig | OpenAILLMConfig,
+    Field(discriminator="type"),
+]
+
+
 class RagConfig(_ImmutableConfig):
     """Fully resolved configuration for a RAG experiment."""
 
     experiment: ExperimentConfig
-    splitter: SplitterConfig
-    embedder: EmbedderConfig
-    vector_store: VectorStoreConfig
+    splitter: AnySplitterConfig
+    embedder: AnyEmbedderConfig
+    vector_store: AnyVectorStoreConfig
     retrieval: RetrievalConfig
-    llm: LLMConfig
+    llm: AnyLLMConfig
 
 
 def canonical_config_json(config: RagConfig) -> str:
@@ -139,8 +223,11 @@ def index_config_fingerprint(config: RagConfig) -> str:
         Hexadecimal SHA-256 fingerprint of index-affecting settings.
     """
 
+    embedder_config = config.embedder.model_dump(mode="json")
+    embedder_config.pop("request_timeout", None)
+
     index_config = {
-        "embedder": config.embedder.model_dump(mode="json"),
+        "embedder": embedder_config,
         "splitter": config.splitter.model_dump(mode="json"),
         "vector_store": {
             "distance": config.vector_store.distance.value,
@@ -199,9 +286,20 @@ def _merge_config(base: dict[str, Any], overrides: dict[str, Any]) -> dict[str, 
         Merged configuration data.
     """
 
+    provider_sections = {"embedder", "llm", "splitter", "vector_store"}
     result = deepcopy(base)
     for key, value in overrides.items():
         existing = result.get(key)
+        provider_changed = (
+            key in provider_sections
+            and isinstance(existing, dict)
+            and isinstance(value, dict)
+            and "type" in value
+            and value["type"] != existing.get("type")
+        )
+        if provider_changed:
+            result[key] = deepcopy(value)
+            continue
         if isinstance(existing, dict) and isinstance(value, dict):
             result[key] = _merge_config(existing, value)
         else:
@@ -221,14 +319,15 @@ def _resolve_paths(data: dict[str, Any]) -> None:
     if not isinstance(vector_store, dict):
         return
 
-    persist_directory = vector_store.get("persist_directory")
-    if persist_directory is None:
+    path_key = "path" if vector_store.get("type") == "qdrant" else "persist_directory"
+    path_value = vector_store.get(path_key)
+    if path_value is None:
         return
 
-    path = Path(persist_directory).expanduser()
+    path = Path(path_value).expanduser()
     if not path.is_absolute():
         path = settings.REPO_ROOT / path
-    vector_store["persist_directory"] = path.resolve()
+    vector_store[path_key] = path.resolve()
 
 
 def load_rag_config(path: Path | None = None) -> RagConfig:

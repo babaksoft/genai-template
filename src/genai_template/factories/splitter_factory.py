@@ -1,11 +1,11 @@
 """Factory for configured document splitters."""
 
 from genai_template.components.splitters import DocumentSplitter
-from genai_template.config.rag import SplitterConfig
+from genai_template.config.rag import AnySplitterConfig
 from genai_template.protocols import Splitter
 
 
-def create_splitter(config: SplitterConfig) -> Splitter:
+def create_splitter(config: AnySplitterConfig) -> Splitter:
     """Create a document splitter from validated configuration.
 
     Args:
