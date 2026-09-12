@@ -1,16 +1,22 @@
 """Corpus source database model."""
 
-from datetime import datetime
+from __future__ import annotations
 
-from sqlalchemy import DateTime, Float, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column
+from datetime import datetime
+from typing import TYPE_CHECKING
+
+from sqlalchemy import DateTime, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from genai_template.db.base import Base
 from genai_template.utils.datetime import utc_now
 
+if TYPE_CHECKING:
+    from genai_template.db.models.experiment import Experiment
+
 
 class Source(Base):
-    """Represents an ingested document corpus."""
+    """Represent a registered document corpus."""
 
     __tablename__ = "sources"
 
@@ -20,23 +26,13 @@ class Source(Base):
 
     directory: Mapped[str] = mapped_column(String(1024), nullable=False, unique=True)
 
-    collection_name: Mapped[str] = mapped_column(
-        String(128),
-        nullable=False,
-        unique=True,
-    )
-
-    documents_indexed: Mapped[int] = mapped_column(Integer, nullable=False)
-
-    chunks_indexed: Mapped[int] = mapped_column(Integer, nullable=False)
-
-    indexed_at: Mapped[datetime] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=utc_now,
         nullable=False,
     )
 
-    indexing_time: Mapped[float] = mapped_column(
-        Float,
-        nullable=False,
+    experiments: Mapped[list[Experiment]] = relationship(
+        back_populates="source",
+        passive_deletes=True,
     )

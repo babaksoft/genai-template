@@ -1,12 +1,19 @@
 """Run database model."""
 
-from datetime import datetime
+from __future__ import annotations
 
-from sqlalchemy import Float, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from datetime import datetime
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Float, ForeignKey, Integer, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from genai_template.db.base import Base
 from genai_template.utils.datetime import utc_now
+
+if TYPE_CHECKING:
+    from genai_template.db.models.experiment import Experiment
+    from genai_template.db.models.rag_config import RagConfig
 
 
 class Run(Base):
@@ -17,12 +24,19 @@ class Run(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
 
     experiment_id: Mapped[int] = mapped_column(
-        ForeignKey("experiments.id"),
+        ForeignKey("experiments.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
 
-    source_id: Mapped[int] = mapped_column(
-        ForeignKey("sources.id"),
+    rag_config_id: Mapped[int] = mapped_column(
+        ForeignKey("rag_configs.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+
+    query: Mapped[str] = mapped_column(
+        Text,
         nullable=False,
     )
 
@@ -35,40 +49,9 @@ class Run(Base):
         nullable=True,
     )
 
-    query: Mapped[str] = mapped_column(
-        Text,
-        nullable=False,
-        default="",
-    )
-
-    embedding_model: Mapped[str] = mapped_column(
-        String(128),
-        nullable=False,
-        default="",
-    )
-
-    vector_store: Mapped[str] = mapped_column(
-        String(128),
-        nullable=False,
-        default="",
-    )
-
-    llm_model: Mapped[str] = mapped_column(
-        String(128),
-        nullable=False,
-        default="",
-    )
-
-    top_k: Mapped[int] = mapped_column(
+    retrieved_chunks: Mapped[int | None] = mapped_column(
         Integer,
-        nullable=False,
-        default=0,
-    )
-
-    retrieved_chunks: Mapped[int] = mapped_column(
-        Integer,
-        nullable=False,
-        default=0,
+        nullable=True,
     )
 
     best_distance: Mapped[float | None] = mapped_column(
@@ -81,38 +64,40 @@ class Run(Base):
         nullable=True,
     )
 
-    context_length: Mapped[int] = mapped_column(
+    context_length: Mapped[int | None] = mapped_column(
         Integer,
-        nullable=False,
-        default=0,
+        nullable=True,
     )
 
-    prompt_length: Mapped[int] = mapped_column(
+    prompt_length: Mapped[int | None] = mapped_column(
         Integer,
-        nullable=False,
-        default=0,
+        nullable=True,
     )
 
-    retrieval_time: Mapped[float] = mapped_column(
+    retrieval_time: Mapped[float | None] = mapped_column(
         Float,
-        nullable=False,
-        default=0.0,
+        nullable=True,
     )
 
-    generation_time: Mapped[float] = mapped_column(
+    generation_time: Mapped[float | None] = mapped_column(
         Float,
-        nullable=False,
-        default=0.0,
+        nullable=True,
     )
 
-    total_time: Mapped[float] = mapped_column(
+    total_time: Mapped[float | None] = mapped_column(
         Float,
-        nullable=False,
-        default=0.0,
+        nullable=True,
     )
 
-    response_length: Mapped[int] = mapped_column(
+    response_length: Mapped[int | None] = mapped_column(
         Integer,
-        nullable=False,
-        default=0,
+        nullable=True,
+    )
+
+    experiment: Mapped[Experiment] = relationship(
+        back_populates="runs",
+    )
+
+    rag_config: Mapped[RagConfig] = relationship(
+        back_populates="runs",
     )

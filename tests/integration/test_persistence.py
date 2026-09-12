@@ -1,12 +1,10 @@
 """Smoke tests for the persistence layer."""
 
-from datetime import UTC, datetime
-
 import pytest
 from sqlalchemy import select
 
 from genai_template.db import create_session
-from genai_template.db.models import Experiment, Run, Source
+from genai_template.db.models import Experiment, RagConfig, Run, Source
 
 
 @pytest.mark.integration
@@ -17,7 +15,12 @@ def test_can_persist_experiment() -> None:
     transaction = session.begin()
 
     try:
+        source = Source(
+            name="Smoke Test Source",
+            directory="/corpora/smoke-test",
+        )
         experiment = Experiment(
+            source=source,
             name="Smoke Test",
             description="Persistence smoke test.",
         )
@@ -36,6 +39,7 @@ def test_can_persist_experiment() -> None:
         assert retrieved is not None
         assert retrieved.name == experiment.name
         assert retrieved.description == experiment.description
+        assert retrieved.source_id == source.id
         assert retrieved.created_at is not None
 
     finally:
@@ -51,43 +55,25 @@ def test_can_persist_run() -> None:
     transaction = session.begin()
 
     try:
-        experiment = Experiment(
-            name="Smoke Test",
-        )
-
-        session.add(experiment)
-        session.flush()
-
         source = Source(
             name="Smoke Test Source",
             directory="/corpora/smoke-test",
-            collection_name="source-smoke-test",
-            documents_indexed=1,
-            chunks_indexed=1,
-            indexing_time=0.1,
         )
-        session.add(source)
+        experiment = Experiment(
+            source=source,
+            name="Smoke Test",
+        )
+        rag_config = RagConfig(
+            config_fingerprint="a" * 64,
+            config_json='{"version":1}',
+        )
+        session.add_all([experiment, rag_config])
         session.flush()
 
         run = Run(
             experiment_id=experiment.id,
-            source_id=source.id,
-            started_at=datetime.now(UTC),
-            finished_at=datetime.now(UTC),
+            rag_config_id=rag_config.id,
             query="What is the capital of France?",
-            embedding_model="BAAI/bge-base-en-v1.5",
-            vector_store="Chroma",
-            llm_model="llama3.2",
-            top_k=5,
-            retrieved_chunks=2,
-            best_distance=0.14,
-            worst_distance=0.33,
-            context_length=842,
-            prompt_length=1045,
-            retrieval_time=0.021,
-            generation_time=0.941,
-            total_time=0.962,
-            response_length=173,
         )
 
         session.add(run)
@@ -103,10 +89,11 @@ def test_can_persist_run() -> None:
 
         assert retrieved is not None
         assert retrieved.experiment_id == experiment.id
-        assert retrieved.source_id == source.id
+        assert retrieved.rag_config_id == rag_config.id
         assert retrieved.query == run.query
-        assert retrieved.retrieved_chunks == run.retrieved_chunks
-        assert retrieved.total_time == run.total_time
+        assert retrieved.finished_at is None
+        assert retrieved.retrieved_chunks is None
+        assert retrieved.total_time is None
 
     finally:
         transaction.rollback()
