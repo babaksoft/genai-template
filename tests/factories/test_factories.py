@@ -7,6 +7,7 @@ from genai_template.common.types import VectorDistance
 from genai_template.config.rag import (
     EmbedderConfig,
     LLMConfig,
+    MarkdownSplitterConfig,
     RetrievalConfig,
     SplitterConfig,
     VectorStoreConfig,
@@ -34,6 +35,21 @@ def test_create_sentence_splitter(mock_splitter: MagicMock) -> None:
 
     assert result is mock_splitter.return_value
     mock_splitter.assert_called_once_with(chunk_size=256, chunk_overlap=32)
+
+
+@patch("genai_template.factories.splitter_factory.MarkdownDocumentSplitter")
+def test_create_markdown_splitter(mock_splitter: MagicMock) -> None:
+    """The splitter factory should forward the header path separator."""
+
+    config = MarkdownSplitterConfig(
+        type="markdown",
+        header_path_separator=" > ",
+    )
+
+    result = create_splitter(config)
+
+    assert result is mock_splitter.return_value
+    mock_splitter.assert_called_once_with(header_path_separator=" > ")
 
 
 @patch("genai_template.factories.embedder_factory.FastEmbedEmbeddingModel")
