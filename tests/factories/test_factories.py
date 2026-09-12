@@ -10,6 +10,7 @@ from genai_template.config.rag import (
     MarkdownSplitterConfig,
     OpenAIEmbedderConfig,
     OpenAILLMConfig,
+    QdrantVectorStoreConfig,
     RetrievalConfig,
     SplitterConfig,
     VectorStoreConfig,
@@ -105,6 +106,58 @@ def test_create_chroma_store(mock_store: MagicMock, tmp_path: Path) -> None:
         persist_directory=tmp_path,
         collection_name="experiment",
         distance=VectorDistance.INNER_PRODUCT,
+    )
+
+
+@patch("genai_template.factories.vector_store_factory.QdrantStore")
+def test_create_local_qdrant_store(
+    mock_store: MagicMock,
+    tmp_path: Path,
+) -> None:
+    """The vector-store factory should dispatch local Qdrant settings."""
+
+    config = QdrantVectorStoreConfig(
+        type="qdrant",
+        collection_name="experiment",
+        distance=VectorDistance.COSINE,
+        location="local",
+        path=tmp_path,
+    )
+
+    result = create_vector_store(config)
+
+    assert result is mock_store.return_value
+    mock_store.assert_called_once_with(
+        collection_name="experiment",
+        distance=VectorDistance.COSINE,
+        path=tmp_path,
+        url=None,
+        api_key=None,
+    )
+
+
+@patch("genai_template.factories.vector_store_factory.QdrantStore")
+@patch("genai_template.factories.vector_store_factory.settings.QDRANT_API_KEY", "key")
+def test_create_server_qdrant_store(mock_store: MagicMock) -> None:
+    """The vector-store factory should inject the environment Qdrant API key."""
+
+    config = QdrantVectorStoreConfig(
+        type="qdrant",
+        collection_name="experiment",
+        distance=VectorDistance.L2,
+        location="server",
+        url="https://qdrant.example.com",
+    )
+
+    result = create_vector_store(config)
+
+    assert result is mock_store.return_value
+    mock_store.assert_called_once_with(
+        collection_name="experiment",
+        distance=VectorDistance.L2,
+        path=None,
+        url="https://qdrant.example.com",
+        api_key="key",
     )
 
 

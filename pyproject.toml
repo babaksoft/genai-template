@@ -39,6 +39,7 @@ dependencies = [
     "pydantic",
     "pyyaml",
     "python-dotenv",
+    "qdrant-client",
     "SQLAlchemy",
     "streamlit",
     "opentelemetry-instrumentation-fastapi",
