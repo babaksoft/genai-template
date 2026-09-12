@@ -1,7 +1,4 @@
-# Markdown + OpenAI + local Qdrant experiment.
-experiment:
-  name: OpenAI Markdown Qdrant
-
+# Markdown + OpenAI + local Qdrant configuration.
 splitter:
   type: markdown
   header_path_separator: /
@@ -14,7 +11,6 @@ embedder:
 
 vector_store:
   type: qdrant
-  collection_name: openai-markdown-documents
   distance: cosine
   location: local
   # Relative filesystem paths are resolved from the repository root.

@@ -239,22 +239,18 @@ def run_evaluation(
         index_fingerprint,
         corpus_fingerprint,
     )
-    store_config = config.vector_store.model_copy(
-        update={"collection_name": collection_name}
-    )
-
     logger.info(
         "Starting retrieval evaluation: experiment='%s', "
         "config_fingerprint=%s, collection='%s'",
-        config.experiment.name,
+        settings.EXPERIMENT_NAME,
         fingerprint,
         collection_name,
     )
 
-    store = create_vector_store(store_config)
+    store = create_vector_store(config.vector_store, collection_name)
     if reindex:
         store.delete()
-        store = create_vector_store(store_config)
+        store = create_vector_store(config.vector_store, collection_name)
 
     embedder = create_embedder(config.embedder)
     if store.count() == 0:
@@ -297,7 +293,7 @@ def run_evaluation(
         "Retrieval evaluation completed: experiment='%s', "
         "config_fingerprint=%s, collection='%s', "
         "tests=%d, k=%d, hit@%d=%.3f, recall@%d=%.3f, precision@%d=%.3f",
-        config.experiment.name,
+        settings.EXPERIMENT_NAME,
         fingerprint,
         collection_name,
         len(results),
@@ -322,7 +318,10 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     args = parse_args(argv)
     config = load_rag_config(args.config)
-    ExperimentService(SessionLocal).register_experiment(config)
+    ExperimentService(SessionLocal).register_experiment(
+        config,
+        settings.EXPERIMENT_NAME,
+    )
     run_evaluation(
         config=config,
         corpus_path=args.corpus,

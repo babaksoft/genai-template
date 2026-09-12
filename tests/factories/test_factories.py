@@ -5,15 +5,15 @@ from unittest.mock import MagicMock, patch
 
 from genai_template.common.types import VectorDistance
 from genai_template.config.rag import (
-    EmbedderConfig,
-    LLMConfig,
+    ChromaVectorStoreConfig,
+    FastEmbedEmbedderConfig,
     MarkdownSplitterConfig,
+    OllamaLLMConfig,
     OpenAIEmbedderConfig,
     OpenAILLMConfig,
     QdrantVectorStoreConfig,
     RetrievalConfig,
-    SplitterConfig,
-    VectorStoreConfig,
+    SentenceSplitterConfig,
 )
 from genai_template.factories import (
     create_embedder,
@@ -28,8 +28,7 @@ from genai_template.factories import (
 def test_create_sentence_splitter(mock_splitter: MagicMock) -> None:
     """The splitter factory should dispatch all configured arguments."""
 
-    config = SplitterConfig(
-        type="sentence",
+    config = SentenceSplitterConfig(
         chunk_size=256,
         chunk_overlap=32,
     )
@@ -45,7 +44,6 @@ def test_create_markdown_splitter(mock_splitter: MagicMock) -> None:
     """The splitter factory should forward the header path separator."""
 
     config = MarkdownSplitterConfig(
-        type="markdown",
         header_path_separator=" > ",
     )
 
@@ -59,7 +57,7 @@ def test_create_markdown_splitter(mock_splitter: MagicMock) -> None:
 def test_create_fastembed_embedder(mock_embedder: MagicMock) -> None:
     """The embedder factory should dispatch the configured model."""
 
-    config = EmbedderConfig(type="fastembed", model_name="custom-embedder")
+    config = FastEmbedEmbedderConfig(model_name="custom-embedder")
 
     result = create_embedder(config)
 
@@ -72,7 +70,6 @@ def test_create_openai_embedder(mock_embedder: MagicMock) -> None:
     """The embedder factory should inject every OpenAI setting."""
 
     config = OpenAIEmbedderConfig(
-        type="openai",
         model_name="text-embedding-3-small",
         dimensions=512,
         request_timeout=30,
@@ -92,14 +89,12 @@ def test_create_openai_embedder(mock_embedder: MagicMock) -> None:
 def test_create_chroma_store(mock_store: MagicMock, tmp_path: Path) -> None:
     """The vector store factory should inject every storage setting."""
 
-    config = VectorStoreConfig(
-        type="chroma",
-        collection_name="experiment",
+    config = ChromaVectorStoreConfig(
         persist_directory=tmp_path,
         distance=VectorDistance.INNER_PRODUCT,
     )
 
-    result = create_vector_store(config)
+    result = create_vector_store(config, "experiment")
 
     assert result is mock_store.return_value
     mock_store.assert_called_once_with(
@@ -117,14 +112,12 @@ def test_create_local_qdrant_store(
     """The vector-store factory should dispatch local Qdrant settings."""
 
     config = QdrantVectorStoreConfig(
-        type="qdrant",
-        collection_name="experiment",
         distance=VectorDistance.COSINE,
         location="local",
         path=tmp_path,
     )
 
-    result = create_vector_store(config)
+    result = create_vector_store(config, "experiment")
 
     assert result is mock_store.return_value
     mock_store.assert_called_once_with(
@@ -142,14 +135,12 @@ def test_create_server_qdrant_store(mock_store: MagicMock) -> None:
     """The vector-store factory should inject the environment Qdrant API key."""
 
     config = QdrantVectorStoreConfig(
-        type="qdrant",
-        collection_name="experiment",
         distance=VectorDistance.L2,
         location="server",
         url="https://qdrant.example.com",
     )
 
-    result = create_vector_store(config)
+    result = create_vector_store(config, "experiment")
 
     assert result is mock_store.return_value
     mock_store.assert_called_once_with(
@@ -165,8 +156,7 @@ def test_create_server_qdrant_store(mock_store: MagicMock) -> None:
 def test_create_ollama_llm(mock_llm: MagicMock) -> None:
     """The LLM factory should inject model, endpoint, and timeout."""
 
-    config = LLMConfig(
-        type="ollama",
+    config = OllamaLLMConfig(
         model_name="custom-llm",
         base_url="http://ollama.example:11434",
         request_timeout=45,
@@ -187,7 +177,6 @@ def test_create_openai_llm(mock_llm: MagicMock) -> None:
     """The LLM factory should inject every OpenAI setting."""
 
     config = OpenAILLMConfig(
-        type="openai",
         model_name="gpt-4o-mini",
         request_timeout=30,
     )

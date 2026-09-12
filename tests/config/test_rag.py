@@ -3,18 +3,18 @@
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from genai_template.common.types import VectorDistance
 from genai_template.config import (
-    EmbedderConfig,
-    LLMConfig,
+    ChromaVectorStoreConfig,
+    FastEmbedEmbedderConfig,
     MarkdownSplitterConfig,
+    OllamaLLMConfig,
     OpenAIEmbedderConfig,
     OpenAILLMConfig,
     QdrantVectorStoreConfig,
-    SplitterConfig,
-    VectorStoreConfig,
+    SentenceSplitterConfig,
     canonical_config_json,
     config_fingerprint,
     index_config_fingerprint,
@@ -28,18 +28,16 @@ def test_defaults_match_application_settings() -> None:
 
     config = load_rag_config()
 
-    assert isinstance(config.splitter, SplitterConfig)
-    assert isinstance(config.embedder, EmbedderConfig)
-    assert isinstance(config.vector_store, VectorStoreConfig)
-    assert isinstance(config.llm, LLMConfig)
-    assert config.experiment.name == settings.EXPERIMENT_NAME
+    assert isinstance(config.splitter, SentenceSplitterConfig)
+    assert isinstance(config.embedder, FastEmbedEmbedderConfig)
+    assert isinstance(config.vector_store, ChromaVectorStoreConfig)
+    assert isinstance(config.llm, OllamaLLMConfig)
     assert config.splitter.type == "sentence"
     assert config.splitter.chunk_size == settings.CHUNK_SIZE
     assert config.splitter.chunk_overlap == settings.CHUNK_OVERLAP
     assert config.embedder.type == "fastembed"
     assert config.embedder.model_name == settings.EMBEDDING_MODEL
     assert config.vector_store.type == settings.VECTOR_STORE.lower()
-    assert config.vector_store.collection_name == settings.CHROMA_COLLECTION
     assert config.vector_store.persist_directory == settings.CHROMA_PERSIST_DIR
     assert config.vector_store.distance == settings.CHROMA_DISTANCE
     assert config.retrieval.top_k == settings.TOP_K
@@ -54,14 +52,13 @@ def test_partial_overrides_are_recursively_merged(tmp_path: Path) -> None:
 
     config_path = tmp_path / "experiment.yaml"
     config_path.write_text(
-        "experiment:\n  name: Small chunks\nsplitter:\n  chunk_size: 256\n",
+        "splitter:\n  chunk_size: 256\n",
         encoding="utf-8",
     )
 
     config = load_rag_config(config_path)
 
-    assert isinstance(config.splitter, SplitterConfig)
-    assert config.experiment.name == "Small chunks"
+    assert isinstance(config.splitter, SentenceSplitterConfig)
     assert config.splitter.chunk_size == 256
     assert config.splitter.chunk_overlap == settings.CHUNK_OVERLAP
     assert config.embedder.model_name == settings.EMBEDDING_MODEL
@@ -79,7 +76,6 @@ def test_provider_sections_are_replaced_when_type_changes(tmp_path: Path) -> Non
         "  model_name: text-embedding-3-small\n"
         "vector_store:\n"
         "  type: qdrant\n"
-        "  collection_name: documents\n"
         "  distance: cosine\n"
         "  location: local\n"
         "  path: storage/qdrant\n"
@@ -111,7 +107,6 @@ def test_qdrant_server_configuration_does_not_require_a_path(
     config_path.write_text(
         "vector_store:\n"
         "  type: qdrant\n"
-        "  collection_name: documents\n"
         "  distance: cosine\n"
         "  location: server\n"
         "  url: https://qdrant.example.com\n",
@@ -129,21 +124,17 @@ def test_qdrant_server_configuration_does_not_require_a_path(
     "yaml_text",
     [
         "unknown: true\n",
+        "experiment:\n  name: legacy\n",
+        "vector_store:\n  collection_name: legacy\n",
         "splitter:\n  type: tokens\n",
         "splitter:\n  type: markdown\n  chunk_size: 256\n",
         "embedder:\n  type: openai\n",
         "embedder:\n  type: openai\n  model_name: embed\n  dimensions: 0\n",
         "vector_store:\n  type: pinecone\n",
+        ("vector_store:\n  type: qdrant\n" "  distance: cosine\n  location: local\n"),
+        ("vector_store:\n  type: qdrant\n" "  distance: cosine\n  location: server\n"),
         (
-            "vector_store:\n  type: qdrant\n  collection_name: docs\n"
-            "  distance: cosine\n  location: local\n"
-        ),
-        (
-            "vector_store:\n  type: qdrant\n  collection_name: docs\n"
-            "  distance: cosine\n  location: server\n"
-        ),
-        (
-            "vector_store:\n  type: qdrant\n  collection_name: docs\n"
+            "vector_store:\n  type: qdrant\n"
             "  distance: cosine\n  location: server\n  path: storage/qdrant\n"
             "  url: https://qdrant.example.com\n"
         ),
@@ -194,7 +185,7 @@ def test_relative_storage_path_is_resolved_from_repository_root(
 
     config = load_rag_config(config_path)
 
-    assert isinstance(config.vector_store, VectorStoreConfig)
+    assert isinstance(config.vector_store, ChromaVectorStoreConfig)
     assert config.vector_store.persist_directory == (
         settings.REPO_ROOT / "custom" / "index"
     )
@@ -209,7 +200,6 @@ def test_relative_qdrant_path_is_resolved_from_repository_root(
     config_path.write_text(
         "vector_store:\n"
         "  type: qdrant\n"
-        "  collection_name: documents\n"
         "  distance: cosine\n"
         "  location: local\n"
         "  path: custom/qdrant\n",
@@ -229,6 +219,60 @@ def test_configuration_models_are_immutable() -> None:
 
     with pytest.raises(ValidationError):
         config.retrieval.top_k = 10
+
+
+@pytest.mark.parametrize(
+    ("config_type", "data"),
+    [
+        (
+            SentenceSplitterConfig,
+            {"type": "markdown", "chunk_size": 100, "chunk_overlap": 10},
+        ),
+        (MarkdownSplitterConfig, {"type": "sentence"}),
+        (
+            FastEmbedEmbedderConfig,
+            {"type": "openai", "model_name": "embedder"},
+        ),
+        (
+            OpenAIEmbedderConfig,
+            {"type": "fastembed", "model_name": "embedder"},
+        ),
+        (
+            ChromaVectorStoreConfig,
+            {
+                "type": "qdrant",
+                "distance": "cosine",
+                "persist_directory": "storage/chroma",
+            },
+        ),
+        (
+            QdrantVectorStoreConfig,
+            {
+                "type": "chroma",
+                "distance": "cosine",
+                "location": "local",
+                "path": "storage/qdrant",
+            },
+        ),
+        (
+            OllamaLLMConfig,
+            {
+                "type": "openai",
+                "model_name": "model",
+                "base_url": "http://localhost:11434",
+            },
+        ),
+        (OpenAILLMConfig, {"type": "ollama", "model_name": "model"}),
+    ],
+)
+def test_concrete_config_type_cannot_be_overridden(
+    config_type: type[BaseModel],
+    data: dict[str, object],
+) -> None:
+    """Concrete provider configurations reject another provider's type."""
+
+    with pytest.raises(ValidationError):
+        config_type.model_validate(data)
 
 
 def test_documented_baseline_matches_defaults() -> None:
@@ -275,7 +319,6 @@ def test_answer_only_changes_do_not_change_index_fingerprint() -> None:
     config = load_rag_config()
     changed = config.model_copy(
         update={
-            "experiment": config.experiment.model_copy(update={"name": "renamed"}),
             "retrieval": config.retrieval.model_copy(update={"top_k": 12}),
             "llm": config.llm.model_copy(update={"model_name": "another-model"}),
         }
@@ -289,7 +332,7 @@ def test_indexing_changes_change_index_fingerprint() -> None:
     """Chunking and embedding changes should select a different index."""
 
     config = load_rag_config()
-    assert isinstance(config.splitter, SplitterConfig)
+    assert isinstance(config.splitter, SentenceSplitterConfig)
     changed_splitter = config.model_copy(
         update={
             "splitter": config.splitter.model_copy(
@@ -300,12 +343,22 @@ def test_indexing_changes_change_index_fingerprint() -> None:
     changed_embedder = config.model_copy(
         update={"embedder": config.embedder.model_copy(update={"model_name": "other"})}
     )
+    changed_distance = config.model_copy(
+        update={
+            "vector_store": config.vector_store.model_copy(
+                update={"distance": VectorDistance.L2}
+            )
+        }
+    )
 
     assert index_config_fingerprint(config) != index_config_fingerprint(
         changed_splitter
     )
     assert index_config_fingerprint(config) != index_config_fingerprint(
         changed_embedder
+    )
+    assert index_config_fingerprint(config) != index_config_fingerprint(
+        changed_distance
     )
 
 

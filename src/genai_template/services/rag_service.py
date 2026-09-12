@@ -4,7 +4,7 @@ import logging
 
 from genai_template.components.context import ContextBuilder
 from genai_template.components.prompt import PromptBuilder
-from genai_template.config import RagConfig, config_fingerprint
+from genai_template.config import RagConfig, config_fingerprint, settings
 from genai_template.factories import (
     create_embedder,
     create_retrieval_pipeline,
@@ -74,7 +74,7 @@ class RagService:
         retrieval_pipeline = self._get_retrieval_pipeline(source.collection_name)
 
         run = self._experiment_service.start_run(
-            experiment_name=self._config.experiment.name,
+            experiment_name=settings.EXPERIMENT_NAME,
             source_id=source.id,
             config=self._config,
         )
@@ -85,7 +85,7 @@ class RagService:
             {
                 INPUT_VALUE: query,
                 "rag.top_k": self._config.retrieval.top_k,
-                "rag.experiment.name": self._config.experiment.name,
+                "rag.experiment.name": settings.EXPERIMENT_NAME,
                 "rag.config.fingerprint": self._config_fingerprint,
                 "rag.embedding.model": self._config.embedder.model_name,
                 "rag.vector_store.type": self._config.vector_store.type,
@@ -154,12 +154,8 @@ class RagService:
             Retrieval pipeline using the configured embedder and store.
         """
 
-        store_config = self._config.vector_store.model_copy(
-            update={"collection_name": collection_name}
-        )
-
         return create_retrieval_pipeline(
             self._config.retrieval,
             create_embedder(self._config.embedder),
-            create_vector_store(store_config),
+            create_vector_store(self._config.vector_store, collection_name),
         )

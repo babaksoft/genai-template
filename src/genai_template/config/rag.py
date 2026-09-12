@@ -21,21 +21,19 @@ class _ImmutableConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
-class ExperimentConfig(_ImmutableConfig):
-    """Experiment identity configuration."""
-
-    name: str = Field(min_length=1)
-
-
 class SplitterConfig(_ImmutableConfig):
-    """Document splitting configuration."""
+    """Common document splitting configuration."""
 
-    type: Literal["sentence"]
+
+class SentenceSplitterConfig(SplitterConfig):
+    """Sentence splitting configuration."""
+
+    type: Literal["sentence"] = "sentence"
     chunk_size: int = Field(gt=0)
     chunk_overlap: int = Field(ge=0)
 
     @model_validator(mode="after")
-    def validate_overlap(self) -> SplitterConfig:
+    def validate_overlap(self) -> SentenceSplitterConfig:
         """Ensure overlap leaves some unique content in every chunk.
 
         Returns:
@@ -51,56 +49,62 @@ class SplitterConfig(_ImmutableConfig):
         return self
 
 
-class MarkdownSplitterConfig(_ImmutableConfig):
+class MarkdownSplitterConfig(SplitterConfig):
     """Markdown header-based splitting configuration."""
 
-    type: Literal["markdown"]
+    type: Literal["markdown"] = "markdown"
     header_path_separator: str = Field(default="/", min_length=1)
 
 
 AnySplitterConfig = Annotated[
-    SplitterConfig | MarkdownSplitterConfig,
+    SentenceSplitterConfig | MarkdownSplitterConfig,
     Field(discriminator="type"),
 ]
 
 
 class EmbedderConfig(_ImmutableConfig):
-    """Embedding model configuration."""
+    """Common embedding model configuration."""
 
-    type: Literal["fastembed"]
     model_name: str = Field(min_length=1)
 
 
-class OpenAIEmbedderConfig(_ImmutableConfig):
+class FastEmbedEmbedderConfig(EmbedderConfig):
+    """FastEmbed embedding model configuration."""
+
+    type: Literal["fastembed"] = "fastembed"
+
+
+class OpenAIEmbedderConfig(EmbedderConfig):
     """OpenAI embedding model configuration."""
 
-    type: Literal["openai"]
-    model_name: str = Field(min_length=1)
+    type: Literal["openai"] = "openai"
     dimensions: int | None = Field(default=None, gt=0)
     request_timeout: float = Field(default=settings.REQUEST_TIMEOUT, gt=0)
 
 
 AnyEmbedderConfig = Annotated[
-    EmbedderConfig | OpenAIEmbedderConfig,
+    FastEmbedEmbedderConfig | OpenAIEmbedderConfig,
     Field(discriminator="type"),
 ]
 
 
 class VectorStoreConfig(_ImmutableConfig):
-    """Vector store configuration."""
+    """Common vector store configuration."""
 
-    type: Literal["chroma"]
-    collection_name: str = Field(min_length=1)
-    persist_directory: Path
     distance: VectorDistance
 
 
-class QdrantVectorStoreConfig(_ImmutableConfig):
+class ChromaVectorStoreConfig(VectorStoreConfig):
+    """Chroma local vector store configuration."""
+
+    type: Literal["chroma"] = "chroma"
+    persist_directory: Path
+
+
+class QdrantVectorStoreConfig(VectorStoreConfig):
     """Qdrant local or server vector-store configuration."""
 
-    type: Literal["qdrant"]
-    collection_name: str = Field(min_length=1)
-    distance: VectorDistance
+    type: Literal["qdrant"] = "qdrant"
     location: Literal["local", "server"]
     path: Path | None = None
     url: str | None = Field(default=None, pattern=r"^https?://")
@@ -132,7 +136,7 @@ class QdrantVectorStoreConfig(_ImmutableConfig):
 
 
 AnyVectorStoreConfig = Annotated[
-    VectorStoreConfig | QdrantVectorStoreConfig,
+    ChromaVectorStoreConfig | QdrantVectorStoreConfig,
     Field(discriminator="type"),
 ]
 
@@ -144,32 +148,34 @@ class RetrievalConfig(_ImmutableConfig):
 
 
 class LLMConfig(_ImmutableConfig):
-    """Language model configuration."""
+    """Common language model configuration."""
 
-    type: Literal["ollama"]
-    model_name: str = Field(min_length=1)
-    base_url: str = Field(min_length=1, pattern=r"^https?://")
-    request_timeout: float = Field(gt=0)
-
-
-class OpenAILLMConfig(_ImmutableConfig):
-    """OpenAI language model configuration."""
-
-    type: Literal["openai"]
     model_name: str = Field(min_length=1)
     request_timeout: float = Field(default=settings.REQUEST_TIMEOUT, gt=0)
 
 
+class OllamaLLMConfig(LLMConfig):
+    """Ollama language model configuration."""
+
+    type: Literal["ollama"] = "ollama"
+    base_url: str = Field(min_length=1, pattern=r"^https?://")
+
+
+class OpenAILLMConfig(LLMConfig):
+    """OpenAI language model configuration."""
+
+    type: Literal["openai"] = "openai"
+
+
 AnyLLMConfig = Annotated[
-    LLMConfig | OpenAILLMConfig,
+    OllamaLLMConfig | OpenAILLMConfig,
     Field(discriminator="type"),
 ]
 
 
 class RagConfig(_ImmutableConfig):
-    """Fully resolved configuration for a RAG experiment."""
+    """Fully resolved, portable RAG configuration."""
 
-    experiment: ExperimentConfig
     splitter: AnySplitterConfig
     embedder: AnyEmbedderConfig
     vector_store: AnyVectorStoreConfig
@@ -212,8 +218,10 @@ def config_fingerprint(config: RagConfig) -> str:
 def index_config_fingerprint(config: RagConfig) -> str:
     """Fingerprint settings that determine the contents of a vector index.
 
-    Storage location and collection name identify where an index lives rather
-    than how its vectors are produced, so they are intentionally excluded.
+    Backend connection and storage-location settings identify where an index
+    lives rather than how its vectors are produced, so they are intentionally
+    excluded. Transport settings and retrieval/generation settings likewise do
+    not affect indexed vectors.
 
     Args:
         config:
@@ -247,7 +255,6 @@ def _settings_config() -> dict[str, Any]:
     """
 
     return {
-        "experiment": {"name": settings.EXPERIMENT_NAME},
         "splitter": {
             "type": "sentence",
             "chunk_size": settings.CHUNK_SIZE,
@@ -259,7 +266,6 @@ def _settings_config() -> dict[str, Any]:
         },
         "vector_store": {
             "type": settings.VECTOR_STORE.lower(),
-            "collection_name": settings.CHROMA_COLLECTION,
             "persist_directory": settings.CHROMA_PERSIST_DIR,
             "distance": settings.CHROMA_DISTANCE,
         },

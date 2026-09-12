@@ -235,9 +235,8 @@ class SourceService:
             splitter=create_splitter(self._config.splitter),
             embedder=create_embedder(self._config.embedder),
             store=create_vector_store(
-                self._config.vector_store.model_copy(
-                    update={"collection_name": collection_name}
-                )
+                self._config.vector_store,
+                collection_name,
             ),
         )
 
@@ -250,9 +249,8 @@ class SourceService:
         """
 
         create_vector_store(
-            self._config.vector_store.model_copy(
-                update={"collection_name": collection_name}
-            )
+            self._config.vector_store,
+            collection_name,
         ).delete()
 
     def _resolve_directory(self, directory_name: str) -> Path:

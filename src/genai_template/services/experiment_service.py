@@ -59,12 +59,11 @@ class ExperimentService:
         """
 
         with self._session_factory() as session:
-            if config is not None and config.experiment.name != experiment_name:
-                raise ValueError(
-                    "Experiment name does not match the resolved configuration."
-                )
-
-            experiment = self._register_config(session, config) if config else None
+            experiment = (
+                self._register_config(session, config, experiment_name)
+                if config
+                else None
+            )
             if experiment is None:
                 experiment = self._get_or_create_legacy_experiment(
                     session=session,
@@ -88,19 +87,25 @@ class ExperimentService:
 
             return run
 
-    def register_experiment(self, config: RagConfig) -> Experiment:
+    def register_experiment(
+        self,
+        config: RagConfig,
+        experiment_name: str,
+    ) -> Experiment:
         """Register or resolve an experiment's immutable configuration.
 
         Args:
             config:
                 Fully resolved RAG configuration to persist.
+            experiment_name:
+                Display name of the experiment associated with the config.
 
         Returns:
             Existing or newly registered experiment for the configuration.
         """
 
         with self._session_factory() as session:
-            return self._register_config(session, config)
+            return self._register_config(session, config, experiment_name)
 
     def resolve_experiment(
         self,
@@ -254,6 +259,7 @@ class ExperimentService:
         self,
         session: Session,
         config: RagConfig,
+        experiment_name: str,
     ) -> Experiment:
         """Register a resolved configuration within an existing session.
 
@@ -262,6 +268,8 @@ class ExperimentService:
                 SQLAlchemy session for persistence.
             config:
                 Fully resolved configuration to register.
+            experiment_name:
+                Display name of the experiment associated with the config.
 
         Returns:
             Existing or newly registered experiment.
@@ -271,7 +279,7 @@ class ExperimentService:
         fingerprint = config_fingerprint(config)
         experiment = session.scalar(
             select(Experiment).where(
-                Experiment.name == config.experiment.name,
+                Experiment.name == experiment_name,
                 Experiment.config_fingerprint == fingerprint,
             )
         )
@@ -283,7 +291,7 @@ class ExperimentService:
             return experiment
 
         experiment = Experiment(
-            name=config.experiment.name,
+            name=experiment_name,
             config_json=snapshot,
             config_fingerprint=fingerprint,
         )
