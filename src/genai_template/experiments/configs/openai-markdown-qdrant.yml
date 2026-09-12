@@ -1,0 +1,29 @@
+# Markdown + OpenAI + local Qdrant experiment.
+experiment:
+  name: OpenAI Markdown Qdrant
+
+splitter:
+  type: markdown
+  header_path_separator: /
+
+embedder:
+  type: openai
+  model_name: text-embedding-3-small
+  dimensions: 1536
+  request_timeout: 180
+
+vector_store:
+  type: qdrant
+  collection_name: openai-markdown-documents
+  distance: cosine
+  location: local
+  # Relative filesystem paths are resolved from the repository root.
+  path: storage/qdrant
+
+retrieval:
+  top_k: 5
+
+llm:
+  type: openai
+  model_name: gpt-4o-mini
+  request_timeout: 180

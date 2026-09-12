@@ -45,6 +45,7 @@ OLLAMA_BASE_URL = "http://localhost:11434"
 REQUEST_TIMEOUT = 180
 
 # Provider credentials
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 
 # Embedding settings

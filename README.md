@@ -11,15 +11,15 @@
 
 ## Overview
 
-`genai-template` is a starter kit for building **retrieval‑augmented generation (RAG)** and **agentic** applications.  It wires together a FastAPI backend, a Streamlit UI, a configurable vector store (default = Chroma), and a flexible component system for readers, splitters, embedders, language models, prompts, and context building.
+`genai-template` is a starter kit for building **retrieval‑augmented generation (RAG)** and **agentic** applications. It wires together a FastAPI backend, a Streamlit UI, configurable Chroma or Qdrant vector storage, and a flexible component system for readers, splitters, embedders, language models, prompts, and context building.
 
 ### Core Packages
 - **`src/genai_template/config`** – Global settings (`settings.py`) and logging configuration.
 - **`src/genai_template/components`** – Pluggable building blocks:
   - `readers` (e.g., `TextReader`)
-  - `splitters` (sentence splitter)
-  - `embeddings` (FastEmbed wrapper)
-  - `language_models` (Ollama wrapper)
+  - `splitters` (sentence and Markdown header splitters)
+  - `embeddings` (FastEmbed and OpenAI wrappers)
+  - `language_models` (Ollama and OpenAI wrappers)
   - `prompt` (PromptBuilder)
   - `context` (ContextBuilder)
 - **`src/genai_template/pipelines`** – Orchestrate workflows:
@@ -30,7 +30,7 @@
   - `RagService` – end‑to‑end answer generation.
   - `ExperimentService` – persists experiment metadata.
 - **`src/genai_template/stores`** – Persistence layers:
-  - `vector/chroma_store.py` – Chroma vector DB.
+  - `vector` – Chroma and local/server Qdrant vector stores.
   - `kv`, `document`, `index` (placeholders for future stores).
 - **`src/genai_template/api`** – FastAPI app (`main.py`) with routers for:
   - `answer` – POST `/answer` returns generated answer + metrics.
@@ -57,6 +57,10 @@ pip install -c constraints.txt -e ".[dev]"
 Create a ``.env`` at the repository root (or edit the existing one) with the required keys, e.g.:
 ```
 OPENAI_API_KEY=…
+# Optional: authenticate to a Qdrant server selected in an experiment profile.
+QDRANT_API_KEY=…
+# Optional: opt into the Qdrant server integration test.
+QDRANT_URL=https://qdrant.example.com
 # Optional: use a specific Ollama service instead of automatic discovery.
 OLLAMA_BASE_URL=http://ollama.example:11434
 # Optional: send FastAPI request traces to a locally running Phoenix instance.
@@ -134,17 +138,48 @@ Evaluation collections are keyed by the indexing configuration and corpus
 contents, so a populated matching index is reused. Pass ``--reindex`` to delete
 and rebuild only that resolved collection before calculating the metrics.
 
+### Combined OpenAI and Qdrant profile
+
+The example profile
+[`openai-markdown-qdrant.yml`](src/genai_template/experiments/configs/openai-markdown-qdrant.yml)
+combines Markdown header splitting, OpenAI embeddings and generation, and local
+Qdrant persistence. Set ``OPENAI_API_KEY`` in the environment before using it;
+credentials are never stored in the profile or serialized experiment configuration.
+
+Relative local Qdrant paths are resolved from the repository root. To use a Qdrant
+server instead, replace the profile's ``vector_store`` section with:
+
+```yaml
+vector_store:
+  type: qdrant
+  collection_name: openai-markdown-documents
+  distance: cosine
+  location: server
+  url: https://qdrant.example.com
+```
+
+The non-secret server URL belongs in YAML. Set ``QDRANT_API_KEY`` in the environment
+when the server requires authentication; it is optional for an unauthenticated server.
+Do not put either provider's API key in an experiment profile.
+
+Re-index the corpus after changing the splitter, embedder, vector-store type,
+embedding dimensions, or distance metric. These options affect chunk or vector
+compatibility, so an index created with the previous configuration must not be reused.
+
 ## Testing
 
 - **Unit tests** (fast, no external services):
   ```bash
   pytest -m "not integration" -v
   ```
-- **Integration tests** (require Ollama and a vector store):
+- **Integration tests** (individual tests skip when their provider is unavailable):
   ```bash
   pytest -m integration -v
   ```
-  The integration suite creates a temporary Chroma collection and uses ``OllamaLanguageModel``; ensure Ollama is reachable.
+  Local Qdrant checks use temporary storage. OpenAI smoke and composition tests require
+  ``OPENAI_API_KEY``. The server lifecycle test runs only when ``QDRANT_URL`` is set,
+  uses ``QDRANT_API_KEY`` when present, creates a unique collection, and cleans it up.
+  The existing end-to-end workflow test requires Ollama to be reachable.
 
 ## Code Quality Checks
 ```bash
@@ -158,7 +193,9 @@ Run these before committing.
 ## Data & Persistence
 - **Corpora** – Each immediate subdirectory of ``CORPORA_DIR`` is a corpus;
   Markdown and text documents must live inside that directory.
-- **Vector store** – Chroma files under ``storage/chroma`` (configurable via ``settings.CHROMA_PERSIST_DIR``).
+- **Vector store** – Chroma defaults to ``storage/chroma``. A local Qdrant profile uses
+  its configured repository-relative or absolute path; server mode uses its configured
+  HTTP(S) URL and optional environment-provided ``QDRANT_API_KEY``.
 - **SQLite DB** – Experiment metadata stored at ``db/genai_template.sqlite3`` (`settings.DATABASE_URL`).
 
 ## Configuration Highlights (`src/genai_template/config/settings.py`)

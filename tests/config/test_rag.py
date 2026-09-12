@@ -240,6 +240,24 @@ def test_documented_baseline_matches_defaults() -> None:
     assert load_rag_config().vector_store.distance is VectorDistance.COSINE
 
 
+def test_documented_openai_qdrant_profile_is_valid() -> None:
+    """The combined provider example should load as a resolved configuration."""
+
+    profile_path = (
+        settings.PKG_ROOT / "experiments" / "configs" / "openai-markdown-qdrant.yml"
+    )
+
+    config = load_rag_config(profile_path)
+
+    assert isinstance(config.splitter, MarkdownSplitterConfig)
+    assert isinstance(config.embedder, OpenAIEmbedderConfig)
+    assert config.embedder.dimensions == 1536
+    assert isinstance(config.vector_store, QdrantVectorStoreConfig)
+    assert config.vector_store.location == "local"
+    assert config.vector_store.path == settings.REPO_ROOT / "storage" / "qdrant"
+    assert isinstance(config.llm, OpenAILLMConfig)
+
+
 def test_canonical_serialization_and_fingerprint_are_stable() -> None:
     """Equivalent resolved configurations have identical canonical identities."""
 
