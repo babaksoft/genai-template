@@ -9,9 +9,20 @@ class ExperimentSummary(BaseModel):
         extra="forbid",
     )
 
+    experiment_id: int = Field(
+        ge=1,
+        description="Canonical experiment identifier.",
+    )
+
     experiment_name: str = Field(
         min_length=1,
         description="Experiment name.",
+    )
+
+    rag_config_id: int | None = Field(
+        default=None,
+        ge=1,
+        description="Configuration filter, or null for all configurations.",
     )
 
     run_count: int = Field(

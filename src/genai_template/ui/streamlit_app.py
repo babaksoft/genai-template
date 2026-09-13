@@ -1,157 +1,179 @@
+"""Streamlit UI for registered experiments and RAG configurations."""
+
 import httpx
 import streamlit as st
 
 from genai_template.config import settings
-from genai_template.schemas import SourceResponse
+from genai_template.schemas import ExperimentResponse, RagConfigResponse
 from genai_template.ui.api_client import ApiClient
 
-st.set_page_config(
-    page_title="GenAI Template",
-    page_icon="🤖",
-    layout="wide",
-)
-
+st.set_page_config(page_title="GenAI Template", page_icon="🤖", layout="wide")
 st.title("GenAI Template")
 st.write("RAG experimentation playground")
 
-api_client = ApiClient(
-    base_url=settings.API_BASE_URL,
-)
-
-active_source: SourceResponse | None = None
+api_client = ApiClient(base_url=settings.API_BASE_URL)
+active_experiment: ExperimentResponse | None = None
+active_config: RagConfigResponse | None = None
 
 with st.sidebar:
-    st.header("Sources")
+    st.header("Experiment setup")
+    try:
+        candidates = api_client.list_source_candidates()
+        sources = api_client.list_sources()
+        experiments = api_client.list_experiments()
+        rag_configs = api_client.list_rag_configs()
+    except httpx.HTTPError as exc:
+        st.error(f"Unable to load registry data from the API: {exc}")
+        candidates, sources, experiments, rag_configs = [], [], [], []
 
-    with st.expander("Sources", expanded=True):
-        try:
-            candidates = api_client.list_source_candidates()
-            sources = api_client.list_sources()
-        except httpx.HTTPError as exc:
-            st.error(f"Unable to load sources from the API: {exc}")
-            candidates = []
-            sources = []
-
+    with st.expander("Register source"):
         if candidates:
-            candidate_names = [candidate.name for candidate in candidates]
             directory = st.selectbox(
                 "Corpus directory",
-                candidate_names,
+                [candidate.name for candidate in candidates],
                 key="source_directory",
             )
-            if st.button("Ingest source"):
-                with st.spinner("Indexing corpus..."):
-                    try:
-                        ingested = api_client.ingest_source(directory)
-                    except httpx.HTTPError as exc:
-                        st.error(f"Unable to ingest source: {exc}")
-                    else:
-                        st.session_state.active_source_name = ingested.name
-                        st.success(
-                            f"Ingested {ingested.name}: "
-                            f"{ingested.documents_indexed} document(s), "
-                            f"{ingested.chunks_indexed} chunk(s)."
-                        )
-                        st.rerun()
+            if st.button("Register source"):
+                try:
+                    registered = api_client.register_source(directory)
+                except httpx.HTTPError as exc:
+                    st.error(f"Unable to register source: {exc}")
+                else:
+                    st.success(f"Registered {registered.name}.")
+                    st.rerun()
         else:
-            st.info("No prepared corpus directories are available.")
+            st.info("No unregistered corpus directories are available.")
 
+    with st.expander("Create experiment"):
         if sources:
-            sources_by_name = {source.name: source for source in sources}
-            if st.session_state.get("active_source_name") not in sources_by_name:
-                st.session_state.active_source_name = sources[0].name
-
-            selected_source_name = st.selectbox(
-                "Active source",
-                options=list(sources_by_name),
-                key="active_source_name",
-            )
-            active_source = sources_by_name[selected_source_name]
-            st.caption(
-                f"{active_source.documents_indexed} document(s) · "
-                f"{active_source.chunks_indexed} chunk(s)"
-            )
-            if st.button("Refresh active source"):
-                with st.spinner("Rebuilding source..."):
-                    try:
-                        refreshed = api_client.refresh_source(active_source.id)
-                    except httpx.HTTPError as exc:
-                        st.error(f"Unable to refresh source: {exc}")
-                    else:
-                        st.session_state.active_source_name = refreshed.name
-                        st.success(
-                            f"Refreshed {refreshed.name}: "
-                            f"{refreshed.documents_indexed} document(s), "
-                            f"{refreshed.chunks_indexed} chunk(s)."
-                        )
-                        st.rerun()
+            sources_by_label = {
+                f"{source.id}: {source.name}": source for source in sources
+            }
+            source_label = st.selectbox("Source", list(sources_by_label))
+            experiment_name = st.text_input("Experiment name")
+            description = st.text_area("Description (optional)")
+            if st.button("Create experiment", disabled=not experiment_name.strip()):
+                try:
+                    created = api_client.create_experiment(
+                        sources_by_label[source_label].id,
+                        experiment_name.strip(),
+                        description.strip() or None,
+                    )
+                except httpx.HTTPError as exc:
+                    st.error(f"Unable to create experiment: {exc}")
+                else:
+                    st.session_state.active_experiment_id = created.id
+                    st.success(f"Created experiment {created.id}.")
+                    st.rerun()
         else:
-            st.info("Ingest a corpus to make it an active source.")
+            st.info("Register a source before creating an experiment.")
+
+    if experiments:
+        experiments_by_label = {f"{item.id}: {item.name}": item for item in experiments}
+        selected_experiment = st.selectbox(
+            "Experiment",
+            list(experiments_by_label),
+            index=next(
+                (
+                    index
+                    for index, item in enumerate(experiments_by_label.values())
+                    if item.id == st.session_state.get("active_experiment_id")
+                ),
+                0,
+            ),
+        )
+        active_experiment = experiments_by_label[selected_experiment]
+        st.session_state.active_experiment_id = active_experiment.id
+    else:
+        st.info("Create an experiment before asking questions.")
+
+    if rag_configs:
+        configs_by_label = {
+            f"{item.id}: {item.config.embedder.model_name} / "
+            f"{item.config.llm.model_name}": item
+            for item in rag_configs
+        }
+        selected_config = st.selectbox("RAG configuration", list(configs_by_label))
+        active_config = configs_by_label[selected_config]
+    else:
+        st.info("Register a RAG configuration before asking questions.")
+
+    if (
+        active_experiment is not None
+        and active_config is not None
+        and st.button("Rebuild selected index")
+    ):
+        with st.spinner("Rebuilding index..."):
+            try:
+                build_result = api_client.rebuild_index(
+                    active_experiment.source_id,
+                    active_config.id,
+                )
+            except httpx.HTTPError as exc:
+                st.error(f"Unable to rebuild index: {exc}")
+            else:
+                st.success(
+                    f"Indexed {build_result.documents_indexed} document(s) into "
+                    f"{build_result.chunks_indexed} chunk(s)."
+                )
 
 st.header("Ask a question")
+query = st.text_area("Question", placeholder="Enter your question...", height=100)
+can_ask = active_experiment is not None and active_config is not None
 
-query = st.text_area(
-    "Question",
-    placeholder="Enter your question...",
-    height=100,
-)
-
-if st.button("Ask", type="primary", disabled=active_source is None):
-    if active_source is None:
-        st.warning("Select an active source before asking a question.")
+if st.button("Ask", type="primary", disabled=not can_ask):
+    if active_experiment is None or active_config is None:
+        st.warning("Select an experiment and RAG configuration first.")
     elif not query.strip():
         st.warning("Please enter a question.")
     else:
         with st.spinner("Generating answer..."):
             try:
-                result = api_client.answer(query.strip(), active_source.id)
+                answer_result = api_client.answer(
+                    query.strip(), active_experiment.id, active_config.id
+                )
             except httpx.HTTPError as exc:
                 st.error(f"Unable to get an answer from the API: {exc}")
             else:
                 st.subheader("Answer")
-                st.write(result.answer)
-
+                st.write(answer_result.answer)
                 with st.sidebar:
                     st.header("Execution Metrics")
-
                     with st.expander("Timing", expanded=True):
                         st.metric(
                             "Retrieval",
-                            f"{result.metrics.retrieval_time:.3f} s",
+                            f"{answer_result.metrics.retrieval_time:.3f} s",
                         )
                         st.metric(
                             "Generation",
-                            f"{result.metrics.generation_time:.3f} s",
+                            f"{answer_result.metrics.generation_time:.3f} s",
                         )
-                        st.metric(
-                            "Total",
-                            f"{result.metrics.total_time:.3f} s",
-                        )
-
+                        st.metric("Total", f"{answer_result.metrics.total_time:.3f} s")
                     with st.expander("Retrieval"):
                         st.metric(
-                            "Retrieved chunks",
-                            result.metrics.retrieved_chunks,
+                            "Retrieved chunks", answer_result.metrics.retrieved_chunks
                         )
                         st.metric(
                             "Best distance",
-                            f"{result.metrics.best_distance:.4f}",
+                            (
+                                "N/A"
+                                if answer_result.metrics.best_distance is None
+                                else f"{answer_result.metrics.best_distance:.4f}"
+                            ),
                         )
                         st.metric(
                             "Worst distance",
-                            f"{result.metrics.worst_distance:.4f}",
+                            (
+                                "N/A"
+                                if answer_result.metrics.worst_distance is None
+                                else f"{answer_result.metrics.worst_distance:.4f}"
+                            ),
                         )
-
                     with st.expander("Request"):
                         st.metric(
-                            "Context length",
-                            result.metrics.context_length,
+                            "Context length", answer_result.metrics.context_length
                         )
+                        st.metric("Prompt length", answer_result.metrics.prompt_length)
                         st.metric(
-                            "Prompt length",
-                            result.metrics.prompt_length,
-                        )
-                        st.metric(
-                            "Response length",
-                            result.metrics.response_length,
+                            "Response length", answer_result.metrics.response_length
                         )

@@ -57,12 +57,12 @@ class RunMetrics(BaseModel):
     )
 
     prompt_length: int = Field(
-        gt=0,
+        ge=0,
         description="Prompt length in characters.",
     )
 
     response_length: int = Field(
-        gt=0,
+        ge=0,
         description="Response length in characters.",
     )
 

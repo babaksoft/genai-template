@@ -26,10 +26,17 @@ class AnswerRequest(BaseModel):
         examples=["What is Retrieval-Augmented Generation?"],
     )
 
-    source_id: int = Field(
+    experiment_id: int = Field(
         ...,
         ge=1,
-        description="Identifier of the source used for retrieval.",
+        description="Canonical experiment identifier.",
+        examples=[1],
+    )
+
+    rag_config_id: int = Field(
+        ...,
+        ge=1,
+        description="Canonical RAG configuration identifier.",
         examples=[1],
     )
 

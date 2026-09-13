@@ -1,8 +1,11 @@
-from httpx import get, post
+from httpx import get, post, put
 
 from genai_template.config import settings
 from genai_template.schemas import (
     AnswerResponse,
+    ExperimentResponse,
+    IndexBuildResponse,
+    RagConfigResponse,
     SourceCandidateResponse,
     SourceResponse,
 )
@@ -21,14 +24,18 @@ class ApiClient:
 
         self._base_url = base_url.rstrip("/")
 
-    def answer(self, query: str, source_id: int) -> AnswerResponse:
+    def answer(
+        self, query: str, experiment_id: int, rag_config_id: int
+    ) -> AnswerResponse:
         """Submit a question to the RAG API.
 
         Args:
             query:
                 User question to submit.
-            source_id:
-                Identifier of the source used for retrieval.
+            experiment_id:
+                Canonical experiment identifier.
+            rag_config_id:
+                Canonical RAG configuration identifier.
 
         Returns:
             API response containing the generated answer and metrics.
@@ -40,7 +47,11 @@ class ApiClient:
 
         response = post(
             f"{self._base_url}{settings.API_URL_PREFIX}/answer",
-            json={"query": query, "source_id": source_id},
+            json={
+                "query": query,
+                "experiment_id": experiment_id,
+                "rag_config_id": rag_config_id,
+            },
             timeout=settings.REQUEST_TIMEOUT,
         )
         response.raise_for_status()
@@ -48,7 +59,7 @@ class ApiClient:
         return AnswerResponse.model_validate(response.json())
 
     def list_source_candidates(self) -> list[SourceCandidateResponse]:
-        """List corpus directories available for ingestion.
+        """List corpus directories available for registration.
 
         Returns:
             Available source directory names.
@@ -70,7 +81,7 @@ class ApiClient:
         ]
 
     def list_sources(self) -> list[SourceResponse]:
-        """List successfully ingested corpus sources.
+        """List registered corpus sources.
 
         Returns:
             Persisted source metadata.
@@ -88,15 +99,15 @@ class ApiClient:
 
         return [SourceResponse.model_validate(source) for source in response.json()]
 
-    def ingest_source(self, directory: str) -> SourceResponse:
-        """Ingest one selected corpus directory.
+    def register_source(self, directory: str) -> SourceResponse:
+        """Register one selected corpus directory.
 
         Args:
             directory:
                 Immediate corpus directory name under the configured root.
 
         Returns:
-            Ingested source metadata.
+            Registered source metadata.
 
         Raises:
             httpx.HTTPStatusError:
@@ -112,15 +123,68 @@ class ApiClient:
 
         return SourceResponse.model_validate(response.json())
 
-    def refresh_source(self, source_id: int) -> SourceResponse:
-        """Rebuild an existing source from its prepared directory.
+    def rebuild_index(self, source_id: int, rag_config_id: int) -> IndexBuildResponse:
+        """Rebuild one source index with a registered configuration.
 
         Args:
             source_id:
-                Identifier of the source to refresh.
+                Identifier of the source to index.
+            rag_config_id:
+                Identifier of the indexing configuration.
 
         Returns:
-            Refreshed source metadata.
+            Transient index build metrics.
+
+        Raises:
+            httpx.HTTPStatusError:
+                If the API returns an unsuccessful HTTP status code.
+        """
+
+        response = put(
+            f"{self._base_url}{settings.API_URL_PREFIX}/sources/"
+            f"{source_id}/indexes/{rag_config_id}",
+            timeout=settings.REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+
+        return IndexBuildResponse.model_validate(response.json())
+
+    def list_experiments(self) -> list[ExperimentResponse]:
+        """List registered experiments.
+
+        Returns:
+            Registered experiment metadata.
+
+        Raises:
+            httpx.HTTPStatusError:
+                If the API returns an unsuccessful HTTP status code.
+        """
+
+        response = get(
+            f"{self._base_url}{settings.API_URL_PREFIX}/experiments",
+            timeout=settings.REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+        return [ExperimentResponse.model_validate(item) for item in response.json()]
+
+    def create_experiment(
+        self,
+        source_id: int,
+        name: str,
+        description: str | None = None,
+    ) -> ExperimentResponse:
+        """Create a source-bound experiment.
+
+        Args:
+            source_id:
+                Registered source identifier.
+            name:
+                Experiment display name.
+            description:
+                Optional experiment description.
+
+        Returns:
+            Created experiment metadata.
 
         Raises:
             httpx.HTTPStatusError:
@@ -128,9 +192,27 @@ class ApiClient:
         """
 
         response = post(
-            f"{self._base_url}{settings.API_URL_PREFIX}/sources/{source_id}/refresh",
+            f"{self._base_url}{settings.API_URL_PREFIX}/experiments",
+            json={"source_id": source_id, "name": name, "description": description},
             timeout=settings.REQUEST_TIMEOUT,
         )
         response.raise_for_status()
+        return ExperimentResponse.model_validate(response.json())
 
-        return SourceResponse.model_validate(response.json())
+    def list_rag_configs(self) -> list[RagConfigResponse]:
+        """List registered immutable RAG configurations.
+
+        Returns:
+            Registered configuration metadata.
+
+        Raises:
+            httpx.HTTPStatusError:
+                If the API returns an unsuccessful HTTP status code.
+        """
+
+        response = get(
+            f"{self._base_url}{settings.API_URL_PREFIX}/rag-configs",
+            timeout=settings.REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+        return [RagConfigResponse.model_validate(item) for item in response.json()]

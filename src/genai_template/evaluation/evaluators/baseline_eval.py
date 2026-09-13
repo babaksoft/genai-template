@@ -1,21 +1,16 @@
-"""Run YAML-configurable retrieval evaluation against a corpus and dataset."""
+"""Run YAML-configurable retrieval evaluation with persisted run records."""
 
 import argparse
-import hashlib
 import json
 import logging
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
-from genai_template.config import (
-    RagConfig,
-    config_fingerprint,
-    index_config_fingerprint,
-    load_rag_config,
-    settings,
-)
+from genai_template.config import RagConfig, load_rag_config, settings
 from genai_template.config.logging import configure_logging
 from genai_template.db import SessionLocal
+from genai_template.db.models import Source
 from genai_template.evaluation.metrics.baseline_metrics import (
     calculate_hit_at_k,
     calculate_precision_at_k,
@@ -24,19 +19,31 @@ from genai_template.evaluation.metrics.baseline_metrics import (
 from genai_template.factories import (
     create_embedder,
     create_retrieval_pipeline,
-    create_splitter,
     create_vector_store,
 )
-from genai_template.pipelines import IndexingPipeline
 from genai_template.protocols import Retriever
-from genai_template.schemas import RetrievalTest
-from genai_template.services import ExperimentService
+from genai_template.schemas import RetrievalTest, RunMetrics
+from genai_template.services import ExperimentService, RagConfigService, SourceService
+from genai_template.utils import Timer
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_CONFIG_PATH = settings.EXPERIMENT_CONFIG_DIR / "baseline.yml"
 DEFAULT_CORPUS_DIR = settings.CORPORA_DIR / "baseline"
 DEFAULT_DATASET_PATH = settings.EVALUATION_DATA_DIR / "baseline-eval.json"
+
+
+@dataclass(frozen=True)
+class EvaluationResult:
+    """Retrieval quality and runtime measurements for one evaluation query."""
+
+    hit: bool
+    recall: float
+    precision: float
+    retrieved_chunks: int
+    best_distance: float | None
+    worst_distance: float | None
+    retrieval_time: float
 
 
 def load_evaluation_tests(path: Path) -> list[RetrievalTest]:
@@ -52,7 +59,6 @@ def load_evaluation_tests(path: Path) -> list[RetrievalTest]:
 
     with path.open("r", encoding="utf-8") as file:
         data = json.load(file)
-
     return [RetrievalTest.model_validate(item) for item in data]
 
 
@@ -60,47 +66,39 @@ def evaluate_test(
     pipeline: Retriever,
     test: RetrievalTest,
     k: int,
-) -> tuple[bool, float, float]:
-    """Evaluate retrieval for a single test case.
+) -> EvaluationResult:
+    """Evaluate retrieval quality and runtime for one test case.
 
     Args:
         pipeline:
-            RAG retrieval pipeline used to execute the test query.
+            Retrieval pipeline used to execute the test query.
         test:
             Retrieval evaluation case.
         k:
             Number of top-ranked chunks to evaluate.
 
     Returns:
-        Tuple containing Hit@K, Recall@K, and Precision@K.
+        Quality scores and execution metrics for the query.
     """
 
     logger.info("Evaluating RAG retrieval: query='%s'", test.question)
-
-    retrieved_chunks = pipeline.retrieve(query=test.question, top_k=k)
+    with Timer() as timer:
+        retrieved_chunks = pipeline.retrieve(query=test.question, top_k=k)
     retrieved_documents = [
-        Path(str(retrieved_chunk.chunk.metadata["file_path"])).name
-        for retrieved_chunk in retrieved_chunks
+        Path(str(item.chunk.metadata["file_path"])).name for item in retrieved_chunks
     ]
-
+    distances = [item.distance for item in retrieved_chunks]
     logger.info("Retrieved %d chunk(s).", len(retrieved_chunks))
-
-    return (
-        calculate_hit_at_k(
-            retrieved_documents,
-            test.expected_documents,
-            k,
+    return EvaluationResult(
+        hit=calculate_hit_at_k(retrieved_documents, test.expected_documents, k),
+        recall=calculate_recall_at_k(retrieved_documents, test.expected_documents, k),
+        precision=calculate_precision_at_k(
+            retrieved_documents, test.expected_documents, k
         ),
-        calculate_recall_at_k(
-            retrieved_documents,
-            test.expected_documents,
-            k,
-        ),
-        calculate_precision_at_k(
-            retrieved_documents,
-            test.expected_documents,
-            k,
-        ),
+        retrieved_chunks=len(retrieved_chunks),
+        best_distance=min(distances) if distances else None,
+        worst_distance=max(distances) if distances else None,
+        retrieval_time=timer.elapsed,
     )
 
 
@@ -117,96 +115,42 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     """
 
     parser = argparse.ArgumentParser(
-        description="Index a corpus and run retrieval evaluation.",
+        description="Build a registered source index and run retrieval evaluation."
     )
-    parser.add_argument(
-        "--config",
-        type=Path,
-        default=DEFAULT_CONFIG_PATH,
-        help=f"Optional YAML RAG configuration path (default: {DEFAULT_CONFIG_PATH}).",
-    )
-    parser.add_argument(
-        "--corpus",
-        type=Path,
-        default=DEFAULT_CORPUS_DIR,
-        help=f"Corpus directory (default: {DEFAULT_CORPUS_DIR}).",
-    )
-    parser.add_argument(
-        "--dataset",
-        type=Path,
-        default=DEFAULT_DATASET_PATH,
-        help=f"Evaluation dataset (default: {DEFAULT_DATASET_PATH}).",
-    )
+    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH)
+    parser.add_argument("--corpus", type=Path, default=DEFAULT_CORPUS_DIR)
+    parser.add_argument("--dataset", type=Path, default=DEFAULT_DATASET_PATH)
     parser.add_argument(
         "--reindex",
         action="store_true",
-        help="Delete and rebuild the matching configuration-specific index.",
+        help="Rebuild the deterministic source/config index before evaluation.",
     )
-
     return parser.parse_args(argv)
 
 
-def _corpus_fingerprint(corpus_path: Path) -> str:
-    """Fingerprint supported corpus file paths and contents deterministically.
+def _resolve_source(service: SourceService, corpus_path: Path) -> Source:
+    """Find or register the source represented by an evaluation corpus.
 
     Args:
+        service:
+            Source lifecycle service rooted at the corpus parent directory.
         corpus_path:
-            Directory containing the corpus.
+            Evaluation corpus directory.
 
     Returns:
-        Hexadecimal SHA-256 corpus fingerprint.
-
-    Raises:
-        FileNotFoundError:
-            If the corpus directory does not exist.
-        NotADirectoryError:
-            If the corpus path is not a directory.
+        Existing or newly registered source.
     """
 
-    if not corpus_path.exists():
-        raise FileNotFoundError(f"Directory does not exist: {corpus_path}")
-    if not corpus_path.is_dir():
-        raise NotADirectoryError(f"Expected a directory: {corpus_path}")
-
-    digest = hashlib.sha256()
-    supported_files = sorted(
+    resolved = corpus_path.resolve()
+    existing = next(
         (
-            path
-            for path in corpus_path.iterdir()
-            if path.is_file() and path.suffix in {".md", ".txt"}
+            source
+            for source in service.list_sources()
+            if source.directory == str(resolved)
         ),
-        key=lambda path: path.name,
+        None,
     )
-    for path in supported_files:
-        relative_path = path.relative_to(corpus_path).as_posix().encode("utf-8")
-        contents = path.read_bytes()
-        digest.update(len(relative_path).to_bytes(8, "big"))
-        digest.update(relative_path)
-        digest.update(len(contents).to_bytes(8, "big"))
-        digest.update(contents)
-
-    return digest.hexdigest()
-
-
-def _evaluation_collection_name(
-    index_fingerprint: str,
-    corpus_fingerprint: str | None = None,
-) -> str:
-    """Derive a dedicated collection name for an index and corpus.
-
-    Args:
-        index_fingerprint:
-            SHA-256 fingerprint of index-affecting configuration.
-        corpus_fingerprint:
-            SHA-256 fingerprint of supported corpus files. If omitted, the
-            index fingerprint is also used for backward compatibility.
-
-    Returns:
-        Chroma collection name reserved for the evaluation run.
-    """
-
-    corpus_identity = corpus_fingerprint or index_fingerprint
-    return f"evaluation-{index_fingerprint[:16]}-{corpus_identity[:16]}"
+    return existing or service.register(resolved.name)
 
 
 def run_evaluation(
@@ -214,8 +158,12 @@ def run_evaluation(
     corpus_path: Path,
     dataset_path: Path,
     reindex: bool = False,
+    *,
+    source_service: SourceService | None = None,
+    config_service: RagConfigService | None = None,
+    experiment_service: ExperimentService | None = None,
 ) -> None:
-    """Reuse or build an evaluation index and calculate retrieval metrics.
+    """Evaluate retrieval and persist an experiment and completed runs.
 
     Args:
         config:
@@ -225,76 +173,83 @@ def run_evaluation(
         dataset_path:
             JSON retrieval evaluation dataset.
         reindex:
-            Whether to delete and rebuild the resolved experiment collection.
+            Whether to rebuild an existing deterministic index.
+        source_service:
+            Optional source service override for testing or composition.
+        config_service:
+            Optional configuration registry override.
+        experiment_service:
+            Optional experiment/run service override.
 
     Raises:
         ValueError:
             If the evaluation dataset contains no tests.
     """
 
-    fingerprint = config_fingerprint(config)
-    index_fingerprint = index_config_fingerprint(config)
-    corpus_fingerprint = _corpus_fingerprint(corpus_path)
-    collection_name = _evaluation_collection_name(
-        index_fingerprint,
-        corpus_fingerprint,
+    config_service = config_service or RagConfigService(SessionLocal)
+    source_service = source_service or SourceService(
+        SessionLocal, corpus_path.resolve().parent, config_service
     )
-    logger.info(
-        "Starting retrieval evaluation: experiment='%s', "
-        "config_fingerprint=%s, collection='%s'",
+    experiment_service = experiment_service or ExperimentService(SessionLocal)
+    source = _resolve_source(source_service, corpus_path)
+    config_record = config_service.register_config(config)
+    experiment = experiment_service.create_experiment(
+        source.id,
         settings.EXPERIMENT_NAME,
-        fingerprint,
-        collection_name,
+        "Baseline retrieval evaluation.",
     )
-
+    collection_name = source_service.index_collection_name(source.id, config)
     store = create_vector_store(config.vector_store, collection_name)
-    if reindex:
-        store.delete()
+    if reindex or not store.exists():
+        source_service.rebuild_index(source.id, config_record.id)
         store = create_vector_store(config.vector_store, collection_name)
-
-    embedder = create_embedder(config.embedder)
-    if store.count() == 0:
-        indexing_pipeline = IndexingPipeline(
-            splitter=create_splitter(config.splitter),
-            embedder=embedder,
-            store=store,
-        )
-        indexing_pipeline.run(corpus_path)
     else:
-        logger.info(
-            "Reusing populated evaluation collection '%s'.",
-            collection_name,
-        )
+        logger.info("Reusing deterministic collection '%s'.", collection_name)
 
     retrieval_pipeline = create_retrieval_pipeline(
         config.retrieval,
-        embedder,
+        create_embedder(config.embedder),
         store,
     )
     tests = load_evaluation_tests(dataset_path)
     if not tests:
         raise ValueError(f"Evaluation dataset contains no tests: {dataset_path}")
 
-    k = config.retrieval.top_k
-    results = [
-        evaluate_test(
-            pipeline=retrieval_pipeline,
-            test=test,
-            k=k,
+    results: list[EvaluationResult] = []
+    for test in tests:
+        run = experiment_service.start_run(
+            experiment.id, config_record.id, test.question
         )
-        for test in tests
-    ]
+        result = evaluate_test(retrieval_pipeline, test, config.retrieval.top_k)
+        metrics = RunMetrics(
+            query=test.question,
+            embedding_model=config.embedder.model_name,
+            vector_store=config.vector_store.type.capitalize(),
+            llm_model=config.llm.model_name,
+            top_k=config.retrieval.top_k,
+            retrieved_chunks=result.retrieved_chunks,
+            best_distance=result.best_distance,
+            worst_distance=result.worst_distance,
+            context_length=0,
+            prompt_length=0,
+            response_length=0,
+            retrieval_time=result.retrieval_time,
+            generation_time=0.0,
+            total_time=result.retrieval_time,
+        )
+        experiment_service.complete_run(run, metrics)
+        results.append(result)
 
-    hit_rate = sum(result[0] for result in results) / len(results)
-    recall = sum(result[1] for result in results) / len(results)
-    precision = sum(result[2] for result in results) / len(results)
-
+    hit_rate = sum(result.hit for result in results) / len(results)
+    recall = sum(result.recall for result in results) / len(results)
+    precision = sum(result.precision for result in results) / len(results)
+    k = config.retrieval.top_k
     logger.info(
-        "Retrieval evaluation completed: experiment='%s', "
-        "config_fingerprint=%s, collection='%s', "
-        "tests=%d, k=%d, hit@%d=%.3f, recall@%d=%.3f, precision@%d=%.3f",
-        settings.EXPERIMENT_NAME,
-        fingerprint,
+        "Retrieval evaluation completed: experiment_id=%d, rag_config_id=%d, "
+        "collection='%s', tests=%d, k=%d, hit@%d=%.3f, recall@%d=%.3f, "
+        "precision@%d=%.3f",
+        experiment.id,
+        config_record.id,
         collection_name,
         len(results),
         k,
@@ -312,18 +267,12 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     Args:
         argv:
-            Optional argument sequence. When omitted, arguments are read from
-            the process command line.
+            Optional command-line arguments.
     """
 
     args = parse_args(argv)
-    config = load_rag_config(args.config)
-    ExperimentService(SessionLocal).register_experiment(
-        config,
-        settings.EXPERIMENT_NAME,
-    )
     run_evaluation(
-        config=config,
+        config=load_rag_config(args.config),
         corpus_path=args.corpus,
         dataset_path=args.dataset,
         reindex=args.reindex,

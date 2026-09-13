@@ -77,6 +77,9 @@ known_third_party = [
 [tool.ruff]
 src = ["src", "tests"]
 
+[tool.ruff.lint]
+ignore = ["I"]
+
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]

@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from genai_template.api.dependencies import get_rag_service
 from genai_template.schemas import AnswerRequest, AnswerResponse
-from genai_template.services import RagService
+from genai_template.services import IndexNotBuiltError, RagService
 
 router = APIRouter()
 
@@ -32,7 +32,16 @@ async def answer(
     """
 
     try:
-        result = rag_service.answer(request.query, request.source_id)
+        result = rag_service.answer(
+            request.query,
+            request.experiment_id,
+            request.rag_config_id,
+        )
+    except IndexNotBuiltError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

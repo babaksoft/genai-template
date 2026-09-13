@@ -5,10 +5,16 @@ from fastapi.testclient import TestClient
 
 from genai_template.api.dependencies import get_rag_service
 from genai_template.schemas import RagResult, RunMetrics
-from genai_template.services import RagService
+from genai_template.services import IndexNotBuiltError, RagService
 
 
 def get_test_metrics() -> RunMetrics:
+    """Create representative API response metrics.
+
+    Returns:
+        Valid run metrics.
+    """
+
     return RunMetrics(
         query="test",
         embedding_model="test",
@@ -51,7 +57,8 @@ def test_answer_returns_generated_response(
         "/api/v1/answer",
         json={
             "query": "What is RAG?",
-            "source_id": 1,
+            "experiment_id": 1,
+            "rag_config_id": 2,
         },
     )
 
@@ -61,7 +68,7 @@ def test_answer_returns_generated_response(
 
     assert body["answer"] == "Generated answer."
     assert body["metrics"]["retrieved_chunks"] == 2
-    mock_service.answer.assert_called_once_with("What is RAG?", 1)
+    mock_service.answer.assert_called_once_with("What is RAG?", 1, 2)
 
     app.dependency_overrides.clear()
 
@@ -80,15 +87,16 @@ def test_answer_rejects_empty_query(
         "/api/v1/answer",
         json={
             "query": "",
-            "source_id": 1,
+            "experiment_id": 1,
+            "rag_config_id": 2,
         },
     )
 
     assert response.status_code == 422  # i.e. Unprocessable Entity
 
 
-def test_answer_rejects_missing_source(app: FastAPI) -> None:
-    """Verify unknown source identifiers return a not-found response.
+def test_answer_rejects_missing_experiment(app: FastAPI) -> None:
+    """Verify unknown experiment identifiers return a not-found response.
 
     Args:
         app:
@@ -96,17 +104,37 @@ def test_answer_rejects_missing_source(app: FastAPI) -> None:
     """
 
     mock_service = Mock(spec=RagService)
-    mock_service.answer.side_effect = ValueError("Source 99 does not exist.")
+    mock_service.answer.side_effect = ValueError("Experiment 99 does not exist.")
 
     app.dependency_overrides[get_rag_service] = lambda: mock_service
 
     client = TestClient(app)
     response = client.post(
         "/api/v1/answer",
-        json={"query": "What is RAG?", "source_id": 99},
+        json={"query": "What is RAG?", "experiment_id": 99, "rag_config_id": 2},
     )
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "Source 99 does not exist."
+    assert response.json()["detail"] == "Experiment 99 does not exist."
+
+    app.dependency_overrides.clear()
+
+
+def test_answer_rejects_missing_index_with_conflict(app: FastAPI) -> None:
+    """An unbuilt selected index should produce an actionable conflict."""
+
+    mock_service = Mock(spec=RagService)
+    mock_service.answer.side_effect = IndexNotBuiltError(
+        "Index for source 1 and RAG config 2 has not been built."
+    )
+    app.dependency_overrides[get_rag_service] = lambda: mock_service
+
+    response = TestClient(app).post(
+        "/api/v1/answer",
+        json={"query": "What is RAG?", "experiment_id": 1, "rag_config_id": 2},
+    )
+
+    assert response.status_code == 409
+    assert "has not been built" in response.json()["detail"]
 
     app.dependency_overrides.clear()
