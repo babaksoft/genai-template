@@ -6,6 +6,9 @@ from fastapi import FastAPI
 
 from genai_template.api.observability import initialize_observability
 from genai_template.config.logging import configure_logging
+from genai_template.config.rag import load_rag_config
+from genai_template.db import SessionLocal
+from genai_template.services.rag_config_service import RagConfigService
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +24,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     configure_logging()
     logger.info("Starting GenAI Template API.")
+    RagConfigService(SessionLocal).register_config(load_rag_config())
 
     phoenix_enabled = getattr(app.state, "phoenix_enabled", False)
     if phoenix_enabled:

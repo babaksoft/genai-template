@@ -7,7 +7,12 @@ from genai_template.components.prompt import PromptBuilder
 from genai_template.config import RagConfig, load_rag_config, settings
 from genai_template.db import SessionLocal
 from genai_template.factories import create_llm
-from genai_template.services import ExperimentService, RagService, SourceService
+from genai_template.services import (
+    ExperimentService,
+    RagConfigService,
+    RagService,
+    SourceService,
+)
 
 
 def get_rag_config() -> RagConfig:
@@ -66,3 +71,23 @@ def get_source_service(
         corpora_dir=settings.CORPORA_DIR,
         config=config,
     )
+
+
+def get_experiment_service() -> ExperimentService:
+    """Provide the experiment registry service.
+
+    Returns:
+        Configured experiment registry.
+    """
+
+    return ExperimentService(SessionLocal)
+
+
+def get_rag_config_service() -> RagConfigService:
+    """Provide the RAG configuration registry service.
+
+    Returns:
+        Configured RAG configuration registry.
+    """
+
+    return RagConfigService(SessionLocal)

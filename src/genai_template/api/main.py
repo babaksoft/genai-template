@@ -3,7 +3,9 @@ from fastapi import FastAPI
 from genai_template.api.lifespan import lifespan
 from genai_template.api.routes import (
     answer_router,
+    experiments_router,
     health_router,
+    rag_configs_router,
     sources_router,
 )
 from genai_template.config import settings
@@ -35,6 +37,8 @@ def create_app(*, phoenix_enabled: bool | None = None) -> FastAPI:
 
     app.include_router(health_router, prefix=settings.API_URL_PREFIX)
     app.include_router(answer_router, prefix=settings.API_URL_PREFIX)
+    app.include_router(experiments_router, prefix=settings.API_URL_PREFIX)
+    app.include_router(rag_configs_router, prefix=settings.API_URL_PREFIX)
     app.include_router(sources_router, prefix=settings.API_URL_PREFIX)
 
     return app
