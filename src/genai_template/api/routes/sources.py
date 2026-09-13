@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from genai_template.api.dependencies import get_source_service
 from genai_template.schemas import (
     CreateSourceRequest,
+    IndexBuildResponse,
     SourceCandidateResponse,
     SourceResponse,
 )
@@ -19,7 +20,7 @@ router = APIRouter(prefix="/sources", tags=["sources"])
 async def list_source_candidates(
     source_service: Annotated[SourceService, Depends(get_source_service)],
 ) -> list[SourceCandidateResponse]:
-    """List directories available to ingest as sources.
+    """List directories available to register as sources.
 
     Args:
         source_service:
@@ -38,7 +39,7 @@ async def list_source_candidates(
 async def list_sources(
     source_service: Annotated[SourceService, Depends(get_source_service)],
 ) -> list[SourceResponse]:
-    """List ingested corpus sources.
+    """List registered corpus sources.
 
     Args:
         source_service:
@@ -52,11 +53,11 @@ async def list_sources(
 
 
 @router.post("", response_model=SourceResponse, status_code=status.HTTP_201_CREATED)
-async def ingest_source(
+async def register_source(
     request: CreateSourceRequest,
     source_service: Annotated[SourceService, Depends(get_source_service)],
 ) -> SourceResponse:
-    """Ingest a selected prepared corpus directory.
+    """Register a selected prepared corpus directory.
 
     Args:
         request:
@@ -69,11 +70,11 @@ async def ingest_source(
 
     Raises:
         HTTPException:
-            If the corpus directory is invalid, missing, or already ingested.
+            If the corpus directory is invalid, missing, or already registered.
     """
 
     try:
-        source = source_service.ingest(request.directory)
+        source = source_service.register(request.directory)
     except (FileNotFoundError, NotADirectoryError) as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -90,21 +91,24 @@ async def ingest_source(
     return _source_response(source)
 
 
-@router.post("/{source_id}/refresh", response_model=SourceResponse)
-async def refresh_source(
+@router.put("/{source_id}/indexes/{rag_config_id}", response_model=IndexBuildResponse)
+async def rebuild_source_index(
     source_id: int,
+    rag_config_id: int,
     source_service: Annotated[SourceService, Depends(get_source_service)],
-) -> SourceResponse:
-    """Rebuild an existing source from its prepared directory.
+) -> IndexBuildResponse:
+    """Rebuild a source's deterministic index with a registered config.
 
     Args:
         source_id:
-            Identifier of the source to refresh.
+            Identifier of the source to rebuild.
+        rag_config_id:
+            Identifier of the persisted RAG configuration.
         source_service:
             Configured source service.
 
     Returns:
-        Refreshed source metadata.
+        Transient indexing counts and duration.
 
     Raises:
         HTTPException:
@@ -112,14 +116,14 @@ async def refresh_source(
     """
 
     try:
-        source = source_service.refresh(source_id)
+        result = source_service.rebuild_index(source_id, rag_config_id)
     except (FileNotFoundError, NotADirectoryError, ValueError) as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
 
-    return _source_response(source)
+    return IndexBuildResponse.model_validate(result, from_attributes=True)
 
 
 def _source_response(source: object) -> SourceResponse:

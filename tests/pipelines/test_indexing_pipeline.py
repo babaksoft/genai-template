@@ -53,6 +53,7 @@ def test_run_empty_directory(
     mock_store = MagicMock()
     mock_embedder = MagicMock()
     mock_embedder.embed.return_value = []
+    mock_embedder.embed_query.return_value = [0.0, 0.0, 0.0]
 
     pipeline = IndexingPipeline(
         embedder=mock_embedder,
@@ -64,4 +65,6 @@ def test_run_empty_directory(
     assert result.chunks_indexed == 0
 
     mock_embedder.embed.assert_called_once_with([])
-    mock_store.upsert.assert_called_once_with([])
+    mock_store.upsert.assert_not_called()
+    mock_embedder.embed_query.assert_called_once_with("")
+    mock_store.create.assert_called_once_with(3)

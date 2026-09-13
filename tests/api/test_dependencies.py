@@ -15,13 +15,13 @@ def test_get_rag_config_loads_application_defaults() -> None:
 
     config = get_rag_config()
 
-    assert config.experiment.name
     assert isinstance(config.vector_store, VectorStoreConfig)
     assert config.vector_store.persist_directory.is_absolute()
 
 
 @patch("genai_template.api.dependencies.RagService")
 @patch("genai_template.api.dependencies.SourceService")
+@patch("genai_template.api.dependencies.RagConfigService")
 @patch("genai_template.api.dependencies.ExperimentService")
 @patch("genai_template.api.dependencies.create_llm")
 @patch("genai_template.api.dependencies.PromptBuilder")
@@ -31,6 +31,7 @@ def test_get_rag_service_injects_default_config(
     mock_prompt_builder: MagicMock,
     mock_create_llm: MagicMock,
     mock_experiment_service: MagicMock,
+    mock_rag_config_service: MagicMock,
     mock_source_service: MagicMock,
     mock_rag_service: MagicMock,
 ) -> None:
@@ -42,7 +43,10 @@ def test_get_rag_service_injects_default_config(
 
     assert result is mock_rag_service.return_value
     mock_create_llm.assert_called_once_with(config.llm)
-    assert mock_source_service.call_args.kwargs["config"] is config
+    assert (
+        mock_source_service.call_args.kwargs["rag_config_service"]
+        is mock_rag_config_service.return_value
+    )
     mock_experiment_service.assert_called_once()
     mock_rag_service.assert_called_once_with(
         context_builder=mock_context_builder.return_value,
@@ -55,14 +59,17 @@ def test_get_rag_service_injects_default_config(
 
 
 @patch("genai_template.api.dependencies.SourceService")
-def test_get_source_service_injects_default_config(
+@patch("genai_template.api.dependencies.RagConfigService")
+def test_get_source_service_injects_config_registry(
+    mock_rag_config_service: MagicMock,
     mock_source_service: MagicMock,
 ) -> None:
-    """The source dependency should share the supplied RAG configuration."""
+    """The source dependency should share a persisted config registry."""
 
-    config = get_rag_config()
-
-    result = get_source_service(config)
+    result = get_source_service()
 
     assert result is mock_source_service.return_value
-    assert mock_source_service.call_args.kwargs["config"] is config
+    assert (
+        mock_source_service.call_args.kwargs["rag_config_service"]
+        is mock_rag_config_service.return_value
+    )

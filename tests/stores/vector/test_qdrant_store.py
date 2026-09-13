@@ -287,6 +287,27 @@ def test_missing_collection_operations_are_safe(mock_client_class: MagicMock) ->
 
 
 @patch("genai_template.stores.vector.qdrant_store.QdrantClient")
+def test_create_supports_explicitly_empty_collection(
+    mock_client_class: MagicMock,
+) -> None:
+    """An empty index build should still create an identifiable collection."""
+
+    client = mock_client_class.return_value
+    client.collection_exists.return_value = False
+    store = QdrantStore(
+        collection_name="documents",
+        distance=VectorDistance.COSINE,
+        url="https://qdrant.example.com",
+    )
+
+    store.create(384)
+
+    client.create_collection.assert_called_once()
+    assert client.create_collection.call_args.kwargs["collection_name"] == "documents"
+    assert client.create_collection.call_args.kwargs["vectors_config"].size == 384
+
+
+@patch("genai_template.stores.vector.qdrant_store.QdrantClient")
 def test_count_and_delete_existing_collection(mock_client_class: MagicMock) -> None:
     """Existing collection lifecycle calls should be delegated to Qdrant."""
 

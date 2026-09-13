@@ -70,7 +70,11 @@ class IndexingPipeline:
             documents = self._reader.load(data_dir)
             chunks = self._splitter.split(documents)
             embedded_chunks = self._embedder.embed(chunks)
-            self._store.upsert(embedded_chunks)
+            if embedded_chunks:
+                self._store.upsert(embedded_chunks)
+            else:
+                vector_size = len(self._embedder.embed_query(""))
+                self._store.create(vector_size)
 
         result = IndexingResult(
             documents_indexed=len(documents),

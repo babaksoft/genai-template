@@ -1,4 +1,4 @@
-"""Tests for corpus source API routes."""
+"""Tests for corpus source and deterministic index API routes."""
 
 from datetime import UTC, datetime
 from unittest.mock import Mock
@@ -8,56 +8,38 @@ from fastapi.testclient import TestClient
 
 from genai_template.api.dependencies import get_source_service
 from genai_template.db.models import Source
+from genai_template.schemas import IndexingResult
 from genai_template.services import SourceService
 
 
 def test_list_source_candidates(app: FastAPI) -> None:
-    """The candidates endpoint should return browsable corpus directories.
-
-    Args:
-        app:
-            FastAPI application instance.
-    """
+    """The candidates endpoint should return browsable corpus directories."""
 
     source_service = Mock(spec=SourceService)
     source_service.list_candidates.return_value = ["handbook", "product-docs"]
-
     app.dependency_overrides[get_source_service] = lambda: source_service
 
-    client = TestClient(app)
-    response = client.get("/api/v1/sources/candidates")
+    response = TestClient(app).get("/api/v1/sources/candidates")
 
     assert response.status_code == 200
     assert response.json() == [{"name": "handbook"}, {"name": "product-docs"}]
-
     app.dependency_overrides.clear()
 
 
-def test_list_sources(app: FastAPI) -> None:
-    """The sources endpoint should serialize persisted source metadata.
-
-    Args:
-        app:
-            FastAPI application instance.
-    """
+def test_list_sources_exposes_registration_metadata_only(app: FastAPI) -> None:
+    """Source responses should not expose collection or indexing metadata."""
 
     source = Source(
         id=4,
         name="product-docs",
         directory="/corpora/product-docs",
-        collection_name="source-abc",
-        documents_indexed=2,
-        chunks_indexed=8,
-        indexed_at=datetime(2026, 9, 2, tzinfo=UTC),
-        indexing_time=0.3,
+        created_at=datetime(2026, 9, 2, tzinfo=UTC),
     )
     source_service = Mock(spec=SourceService)
     source_service.list_sources.return_value = [source]
-
     app.dependency_overrides[get_source_service] = lambda: source_service
 
-    client = TestClient(app)
-    response = client.get("/api/v1/sources")
+    response = TestClient(app).get("/api/v1/sources")
 
     assert response.status_code == 200
     assert response.json() == [
@@ -65,130 +47,86 @@ def test_list_sources(app: FastAPI) -> None:
             "id": 4,
             "name": "product-docs",
             "directory": "/corpora/product-docs",
-            "documents_indexed": 2,
-            "chunks_indexed": 8,
-            "indexed_at": "2026-09-02T00:00:00Z",
-            "indexing_time": 0.3,
+            "created_at": "2026-09-02T00:00:00Z",
         }
     ]
-
     app.dependency_overrides.clear()
 
 
-def test_ingest_source_returns_source(app: FastAPI) -> None:
-    """The source ingestion endpoint should return persisted source metadata.
-
-    Args:
-        app:
-            FastAPI application instance.
-    """
+def test_create_source_registers_directory(app: FastAPI) -> None:
+    """Source creation should register the directory without indexing it."""
 
     source = Source(
         id=4,
         name="product-docs",
         directory="/corpora/product-docs",
-        collection_name="source-abc",
-        documents_indexed=2,
-        chunks_indexed=8,
-        indexed_at=datetime(2026, 9, 2, tzinfo=UTC),
-        indexing_time=0.3,
+        created_at=datetime(2026, 9, 2, tzinfo=UTC),
     )
     source_service = Mock(spec=SourceService)
-    source_service.ingest.return_value = source
-
+    source_service.register.return_value = source
     app.dependency_overrides[get_source_service] = lambda: source_service
 
-    client = TestClient(app)
-    response = client.post("/api/v1/sources", json={"directory": "product-docs"})
+    response = TestClient(app).post(
+        "/api/v1/sources", json={"directory": "product-docs"}
+    )
 
     assert response.status_code == 201
     assert response.json()["name"] == "product-docs"
-    assert response.json()["documents_indexed"] == 2
-    assert response.json()["chunks_indexed"] == 8
-    assert response.json()["indexing_time"] == 0.3
-
-    source_service.ingest.assert_called_once_with("product-docs")
-
+    assert "documents_indexed" not in response.json()
+    source_service.register.assert_called_once_with("product-docs")
     app.dependency_overrides.clear()
 
 
-def test_ingest_source_rejects_duplicate_name(app: FastAPI) -> None:
-    """The source ingestion endpoint should report duplicate source names.
-
-    Args:
-        app:
-            FastAPI application instance.
-    """
+def test_create_source_rejects_duplicate_name(app: FastAPI) -> None:
+    """Source creation should report duplicate source names."""
 
     source_service = Mock(spec=SourceService)
-    source_service.ingest.side_effect = ValueError(
+    source_service.register.side_effect = ValueError(
         "Source 'product-docs' already exists."
     )
-
     app.dependency_overrides[get_source_service] = lambda: source_service
 
-    client = TestClient(app)
-    response = client.post("/api/v1/sources", json={"directory": "product-docs"})
+    response = TestClient(app).post(
+        "/api/v1/sources", json={"directory": "product-docs"}
+    )
 
     assert response.status_code == 409
     assert response.json()["detail"] == "Source 'product-docs' already exists."
-
     app.dependency_overrides.clear()
 
 
-def test_refresh_source_returns_refreshed_metadata(app: FastAPI) -> None:
-    """The refresh endpoint should return the replacement source metadata.
+def test_rebuild_index_returns_transient_metrics(app: FastAPI) -> None:
+    """The PUT index endpoint should return this build's measurements."""
 
-    Args:
-        app:
-            FastAPI application instance.
-    """
-
-    source = Source(
-        id=4,
-        name="product-docs",
-        directory="/corpora/product-docs",
-        collection_name="source-refreshed",
-        documents_indexed=3,
-        chunks_indexed=12,
-        indexed_at=datetime(2026, 9, 3, tzinfo=UTC),
-        indexing_time=0.4,
-    )
     source_service = Mock(spec=SourceService)
-    source_service.refresh.return_value = source
-
+    source_service.rebuild_index.return_value = IndexingResult(
+        documents_indexed=3, chunks_indexed=12, indexing_time=0.4
+    )
     app.dependency_overrides[get_source_service] = lambda: source_service
 
-    client = TestClient(app)
-    response = client.post("/api/v1/sources/4/refresh")
+    response = TestClient(app).put("/api/v1/sources/4/indexes/7")
 
     assert response.status_code == 200
-    assert response.json()["name"] == "product-docs"
-    assert response.json()["chunks_indexed"] == 12
-    source_service.refresh.assert_called_once_with(4)
-
+    assert response.json() == {
+        "documents_indexed": 3,
+        "chunks_indexed": 12,
+        "indexing_time": 0.4,
+    }
+    source_service.rebuild_index.assert_called_once_with(4, 7)
     app.dependency_overrides.clear()
 
 
-def test_refresh_source_rejects_missing_directory(app: FastAPI) -> None:
-    """The refresh endpoint should report a missing source directory.
-
-    Args:
-        app:
-            FastAPI application instance.
-    """
+def test_rebuild_index_rejects_missing_source_or_config(app: FastAPI) -> None:
+    """Missing registry records should be exposed as not-found responses."""
 
     source_service = Mock(spec=SourceService)
-    source_service.refresh.side_effect = FileNotFoundError(
-        "Directory does not exist: product-docs"
+    source_service.rebuild_index.side_effect = ValueError(
+        "RAG config 7 does not exist."
     )
-
     app.dependency_overrides[get_source_service] = lambda: source_service
 
-    client = TestClient(app)
-    response = client.post("/api/v1/sources/4/refresh")
+    response = TestClient(app).put("/api/v1/sources/4/indexes/7")
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "Directory does not exist: product-docs"
-
+    assert response.json()["detail"] == "RAG config 7 does not exist."
     app.dependency_overrides.clear()

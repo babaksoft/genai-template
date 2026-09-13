@@ -10,6 +10,7 @@ from typing import cast
 import chromadb
 from chromadb.api.models.Collection import Collection
 from chromadb.api.types import Embeddings, Metadatas
+from chromadb.errors import NotFoundError
 
 from genai_template.common.types import VectorDistance
 from genai_template.config import settings
@@ -55,22 +56,55 @@ class ChromaStore:
 
         self._client = chromadb.PersistentClient(path=persist_directory)
         self._collection_name = collection_name
-        self._collection: Collection = self._client.get_or_create_collection(
-            name=collection_name,
-            metadata={
-                "hnsw:space": self._DISTANCE_MAP[distance],
-            },
-        )
+        self._distance = distance
 
         logger.info(
             "Connected to Chroma collection '%s'.",
             collection_name,
         )
 
+    def create(self, vector_size: int) -> None:
+        """Create the collection if it does not already exist.
+
+        Args:
+            vector_size:
+                Vector dimensionality, unused because Chroma infers it on the
+                first upsert.
+        """
+
+        del vector_size
+        self._get_collection()
+
+    def exists(self) -> bool:
+        """Return whether the configured Chroma collection exists.
+
+        Returns:
+            ``True`` when the collection exists, including when it is empty.
+        """
+
+        try:
+            self._client.get_collection(name=self._collection_name)
+        except NotFoundError:
+            return False
+        return True
+
+    def _get_collection(self) -> Collection:
+        """Open the configured collection, creating it when necessary.
+
+        Returns:
+            Configured Chroma collection.
+        """
+
+        return self._client.get_or_create_collection(
+            name=self._collection_name,
+            metadata={"hnsw:space": self._DISTANCE_MAP[self._distance]},
+        )
+
     def delete(self) -> None:
         """Delete this store's Chroma collection."""
 
-        self._client.delete_collection(name=self._collection_name)
+        if self.exists():
+            self._client.delete_collection(name=self._collection_name)
 
     def count(self) -> int:
         """Return the number of records in this store's collection.
@@ -79,7 +113,9 @@ class ChromaStore:
             Number of stored vector records.
         """
 
-        return self._collection.count()
+        if not self.exists():
+            return 0
+        return self._client.get_collection(name=self._collection_name).count()
 
     def upsert(
         self,
@@ -120,7 +156,7 @@ class ChromaStore:
 
                 metadatas.append(metadata)
 
-            self._collection.upsert(
+            self._get_collection().upsert(
                 ids=ids,
                 documents=documents,
                 embeddings=cast(Embeddings, embeddings),
@@ -163,15 +199,20 @@ class ChromaStore:
             ) as span,
             Timer() as timer,
         ):
-            result = self._collection.query(
-                query_embeddings=cast(Embeddings, [embedding]),
-                n_results=top_k,
-            )
-
-            ids = result.get("ids") or []
-            documents = result.get("documents") or []
-            metadatas = result.get("metadatas") or []
-            distances = result.get("distances") or []
+            if self.exists():
+                result = self._client.get_collection(name=self._collection_name).query(
+                    query_embeddings=cast(Embeddings, [embedding]),
+                    n_results=top_k,
+                )
+                ids = result.get("ids") or []
+                documents = result.get("documents") or []
+                metadatas = result.get("metadatas") or []
+                distances = result.get("distances") or []
+            else:
+                ids = []
+                documents = []
+                metadatas = []
+                distances = []
 
             retrieved_chunks: list[RetrievedChunk] = []
             if ids:

@@ -50,13 +50,13 @@ class AnswerResponse(BaseModel):
 
 
 class SourceCandidateResponse(BaseModel):
-    """A corpus directory available for ingestion."""
+    """A corpus directory available for registration."""
 
     name: str = Field(..., description="Directory basename used as source name.")
 
 
 class CreateSourceRequest(BaseModel):
-    """Request to ingest one configured corpus directory."""
+    """Request to register one configured corpus directory."""
 
     directory: str = Field(
         ...,
@@ -67,7 +67,7 @@ class CreateSourceRequest(BaseModel):
 
 
 class SourceResponse(BaseModel):
-    """Metadata describing an ingested corpus source."""
+    """Metadata describing a registered corpus source."""
 
     id: int = Field(
         ...,
@@ -76,36 +76,23 @@ class SourceResponse(BaseModel):
 
     name: str = Field(
         ...,
-        description="Source name derived from the ingested directory basename.",
+        description="Source name derived from the registered directory basename.",
     )
 
     directory: str = Field(
         ...,
-        description="Full path to the ingested directory.",
+        description="Full path to the registered directory.",
     )
 
-    documents_indexed: int = Field(
-        ...,
-        ge=0,
-        description="Number of indexed documents.",
-    )
+    created_at: datetime = Field(..., description="Registration timestamp.")
 
-    chunks_indexed: int = Field(
-        ...,
-        ge=0,
-        description="Number of indexed chunks.",
-    )
 
-    indexed_at: datetime = Field(
-        ...,
-        description="Timestamp when the source was indexed.",
-    )
+class IndexBuildResponse(BaseModel):
+    """Transient result of rebuilding a deterministic source index."""
 
-    indexing_time: float = Field(
-        ...,
-        ge=0,
-        description="Indexing duration in seconds.",
-    )
+    documents_indexed: int = Field(..., ge=0, description="Indexed documents.")
+    chunks_indexed: int = Field(..., ge=0, description="Indexed chunks.")
+    indexing_time: float = Field(..., ge=0, description="Build duration in seconds.")
 
 
 class CreateExperimentRequest(BaseModel):

@@ -41,7 +41,7 @@ def get_rag_service(
     source_service = SourceService(
         session_factory=SessionLocal,
         corpora_dir=settings.CORPORA_DIR,
-        config=config,
+        rag_config_service=RagConfigService(SessionLocal),
     )
     return RagService(
         context_builder=ContextBuilder(),
@@ -53,14 +53,8 @@ def get_rag_service(
     )
 
 
-def get_source_service(
-    config: Annotated[RagConfig, Depends(get_rag_config)],
-) -> SourceService:
+def get_source_service() -> SourceService:
     """Provide the application's corpus source service.
-
-    Args:
-        config:
-            Default resolved RAG configuration.
 
     Returns:
         Configured source service.
@@ -69,7 +63,7 @@ def get_source_service(
     return SourceService(
         session_factory=SessionLocal,
         corpora_dir=settings.CORPORA_DIR,
-        config=config,
+        rag_config_service=RagConfigService(SessionLocal),
     )
 
 

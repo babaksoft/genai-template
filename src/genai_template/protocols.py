@@ -57,6 +57,25 @@ class Embedder(Protocol):
 class VectorStore(Protocol):
     """Contract for vector-store lifecycle and retrieval operations."""
 
+    def create(self, vector_size: int) -> None:
+        """Create an empty collection when one does not already exist.
+
+        Args:
+            vector_size:
+                Dimensionality of vectors that the collection will store.
+        """
+
+        ...
+
+    def exists(self) -> bool:
+        """Return whether the vector store's collection exists.
+
+        Returns:
+            ``True`` when the collection exists, including when it is empty.
+        """
+
+        ...
+
     def count(self) -> int:
         """Return the number of stored vector records.
 

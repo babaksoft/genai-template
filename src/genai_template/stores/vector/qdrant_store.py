@@ -81,8 +81,40 @@ class QdrantStore:
     def delete(self) -> None:
         """Delete this store's collection if it exists."""
 
-        if self._collection_exists():
+        if self.exists():
             self._client.delete_collection(collection_name=self._collection_name)
+
+    def create(self, vector_size: int) -> None:
+        """Create an empty collection if it does not already exist.
+
+        Args:
+            vector_size:
+                Dimensionality of vectors stored in the collection.
+
+        Raises:
+            ValueError:
+                If ``vector_size`` is not positive.
+        """
+
+        if vector_size <= 0:
+            raise ValueError("vector_size must be positive")
+        if not self.exists():
+            self._client.create_collection(
+                collection_name=self._collection_name,
+                vectors_config=models.VectorParams(
+                    size=vector_size,
+                    distance=self._DISTANCE_MAP[self._distance],
+                ),
+            )
+
+    def exists(self) -> bool:
+        """Return whether the configured Qdrant collection exists.
+
+        Returns:
+            ``True`` when the collection exists, including when it is empty.
+        """
+
+        return self._client.collection_exists(collection_name=self._collection_name)
 
     def count(self) -> int:
         """Return the number of records in this store's collection.
@@ -91,7 +123,7 @@ class QdrantStore:
             Number of stored vector records, or zero before collection creation.
         """
 
-        if not self._collection_exists():
+        if not self.exists():
             return 0
 
         result = self._client.count(
@@ -135,14 +167,7 @@ class QdrantStore:
         ]
 
         with Timer() as timer:
-            if not self._collection_exists():
-                self._client.create_collection(
-                    collection_name=self._collection_name,
-                    vectors_config=models.VectorParams(
-                        size=vector_size,
-                        distance=self._DISTANCE_MAP[self._distance],
-                    ),
-                )
+            self.create(vector_size)
             self._client.upsert(
                 collection_name=self._collection_name,
                 points=points,
@@ -188,7 +213,7 @@ class QdrantStore:
             Timer() as timer,
         ):
             retrieved_chunks: list[RetrievedChunk] = []
-            if self._collection_exists():
+            if self.exists():
                 response: Any = self._client.query_points(
                     collection_name=self._collection_name,
                     query=embedding,
@@ -219,15 +244,6 @@ class QdrantStore:
 
         self._log_stats(retrieved_chunks, timer)
         return retrieved_chunks
-
-    def _collection_exists(self) -> bool:
-        """Return whether the configured Qdrant collection exists.
-
-        Returns:
-            ``True`` when the collection exists.
-        """
-
-        return self._client.collection_exists(collection_name=self._collection_name)
 
     @staticmethod
     def _point_id(chunk_id: str) -> str:

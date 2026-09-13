@@ -1,5 +1,6 @@
-"""Unit tests for the corpus source service."""
+"""Unit tests for source registration and deterministic index lifecycle."""
 
+from hashlib import sha256
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -7,12 +8,12 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from genai_template.config import load_rag_config
+from genai_template.config import index_config_fingerprint, load_rag_config
 from genai_template.db.base import Base
 from genai_template.db.models import Source
 from genai_template.pipelines import IndexingPipeline
 from genai_template.schemas import IndexingResult
-from genai_template.services import SourceService
+from genai_template.services import RagConfigService, SourceService
 
 
 @pytest.fixture
@@ -25,260 +26,137 @@ def session_factory() -> sessionmaker[Session]:
 
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
-
     return sessionmaker(bind=engine, expire_on_commit=False)
 
 
-def test_list_candidates_returns_uningested_immediate_directories(
-    tmp_path: Path,
-    session_factory: sessionmaker[Session],
+def test_list_candidates_excludes_registered_directories(
+    tmp_path: Path, session_factory: sessionmaker[Session]
 ) -> None:
-    """The service should expose only unregistered immediate directories."""
+    """Candidates should contain only unregistered immediate directories."""
 
     (tmp_path / "zeta").mkdir()
     (tmp_path / "alpha").mkdir()
-
     with session_factory() as session:
-        session.add(
-            Source(
-                name="zeta",
-                directory=str((tmp_path / "zeta").resolve()),
-                collection_name="source-zeta",
-                documents_indexed=1,
-                chunks_indexed=1,
-                indexing_time=0.1,
-            )
-        )
+        session.add(Source(name="zeta", directory=str((tmp_path / "zeta").resolve())))
         session.commit()
 
-    service = SourceService(
-        session_factory=session_factory,
-        corpora_dir=tmp_path,
-    )
+    service = SourceService(session_factory, tmp_path)
 
     assert service.list_candidates() == ["alpha"]
 
 
-def test_ingest_creates_persisted_source(
+def test_register_persists_only_source_directory(
     tmp_path: Path,
     session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The service should index and persist a source for a candidate directory."""
+    """Registration should not construct or populate a vector index."""
 
-    (tmp_path / "product-docs").mkdir()
-    pipeline = MagicMock(spec=IndexingPipeline)
-    pipeline.run.return_value = IndexingResult(
-        documents_indexed=3,
-        chunks_indexed=12,
-        indexing_time=0.4,
-    )
-    service = SourceService(
-        session_factory=session_factory,
-        corpora_dir=tmp_path,
-    )
-    monkeypatch.setattr(
-        service,
-        "_create_indexing_pipeline",
-        MagicMock(return_value=pipeline),
-    )
-
-    source = service.ingest("product-docs")
-
-    assert source.id is not None
-    assert source.name == "product-docs"
-    assert source.directory == str((tmp_path / "product-docs").resolve())
-    assert source.collection_name.startswith("source-")
-    assert source.chunks_indexed == 12
-    pipeline.run.assert_called_once_with((tmp_path / "product-docs").resolve())
-
-    with session_factory() as session:
-        persisted_source = session.get(Source, source.id)
-
-    assert persisted_source is not None
-    assert persisted_source.documents_indexed == 3
-    assert persisted_source.chunks_indexed == 12
-
-
-def test_ingest_rejects_paths_outside_corpus_root(
-    tmp_path: Path,
-    session_factory: sessionmaker[Session],
-) -> None:
-    """The service should reject directory traversal attempts."""
-
-    service = SourceService(
-        session_factory=session_factory,
-        corpora_dir=tmp_path,
-    )
-
-    with pytest.raises(ValueError, match="immediate child"):
-        service.ingest("../outside")
-
-
-def test_ingest_rejects_duplicate_source_name(
-    tmp_path: Path,
-    session_factory: sessionmaker[Session],
-) -> None:
-    """The service should preserve the one-source-per-directory-name rule."""
-
-    (tmp_path / "product-docs").mkdir()
-    pipeline = MagicMock(spec=IndexingPipeline)
-    pipeline.run.return_value = IndexingResult(
-        documents_indexed=1,
-        chunks_indexed=2,
-        indexing_time=0.1,
-    )
-    service = SourceService(
-        session_factory=session_factory,
-        corpora_dir=tmp_path,
-    )
-    service.ingest("product-docs")
-
-    with pytest.raises(ValueError, match="already exists"):
-        service.ingest("product-docs")
-
-
-def test_refresh_replaces_source_collection_and_metadata(
-    tmp_path: Path,
-    session_factory: sessionmaker[Session],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Refreshing a source should switch to a newly rebuilt collection."""
-
-    corpus_directory = tmp_path / "product-docs"
-    corpus_directory.mkdir()
-    source = Source(
-        name="product-docs",
-        directory=str(corpus_directory.resolve()),
-        collection_name="source-original",
-        documents_indexed=1,
-        chunks_indexed=2,
-        indexing_time=0.1,
-    )
-    with session_factory() as session:
-        session.add(source)
-        session.commit()
-        session.refresh(source)
-
-    pipeline = MagicMock(spec=IndexingPipeline)
-    pipeline.run.return_value = IndexingResult(
-        documents_indexed=3,
-        chunks_indexed=9,
-        indexing_time=0.4,
-    )
-    delete_collection = MagicMock()
-    service = SourceService(
-        session_factory=session_factory,
-        corpora_dir=tmp_path,
-    )
-    monkeypatch.setattr(
-        service,
-        "_create_indexing_pipeline",
-        MagicMock(return_value=pipeline),
-    )
-    monkeypatch.setattr(service, "_delete_collection", delete_collection)
-
-    refreshed = service.refresh(source.id)
-
-    assert refreshed.collection_name != "source-original"
-    assert refreshed.documents_indexed == 3
-    assert refreshed.chunks_indexed == 9
-    assert refreshed.indexing_time == 0.4
-    pipeline.run.assert_called_once_with(corpus_directory.resolve())
-    delete_collection.assert_called_once_with("source-original")
-
-
-def test_refresh_preserves_source_when_rebuild_fails(
-    tmp_path: Path,
-    session_factory: sessionmaker[Session],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """A failed refresh must leave the currently active source unchanged."""
-
-    corpus_directory = tmp_path / "product-docs"
-    corpus_directory.mkdir()
-    source = Source(
-        name="product-docs",
-        directory=str(corpus_directory.resolve()),
-        collection_name="source-original",
-        documents_indexed=1,
-        chunks_indexed=2,
-        indexing_time=0.1,
-    )
-    with session_factory() as session:
-        session.add(source)
-        session.commit()
-        session.refresh(source)
-
-    pipeline = MagicMock(spec=IndexingPipeline)
-    pipeline.run.side_effect = RuntimeError("embedding failed")
-    delete_collection = MagicMock()
-    service = SourceService(
-        session_factory=session_factory,
-        corpora_dir=tmp_path,
-    )
-    monkeypatch.setattr(
-        service,
-        "_create_indexing_pipeline",
-        MagicMock(return_value=pipeline),
-    )
-    monkeypatch.setattr(service, "_delete_collection", delete_collection)
-
-    with pytest.raises(RuntimeError, match="embedding failed"):
-        service.refresh(source.id)
-
-    with session_factory() as session:
-        persisted_source = session.get(Source, source.id)
-
-    assert persisted_source is not None
-    assert persisted_source.collection_name == "source-original"
-    assert persisted_source.documents_indexed == 1
-    assert persisted_source.chunks_indexed == 2
-    replacement_collection_name = delete_collection.call_args.args[0]
-    assert replacement_collection_name.startswith("source-")
-    assert replacement_collection_name != "source-original"
-
-
-def test_indexing_pipeline_uses_configured_factories(
-    tmp_path: Path,
-    session_factory: sessionmaker[Session],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Source indexing should construct every index component from its config."""
-
-    config = load_rag_config()
-    create_splitter = MagicMock()
-    create_embedder = MagicMock()
+    directory = tmp_path / "product-docs"
+    directory.mkdir()
     create_store = MagicMock()
-    pipeline_class = MagicMock()
-    monkeypatch.setattr(
-        "genai_template.services.source_service.create_splitter", create_splitter
-    )
-    monkeypatch.setattr(
-        "genai_template.services.source_service.create_embedder", create_embedder
-    )
     monkeypatch.setattr(
         "genai_template.services.source_service.create_vector_store", create_store
     )
+    service = SourceService(session_factory, tmp_path)
+
+    source = service.register("product-docs")
+
+    assert source.name == "product-docs"
+    assert source.directory == str(directory.resolve())
+    assert source.created_at is not None
+    create_store.assert_not_called()
+    with session_factory() as session:
+        assert session.get(Source, source.id) is not None
+
+
+def test_register_rejects_invalid_and_duplicate_sources(
+    tmp_path: Path, session_factory: sessionmaker[Session]
+) -> None:
+    """Registration should retain source path and uniqueness validation."""
+
+    (tmp_path / "docs").mkdir()
+    service = SourceService(session_factory, tmp_path)
+    service.register("docs")
+
+    with pytest.raises(ValueError, match="already exists"):
+        service.register("docs")
+    with pytest.raises(ValueError, match="immediate child"):
+        service.register("../outside")
+
+
+def test_collection_name_is_fixed_length_and_deterministic() -> None:
+    """Collection identity should hash the source ID and index fingerprint."""
+
+    config = load_rag_config()
+    identity = f"7:{index_config_fingerprint(config)}"
+    expected = f"idx-{sha256(identity.encode('utf-8')).hexdigest()[:56]}"
+
+    assert SourceService.index_collection_name(7, config) == expected
+    assert len(expected) == 60
+    assert SourceService.index_collection_name(8, config) != expected
+
+
+def test_configs_with_shared_index_settings_share_collection() -> None:
+    """Retrieval and generation changes should reuse the same source index."""
+
+    config = load_rag_config()
+    changed = config.model_copy(
+        update={
+            "retrieval": config.retrieval.model_copy(update={"top_k": 99}),
+            "llm": config.llm.model_copy(update={"model_name": "another-model"}),
+        }
+    )
+
+    assert SourceService.index_collection_name(
+        4, config
+    ) == SourceService.index_collection_name(4, changed)
+
+
+def test_rebuild_loads_persisted_config_and_replaces_collection(
+    tmp_path: Path,
+    session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Rebuild should use the selected config and return transient metrics."""
+
+    directory = tmp_path / "docs"
+    directory.mkdir()
+    config = load_rag_config()
+    config_registry = RagConfigService(session_factory)
+    config_record = config_registry.register_config(config)
+    service = SourceService(session_factory, tmp_path, config_registry)
+    source = service.register("docs")
+    store = MagicMock()
+    pipeline = MagicMock(spec=IndexingPipeline)
+    pipeline.run.return_value = IndexingResult(
+        documents_indexed=3, chunks_indexed=12, indexing_time=0.4
+    )
+    create_store = MagicMock(return_value=store)
+    create_pipeline = MagicMock(return_value=pipeline)
     monkeypatch.setattr(
-        "genai_template.services.source_service.IndexingPipeline", pipeline_class
+        "genai_template.services.source_service.create_vector_store", create_store
     )
-    service = SourceService(
-        session_factory=session_factory,
-        corpora_dir=tmp_path,
-        config=config,
-    )
+    monkeypatch.setattr(service, "_create_indexing_pipeline", create_pipeline)
 
-    result = service._create_indexing_pipeline("source-configured")
+    result = service.rebuild_index(source.id, config_record.id)
 
-    assert result is pipeline_class.return_value
-    create_splitter.assert_called_once_with(config.splitter)
-    create_embedder.assert_called_once_with(config.embedder)
-    store_config = create_store.call_args.args[0]
-    assert store_config.collection_name == "source-configured"
-    assert store_config.distance == config.vector_store.distance
-    pipeline_class.assert_called_once_with(
-        splitter=create_splitter.return_value,
-        embedder=create_embedder.return_value,
-        store=create_store.return_value,
-    )
+    collection = SourceService.index_collection_name(source.id, config)
+    create_store.assert_called_once_with(config.vector_store, collection)
+    store.delete.assert_called_once_with()
+    create_pipeline.assert_called_once_with(config, store)
+    pipeline.run.assert_called_once_with(directory.resolve())
+    assert result.documents_indexed == 3
+    assert result.chunks_indexed == 12
+    assert result.indexing_time == 0.4
+
+
+def test_rebuild_lock_is_shared_for_the_same_collection() -> None:
+    """Separate service instances should serialize the same collection."""
+
+    first = SourceService._get_rebuild_lock("idx-shared")
+    second = SourceService._get_rebuild_lock("idx-shared")
+    other = SourceService._get_rebuild_lock("idx-other")
+
+    assert first is second
+    assert first is not other

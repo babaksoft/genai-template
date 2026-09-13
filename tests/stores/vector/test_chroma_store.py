@@ -6,11 +6,27 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from chromadb.errors import NotFoundError
 
 from genai_template.common.types import VectorDistance
 from genai_template.config import settings
 from genai_template.schemas import DocumentChunk
 from genai_template.stores.vector import ChromaStore
+
+
+@patch("genai_template.stores.vector.chroma_store.chromadb.PersistentClient")
+def test_exists_does_not_create_missing_collection(
+    mock_client_class: MagicMock,
+) -> None:
+    """Existence checks should distinguish missing collections without creating."""
+
+    client = mock_client_class.return_value
+    client.get_collection.side_effect = NotFoundError("missing")
+
+    store = ChromaStore()
+
+    assert store.exists() is False
+    client.get_or_create_collection.assert_not_called()
 
 
 @patch("genai_template.stores.vector.chroma_store.chromadb.PersistentClient")
@@ -31,13 +47,7 @@ def test_constructor(
         path=settings.CHROMA_PERSIST_DIR,
     )
 
-    # Abstraction tradeoff: See ChatGPT message @ 2026-06-30 11:48 AM
-    mock_client.get_or_create_collection.assert_called_once_with(
-        name=settings.CHROMA_COLLECTION,
-        metadata={
-            "hnsw:space": "cosine",
-        },
-    )
+    mock_client.get_or_create_collection.assert_not_called()
 
 
 @patch("genai_template.stores.vector.chroma_store.chromadb.PersistentClient")
@@ -49,13 +59,17 @@ def test_constructor_accepts_explicit_distance(
 
     mock_client = mock_client_class.return_value
 
-    ChromaStore(
+    store = ChromaStore(
         persist_directory=tmp_path,
         collection_name="experiment",
         distance=VectorDistance.L2,
     )
 
     mock_client_class.assert_called_once_with(path=tmp_path)
+    mock_client.get_or_create_collection.assert_not_called()
+
+    store.create(384)
+
     mock_client.get_or_create_collection.assert_called_once_with(
         name="experiment",
         metadata={"hnsw:space": "l2"},
@@ -104,9 +118,7 @@ def test_upsert(
 def test_count(mock_client_class: MagicMock) -> None:
     """The vector store should expose its collection record count."""
 
-    mock_collection = (
-        mock_client_class.return_value.get_or_create_collection.return_value
-    )
+    mock_collection = mock_client_class.return_value.get_collection.return_value
     mock_collection.count.return_value = 7
 
     store = ChromaStore()
@@ -183,6 +195,7 @@ def test_search(
 
     mock_client = MagicMock()
     mock_client.get_or_create_collection.return_value = mock_collection
+    mock_client.get_collection.return_value = mock_collection
     mock_client_class.return_value = mock_client
 
     store = ChromaStore()
@@ -223,6 +236,7 @@ def test_search_empty_result(
 
     mock_client = MagicMock()
     mock_client.get_or_create_collection.return_value = mock_collection
+    mock_client.get_collection.return_value = mock_collection
     mock_client_class.return_value = mock_client
 
     store = ChromaStore()

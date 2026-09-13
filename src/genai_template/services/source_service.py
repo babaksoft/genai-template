@@ -5,32 +5,39 @@ from __future__ import annotations
 import logging
 import os
 from collections.abc import Callable
+from hashlib import sha256
 from pathlib import Path
-from uuid import uuid4
+from threading import Lock
+from typing import ClassVar
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from genai_template.config import RagConfig, load_rag_config
+from genai_template.config import RagConfig, index_config_fingerprint
 from genai_template.db.models import Source
 from genai_template.factories.embedder_factory import create_embedder
 from genai_template.factories.splitter_factory import create_splitter
 from genai_template.factories.vector_store_factory import create_vector_store
 from genai_template.pipelines import IndexingPipeline
-from genai_template.utils import utc_now
+from genai_template.protocols import VectorStore
+from genai_template.schemas import IndexingResult
+from genai_template.services.rag_config_service import RagConfigService
 
 logger = logging.getLogger(__name__)
 
 
 class SourceService:
-    """Discover and ingest document corpora from the configured root."""
+    """Register document corpora and manage their deterministic indexes."""
+
+    _locks_guard: ClassVar[Lock] = Lock()
+    _rebuild_locks: ClassVar[dict[str, Lock]] = {}
 
     def __init__(
         self,
         session_factory: Callable[[], Session],
         corpora_dir: Path,
-        config: RagConfig | None = None,
+        rag_config_service: RagConfigService | None = None,
     ) -> None:
         """Initialize the source service.
 
@@ -39,17 +46,19 @@ class SourceService:
                 Factory that creates database sessions.
             corpora_dir:
                 Root directory containing one directory per corpus.
-            config:
-                Resolved RAG configuration used to construct source indexes.
-                Application defaults are loaded when omitted.
+            rag_config_service:
+                Registry used to load persisted RAG configurations. A registry
+                backed by ``session_factory`` is constructed when omitted.
         """
 
         self._session_factory = session_factory
         self._corpora_dir = corpora_dir.resolve()
-        self._config = config or load_rag_config()
+        self._rag_config_service = rag_config_service or RagConfigService(
+            session_factory
+        )
 
     def list_candidates(self) -> list[str]:
-        """List immediate corpus directories available for ingestion.
+        """List immediate corpus directories available for registration.
 
         Returns:
             Sorted directory basenames under the configured corpus root.
@@ -72,7 +81,7 @@ class SourceService:
         )
 
     def list_sources(self) -> list[Source]:
-        """List all successfully ingested sources.
+        """List all registered sources.
 
         Returns:
             Sources ordered by name.
@@ -82,7 +91,7 @@ class SourceService:
             return list(session.scalars(select(Source).order_by(Source.name)))
 
     def get_source(self, source_id: int) -> Source:
-        """Get an ingested source by identifier.
+        """Get a registered source by identifier.
 
         Args:
             source_id:
@@ -104,8 +113,8 @@ class SourceService:
 
         return source
 
-    def ingest(self, directory_name: str) -> Source:
-        """Ingest one previously prepared corpus directory.
+    def register(self, directory_name: str) -> Source:
+        """Register one previously prepared corpus directory.
 
         Args:
             directory_name:
@@ -134,18 +143,9 @@ class SourceService:
             if existing_source is not None:
                 raise ValueError(f"Source '{source_name}' already exists.")
 
-        collection_name = f"source-{uuid4().hex}"
-        indexing_pipeline = self._create_indexing_pipeline(collection_name)
-        result = indexing_pipeline.run(directory)
-
         source = Source(
             name=source_name,
             directory=str(directory),
-            collection_name=collection_name,
-            documents_indexed=result.documents_indexed,
-            chunks_indexed=result.chunks_indexed,
-            indexed_at=utc_now(),
-            indexing_time=result.indexing_time,
         )
 
         try:
@@ -158,20 +158,22 @@ class SourceService:
 
         return source
 
-    def refresh(self, source_id: int) -> Source:
-        """Rebuild one source in a new vector collection.
+    def rebuild_index(self, source_id: int, rag_config_id: int) -> IndexingResult:
+        """Rebuild the deterministic index for a source and configuration.
 
         Args:
             source_id:
                 Identifier of the source to rebuild.
+            rag_config_id:
+                Identifier of the persisted configuration used for indexing.
 
         Returns:
-            Refreshed source metadata.
+            Counts and duration for this build.
 
         Raises:
             ValueError:
-                If no source has the supplied identifier or
-                if the source directory is no longer valid.
+                If the source or RAG configuration does not exist, or if the
+                persisted source directory is no longer valid.
             FileNotFoundError:
                 If the source directory no longer exists.
             NotADirectoryError:
@@ -179,79 +181,103 @@ class SourceService:
         """
 
         source = self.get_source(source_id)
-        directory = self._resolve_directory(source.name)
-        new_collection_name = f"source-{uuid4().hex}"
+        directory = self._resolve_registered_directory(source)
+        record = self._rag_config_service.get_config(rag_config_id)
+        config = self._rag_config_service.parse_config(record)
+        collection_name = self.index_collection_name(source_id, config)
+        rebuild_lock = self._get_rebuild_lock(collection_name)
 
-        try:
-            indexing_pipeline = self._create_indexing_pipeline(new_collection_name)
-            result = indexing_pipeline.run(directory)
-        except Exception:
-            try:
-                self._delete_collection(new_collection_name)
-            except Exception:
-                logger.exception(
-                    "Could not rollback new collection '%s'.",
-                    new_collection_name,
-                )
-            raise
+        with rebuild_lock:
+            store = create_vector_store(config.vector_store, collection_name)
+            store.delete()
+            pipeline = self._create_indexing_pipeline(config, store)
+            result = pipeline.run(directory)
 
-        old_collection_name = source.collection_name
-        with self._session_factory() as session:
-            persisted_source = session.get(Source, source_id)
-            if persisted_source is None:
-                raise ValueError(f"Source {source_id} does not exist.")
+        logger.info(
+            "Rebuilt source %d index '%s' with RAG config %d.",
+            source_id,
+            collection_name,
+            rag_config_id,
+        )
+        return result
 
-            persisted_source.collection_name = new_collection_name
-            persisted_source.documents_indexed = result.documents_indexed
-            persisted_source.chunks_indexed = result.chunks_indexed
-            persisted_source.indexed_at = utc_now()
-            persisted_source.indexing_time = result.indexing_time
-            session.commit()
-            session.refresh(persisted_source)
+    @staticmethod
+    def index_collection_name(source_id: int, config: RagConfig) -> str:
+        """Derive the backend-safe collection name for an index.
 
-        try:
-            self._delete_collection(old_collection_name)
-        except Exception:
-            logger.exception(
-                "Refreshed source %d but could not delete old collection '%s'.",
-                source_id,
-                old_collection_name,
-            )
+        Args:
+            source_id:
+                Canonical source identifier.
+            config:
+                RAG configuration whose index-affecting fields select the index.
 
-        return persisted_source
+        Returns:
+            A fixed-length deterministic collection name.
+        """
 
-    def _create_indexing_pipeline(self, collection_name: str) -> IndexingPipeline:
-        """Create an indexing pipeline for one source collection.
+        identity = f"{source_id}:{index_config_fingerprint(config)}"
+        return f"idx-{sha256(identity.encode('utf-8')).hexdigest()[:56]}"
+
+    @classmethod
+    def _get_rebuild_lock(cls, collection_name: str) -> Lock:
+        """Return the process-local lock for one deterministic collection.
 
         Args:
             collection_name:
-                Chroma collection name for the source.
+                Deterministic collection name.
+
+        Returns:
+            Shared lock serializing rebuilds of that collection.
+        """
+
+        with cls._locks_guard:
+            return cls._rebuild_locks.setdefault(collection_name, Lock())
+
+    def _create_indexing_pipeline(
+        self, config: RagConfig, store: VectorStore
+    ) -> IndexingPipeline:
+        """Create an indexing pipeline for one source collection.
+
+        Args:
+            config:
+                Persisted RAG configuration used for indexing.
+            store:
+                Vector store bound to the deterministic collection.
 
         Returns:
             Configured source-specific indexing pipeline.
         """
 
         return IndexingPipeline(
-            splitter=create_splitter(self._config.splitter),
-            embedder=create_embedder(self._config.embedder),
-            store=create_vector_store(
-                self._config.vector_store,
-                collection_name,
-            ),
+            splitter=create_splitter(config.splitter),
+            embedder=create_embedder(config.embedder),
+            store=store,
         )
 
-    def _delete_collection(self, collection_name: str) -> None:
-        """Delete a source-specific Chroma collection.
+    def _resolve_registered_directory(self, source: Source) -> Path:
+        """Validate and return a registered source directory.
 
         Args:
-            collection_name:
-                Name of the collection to delete.
+            source:
+                Persisted source metadata.
+
+        Returns:
+            Validated source directory.
+
+        Raises:
+            ValueError:
+                If the persisted path no longer identifies its registered
+                immediate child directory.
+            FileNotFoundError:
+                If the directory no longer exists.
+            NotADirectoryError:
+                If the path is no longer a directory.
         """
 
-        create_vector_store(
-            self._config.vector_store,
-            collection_name,
-        ).delete()
+        directory = self._resolve_directory(source.name)
+        if str(directory) != source.directory:
+            raise ValueError(f"Source {source.id} directory is no longer valid.")
+        return directory
 
     def _resolve_directory(self, directory_name: str) -> Path:
         """Resolve and validate one immediate corpus directory.
