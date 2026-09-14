@@ -88,31 +88,6 @@ async def enter_lifespan(app: FastAPI) -> None:
         pass
 
 
-@patch("genai_template.api.lifespan.load_rag_config")
-@patch("genai_template.api.lifespan.RagConfigService")
-def test_startup_registers_default_config(
-    service_class: Mock,
-    load_config: Mock,
-) -> None:
-    """Application startup should ensure the default config is registered.
-
-    Args:
-        service_class:
-            Mocked RAG configuration service class.
-        load_config:
-            Mocked default configuration loader.
-    """
-
-    app = FastAPI()
-    app.state.phoenix_enabled = False
-
-    asyncio.run(enter_lifespan(app))
-
-    service_class.return_value.register_config.assert_called_once_with(
-        load_config.return_value
-    )
-
-
 def test_experiment_endpoints_create_list_and_get(app: FastAPI) -> None:
     """Experiment endpoints should expose database-ID-based registry operations.
 

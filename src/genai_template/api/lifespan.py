@@ -24,7 +24,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     configure_logging()
     logger.info("Starting GenAI Template API.")
-    RagConfigService(SessionLocal).register_config(load_rag_config())
 
     phoenix_enabled = getattr(app.state, "phoenix_enabled", False)
     if phoenix_enabled:
