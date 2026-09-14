@@ -31,7 +31,6 @@ def initialize_observability(app: FastAPI) -> TracerProvider | None:
     FastAPIInstrumentor.instrument_app(
         app,
         tracer_provider=tracer_provider,
-        excluded_urls=f"{settings.API_URL_PREFIX}/ingest",
     )
     LlamaIndexInstrumentor().instrument(tracer_provider=tracer_provider)
     logger.info("Phoenix tracing enabled for project %s", settings.PHOENIX_PROJECT_NAME)

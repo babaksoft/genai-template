@@ -31,19 +31,18 @@ class ChromaStore:
 
     def __init__(
         self,
+        collection_name: str,
         persist_directory: Path = settings.CHROMA_PERSIST_DIR,
-        collection_name: str = settings.CHROMA_COLLECTION,
         distance: VectorDistance = settings.CHROMA_DISTANCE,
     ) -> None:
         """
         Initialize the Chroma collection.
 
         Args:
+            collection_name:
+                Runtime-derived name of the collection to use.
             persist_directory:
                 Directory to store persisted data.
-            collection_name:
-                Name of the collection to use. Defaults to the configured
-                application collection.
             distance:
                 Distance metric for a newly created collection.
         """

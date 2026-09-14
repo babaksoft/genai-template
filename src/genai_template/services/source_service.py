@@ -156,6 +156,7 @@ class SourceService:
         except IntegrityError as exc:
             raise ValueError(f"Source '{source_name}' already exists.") from exc
 
+        logger.info("Registered source %d from '%s'.", source.id, source.directory)
         return source
 
     def rebuild_index(self, source_id: int, rag_config_id: int) -> IndexingResult:
@@ -194,10 +195,14 @@ class SourceService:
             result = pipeline.run(directory)
 
         logger.info(
-            "Rebuilt source %d index '%s' with RAG config %d.",
+            "Rebuilt source %d index '%s' with RAG config %d: documents=%d, "
+            "chunks=%d, duration=%.3f second(s).",
             source_id,
             collection_name,
             rag_config_id,
+            result.documents_indexed,
+            result.chunks_indexed,
+            result.indexing_time,
         )
         return result
 

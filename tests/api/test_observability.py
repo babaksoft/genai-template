@@ -73,7 +73,6 @@ def test_initialize_observability_configures_phoenix(
     instrument_app.assert_called_once_with(
         app,
         tracer_provider=tracer_provider,
-        excluded_urls="/api/v1/ingest",
     )
     instrument_llama_index.assert_called_once_with(tracer_provider=tracer_provider)
 

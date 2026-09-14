@@ -13,7 +13,11 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 
 from genai_template.components.context import ContextBuilder
 from genai_template.components.prompt import PromptBuilder
-from genai_template.config import config_fingerprint, load_rag_config
+from genai_template.config import (
+    config_fingerprint,
+    index_config_fingerprint,
+    load_rag_config,
+)
 from genai_template.db.models import Experiment
 from genai_template.db.models import RagConfig as RagConfigRecord
 from genai_template.db.models import Source
@@ -154,8 +158,13 @@ def test_answer_emits_nested_rag_spans(mock_client_class: MagicMock) -> None:
     assert answer_attributes is not None
     assert answer_attributes["rag.top_k"] == 3
     assert answer_attributes["rag.experiment.id"] == 4
+    assert answer_attributes["rag.source.id"] == 1
     assert answer_attributes["rag.config.id"] == 5
     assert answer_attributes["rag.config.fingerprint"] == config_fingerprint(config)
+    assert answer_attributes["rag.index.fingerprint"] == index_config_fingerprint(
+        config
+    )
+    assert answer_attributes["rag.index.collection"] == "source-fastapi"
     assert answer_attributes["rag.embedding.model"] == "trace-embedder"
     assert answer_attributes["rag.vector_store.type"] == "chroma"
     assert answer_attributes["rag.llm.model"] == "trace-llm"

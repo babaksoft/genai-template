@@ -4,7 +4,7 @@ import logging
 
 from genai_template.components.context import ContextBuilder
 from genai_template.components.prompt import PromptBuilder
-from genai_template.config import RagConfig
+from genai_template.config import RagConfig, index_config_fingerprint
 from genai_template.factories import (
     create_embedder,
     create_llm,
@@ -111,8 +111,11 @@ class RagService:
                 INPUT_VALUE: query,
                 "rag.top_k": config.retrieval.top_k,
                 "rag.experiment.id": experiment.id,
+                "rag.source.id": source.id,
                 "rag.config.id": config_record.id,
                 "rag.config.fingerprint": config_record.config_fingerprint,
+                "rag.index.fingerprint": index_config_fingerprint(config),
+                "rag.index.collection": collection_name,
                 "rag.embedding.model": config.embedder.model_name,
                 "rag.vector_store.type": config.vector_store.type,
                 "rag.llm.model": config.llm.model_name,
@@ -151,7 +154,14 @@ class RagService:
 
         self._experiment_service.complete_run(run=run, metrics=metrics)
         logger.info(
-            "RAG run %d completed in %.3f second(s).", run.id, total_timer.elapsed
+            "RAG run %d completed for experiment %d, source %d, and RAG config "
+            "%d using index '%s' in %.3f second(s).",
+            run.id,
+            experiment.id,
+            source.id,
+            config_record.id,
+            collection_name,
+            total_timer.elapsed,
         )
         return RagResult(
             answer=response,

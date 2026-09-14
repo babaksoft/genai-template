@@ -112,7 +112,6 @@ No compatibility code or data migration will be retained. Full quality checks ru
   - summaries spanning multiple configs.
 - Update API client, Streamlit UI, documentation, examples, and logging attributes.
 - Run `./scripts/check.sh` once for the completed redesign.
-- Recreate `db/genai_template.db` with the squashed migration.
 - Do not automatically delete existing Chroma/Qdrant storage; document it as optional cleanup because old collections will become orphaned.
 
 ## Acceptance criteria and assumptions

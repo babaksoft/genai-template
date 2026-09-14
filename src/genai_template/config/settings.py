@@ -60,7 +60,6 @@ TOP_K = 5
 
 # Vector store settings
 VECTOR_STORE = "Chroma"
-CHROMA_COLLECTION = "documents"
 CHROMA_PERSIST_DIR = REPO_ROOT / "storage" / "chroma"
 CHROMA_DISTANCE = VectorDistance.COSINE
 

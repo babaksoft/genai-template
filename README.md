@@ -27,29 +27,33 @@
   - `RetrievalPipeline` – embed query → retrieve chunks.
   - `ChatPipeline` – combines retrieval and synthesis for chat use‑cases.
 - **`src/genai_template/services`** – High‑level services used by the API:
-  - `RagService` – end‑to‑end answer generation.
-  - `ExperimentService` – persists experiment metadata.
+  - `RagService` – loads a registered configuration and executes a run.
+  - `SourceService` – registers corpora and builds deterministic indexes.
+  - `RagConfigService` – stores immutable portable configurations.
+  - `ExperimentService` – persists experiments, runs, and summaries.
 - **`src/genai_template/stores`** – Persistence layers:
   - `vector` – Chroma and local/server Qdrant vector stores.
   - `kv`, `document`, `index` (placeholders for future stores).
 - **`src/genai_template/api`** – FastAPI app (`main.py`) with routers for:
   - `answer` – POST `/answer` returns generated answer + metrics.
-  - `sources` – browse, ingest, and refresh isolated document corpora.
+  - `sources` – register corpora and explicitly rebuild selected indexes.
+  - `experiments` – create and inspect source-bound experiments.
+  - `rag-configs` – register and inspect immutable RAG configurations.
   - `health` – GET `/health` health‑check endpoint.
 - **`src/genai_template/ui`** – Streamlit front‑end (`streamlit_app.py`) that talks to the API.
 - **`src/genai_template/evaluation`** – Baseline evaluation script and metrics.
 - **`src/genai_template/experiments`** – Experiment configuration utilities.
-- **`src/genai_template/ingest.py`** – CLI entry point for corpus ingestion.
+
+The persisted model is `Source 1—* Experiment 1—* Run *—1 RagConfig`. A run
+always names an experiment ID and configuration ID. Vector collections are not
+SQL records: their names are deterministic hashes of the source ID and the
+configuration's index-affecting settings.
 
 ## Getting Started
 
 ### 1️⃣ Install dependencies
 ```bash
-# Core package (editable) and runtime deps
-pip install -c constraints.txt -e .
-
-# Development extras (lint, type‑check, tests)
-pip install -c constraints.txt -e ".[dev]"
+uv sync --all-groups
 ```
 > **Note:** Python 3.12 is required (see `pyproject.toml`).
 
@@ -70,7 +74,7 @@ The project reads these variables via ``python‑dotenv``.
 
 ### 3️⃣ Run the API server
 ```bash
-python -m uvicorn genai_template.api.main:app \
+uv run uvicorn genai_template.api.main:app \
     --host 0.0.0.0 --port 8000
 ```
 The API lives under the prefix defined in ``settings.API_URL_PREFIX`` (default `/api/v1`).
@@ -96,11 +100,11 @@ data unless the local Phoenix storage is appropriately protected.
 
 ### 4️⃣ (Optional) Launch the UI
 ```bash
-streamlit run src/genai_template/ui/streamlit_app.py
+uv run streamlit run src/genai_template/ui/streamlit_app.py
 ```
 The UI expects the API at ``http://localhost:8000``.
 
-### 5️⃣ Prepare and ingest a corpus
+### 5️⃣ Register a corpus, configuration, and experiment
 
 Place each corpus in its own directory under ``data/`` (the default
 ``CORPORA_DIR``). Documents cannot be placed directly in the corpus root:
@@ -112,16 +116,33 @@ data/
   handbook/
 ```
 
-Use the **Sources** expander in the Streamlit sidebar to ingest a prepared
-directory and select it for questions. Each source has its own Chroma
-collection, and **Refresh active source** rebuilds it from the directory.
+Use the Streamlit sidebar to register a directory, create an experiment for the
+source, select a registered configuration, and choose **Rebuild selected
+index**. Source registration does not index documents. Rebuilding is an
+explicit operation for one source/configuration pair; answering against a
+missing index returns HTTP 409 without creating a run.
 
-The baseline CLI utility remains available for evaluation setup:
+The same lifecycle is available directly through the API:
 
 ```bash
-python -m genai_template.ingest
+curl -X POST http://localhost:8000/api/v1/sources \
+  -H 'Content-Type: application/json' \
+  -d '{"directory":"baseline"}'
+
+curl -X POST http://localhost:8000/api/v1/experiments \
+  -H 'Content-Type: application/json' \
+  -d '{"source_id":1,"name":"Baseline comparison"}'
+
+curl -X PUT http://localhost:8000/api/v1/sources/1/indexes/1
+
+curl -X POST http://localhost:8000/api/v1/answer \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"What is RAG?","experiment_id":1,"rag_config_id":1}'
 ```
-It indexes ``data/baseline/`` into the baseline Chroma collection.
+
+The application registers the resolved default configuration at startup. Post
+another fully resolved configuration to `POST /api/v1/rag-configs`; repeating
+the same configuration returns the existing registry row.
 
 Run a retrieval evaluation with the defaults, or override the resolved RAG
 configuration, corpus, and dataset from the command line:
@@ -134,9 +155,11 @@ uv run python -m genai_template.evaluation.evaluators.baseline_eval \
   --dataset src/genai_template/evaluation/datasets/baseline-eval.json
 ```
 
-Evaluation collections are keyed by the indexing configuration and corpus
-contents, so a populated matching index is reused. Pass ``--reindex`` to delete
-and rebuild only that resolved collection before calculating the metrics.
+Evaluation collections are keyed by source ID and index configuration. Pass
+``--reindex`` to rebuild only that deterministic collection before calculating
+the metrics. Retrieval-only and generation-only changes share an index;
+splitter, embedder, vector-store type, embedding-dimension, or distance changes
+select a different one.
 
 ### Combined OpenAI and Qdrant profile
 
@@ -152,7 +175,6 @@ server instead, replace the profile's ``vector_store`` section with:
 ```yaml
 vector_store:
   type: qdrant
-  collection_name: openai-markdown-documents
   distance: cosine
   location: server
   url: https://qdrant.example.com
@@ -160,7 +182,7 @@ vector_store:
 
 The non-secret server URL belongs in YAML. Set ``QDRANT_API_KEY`` in the environment
 when the server requires authentication; it is optional for an unauthenticated server.
-Do not put either provider's API key in an experiment profile.
+Do not put either provider's API key in a RAG configuration file.
 
 Re-index the corpus after changing the splitter, embedder, vector-store type,
 embedding dimensions, or distance metric. These options affect chunk or vector
@@ -170,16 +192,17 @@ compatibility, so an index created with the previous configuration must not be r
 
 - **Unit tests** (fast, no external services):
   ```bash
-  pytest -m "not integration" -v
+  uv run pytest -m "not integration" -v
   ```
-- **Integration tests** (individual tests skip when their provider is unavailable):
+- **Integration tests** (run only with the configured external services available):
   ```bash
-  pytest -m integration -v
+  uv run pytest -m integration -v
   ```
-  Local Qdrant checks use temporary storage. OpenAI smoke and composition tests require
-  ``OPENAI_API_KEY``. The server lifecycle test runs only when ``QDRANT_URL`` is set,
-  uses ``QDRANT_API_KEY`` when present, creates a unique collection, and cleans it up.
-  The existing end-to-end workflow test requires Ollama to be reachable.
+  Local Qdrant checks use temporary storage. OpenAI smoke and composition tests run
+  when ``OPENAI_API_KEY`` is set. The server lifecycle test runs when ``QDRANT_URL``
+  is set, uses ``QDRANT_API_KEY`` when present, creates a unique collection, and cleans
+  it up. The provider endpoints must be reachable, and the end-to-end workflow requires
+  Ollama and its configured model.
 
 ## Code Quality Checks
 ```bash
@@ -188,15 +211,26 @@ isort --check-only .
 ruff check .
 mypy .
 ```
-Run these before committing.
+Or run the complete formatting, import, lint, type, and non-integration suite:
+
+```bash
+./scripts/check.sh
+```
 
 ## Data & Persistence
 - **Corpora** – Each immediate subdirectory of ``CORPORA_DIR`` is a corpus;
   Markdown and text documents must live inside that directory.
-- **Vector store** – Chroma defaults to ``storage/chroma``. A local Qdrant profile uses
+- **Vector store** – Chroma defaults to ``storage/chroma``. Collection names are
+  derived at runtime and never configured or stored in SQL. A local Qdrant profile uses
   its configured repository-relative or absolute path; server mode uses its configured
   HTTP(S) URL and optional environment-provided ``QDRANT_API_KEY``.
-- **SQLite DB** – Experiment metadata stored at ``db/genai_template.sqlite3`` (`settings.DATABASE_URL`).
+- **SQLite DB** – Sources, experiments, immutable configs, and runs are stored at
+  ``db/genai_template.sqlite3`` (`settings.DATABASE_URL`).
+
+Upgrading from the prototype schema does not migrate existing data. Old
+Chroma/Qdrant collections are no longer referenced because their names do not
+match the deterministic scheme. They are intentionally left in place; delete
+them manually only when their data is no longer needed.
 
 ## Configuration Highlights (`src/genai_template/config/settings.py`)
 - ``API_BASE_URL = "http://127.0.0.1:8000"``
@@ -206,8 +240,8 @@ Run these before committing.
   uses a reachable localhost service or, in WSL NAT mode, discovers the current
   Windows-host gateway automatically.
 - ``EMBEDDING_MODEL = "BAAI/bge-base-en-v1.5"``
-- ``CHROMA_COLLECTION = "documents"``
-- Other tunable knobs: chunk size/overlap, top‑k retrieval, distance metric.
+- Other tunable knobs: vector-store base location, chunk size/overlap, top‑k
+  retrieval, and distance metric.
 
 ### Ollama from WSL NAT
 
@@ -225,7 +259,9 @@ The repository is deliberately modular:
 - Add new **vector store factories** in ``src/genai_template/factories/vector_store_factory.py``.
 - Plug in alternative **language‑model wrappers** via ``src/genai_template/factories/llm_factory.py``.
 - Extend the **prompt templates** in ``src/genai_template/prompts/``.
-- Define new **experiments** under ``src/genai_template/experiments`` and run them with the evaluation script.
+- Add portable **RAG configurations** under
+  ``src/genai_template/experiments/configs`` and register their resolved values
+  through the API or evaluation script.
 
 ---
 

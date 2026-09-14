@@ -11,7 +11,7 @@
   uv sync --all-groups
   ```
 - The project requires Python 3.12 (declared in `pyproject.toml`).
-- Environment variables are loaded from a top‑level ``.env`` file (e.g. `OPENAI_API_KEY`, `LANGFUSE_*`, `TAVILY_API_KEY`, `PHOENIX_ENABLED`).
+- Environment variables are loaded from a top‑level ``.env`` file (e.g. `OPENAI_API_KEY`, `QDRANT_API_KEY`, `QDRANT_URL`, `PHOENIX_ENABLED`).
 - Log files are written to `logs/genai_template.log`; the directory is created automatically via the `settings` module.
 
 ---
@@ -51,25 +51,26 @@
 ---
 
 ## Data & Storage
-- Corpus files are placed under the top‑level `data/` directory; the ingestion script (`src/genai_template/ingest.py`) indexes everything in `settings.DATA_DIR`.
-- Vector store persistence defaults to `storage/chroma/` (see `settings.CHROMA_PERSIST_DIR`).
-- SQLite database for experiment metadata lives at `db/genai_template.db` (path from `settings.DATABASE_URL`).
+- Corpus files are placed in immediate subdirectories of top-level `data/` (`settings.CORPORA_DIR`). Registering a source does not index it; rebuild its selected deterministic index through the API.
+- Vector store persistence defaults to `storage/chroma/` (see `settings.CHROMA_PERSIST_DIR`). Collection names are derived from source IDs and index fingerprints, not configured manually.
+- SQLite storage for sources, experiments, RAG configs, and runs lives at `db/genai_template.sqlite3` (path from `settings.DATABASE_URL`).
+- Legacy Chroma/Qdrant collections may be orphaned by the deterministic naming scheme. Never delete them automatically; cleanup is optional and manual.
 
 ---
 
 ## Command‑line Utilities
-- **Baseline ingestion** (used for evaluation):
+- **Baseline evaluation** (registers the source/config/experiment and builds a missing index):
   ```bash
-  uv run python -m genai_template.ingest
+  uv run python -m genai_template.evaluation.evaluators.baseline_eval
   ```
-  (Runs the `main()` function defined in `ingest.py` after configuring logging.)
+- Add `--reindex` to explicitly rebuild the selected deterministic collection.
 
 ---
 
 ## Conventional Workflow
 1. **Sync** dependencies with `uv sync --all-groups`.
 2. **Run quality checks and unit tests** with `./scripts/check.sh` before committing.
-3. **Start API** (`uv run uvicorn …`) and, optionally, **UI** (`uv run streamlit …`).
+3. **Start API** (`uv run uvicorn …`) and, optionally, **UI** (`uv run streamlit …`). Register a source, create an experiment, select/register a config, then explicitly rebuild that source/config index.
 4. **Run integration tests** only when external services (Ollama, Chroma, etc.) are available.
 
 ---
@@ -77,7 +78,8 @@
 ## Gotchas & Agent‑Specific Tips
 - The API base URL and prefix are *hard‑coded* in `settings`; agents must use `settings.API_BASE_URL + settings.API_URL_PREFIX` when constructing request URLs.
 - The UI imports `ApiClient` from `src/genai_template/ui/api_client.py`; the client expects the same base URL.
-- Integration tests create a **temporary Chroma collection**; they do **not** touch the persistent `CHROMA_PERSIST_DIR`.
+- The RAG workflow integration test creates a **temporary Chroma collection**; it does **not** touch the persistent `CHROMA_PERSIST_DIR`.
+- Execution APIs take canonical `experiment_id` and `rag_config_id`. Resolve a source only through the selected experiment.
 - The `settings.REPO_ROOT` is calculated relative to this file (`config/settings.py`); any path manipulations that assume the repo root must use that constant.
 - `OllamaLanguageModel` reads the model name from `settings.LLM_MODEL`; changing the model requires updating that setting **and** restarting any long‑running processes.
 

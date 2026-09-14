@@ -1,9 +1,9 @@
 """Streamlit UI for registered experiments and RAG configurations."""
 
-import httpx
 import streamlit as st
+from httpx import HTTPError
 
-from genai_template.config import settings
+from genai_template.config import load_rag_config, settings
 from genai_template.schemas import ExperimentResponse, RagConfigResponse
 from genai_template.ui.api_client import ApiClient
 
@@ -22,7 +22,7 @@ with st.sidebar:
         sources = api_client.list_sources()
         experiments = api_client.list_experiments()
         rag_configs = api_client.list_rag_configs()
-    except httpx.HTTPError as exc:
+    except HTTPError as exc:
         st.error(f"Unable to load registry data from the API: {exc}")
         candidates, sources, experiments, rag_configs = [], [], [], []
 
@@ -36,7 +36,7 @@ with st.sidebar:
             if st.button("Register source"):
                 try:
                     registered = api_client.register_source(directory)
-                except httpx.HTTPError as exc:
+                except HTTPError as exc:
                     st.error(f"Unable to register source: {exc}")
                 else:
                     st.success(f"Registered {registered.name}.")
@@ -59,7 +59,7 @@ with st.sidebar:
                         experiment_name.strip(),
                         description.strip() or None,
                     )
-                except httpx.HTTPError as exc:
+                except HTTPError as exc:
                     st.error(f"Unable to create experiment: {exc}")
                 else:
                     st.session_state.active_experiment_id = created.id
@@ -67,6 +67,28 @@ with st.sidebar:
                     st.rerun()
         else:
             st.info("Register a source before creating an experiment.")
+
+    with st.expander("Register RAG configuration"):
+        config_paths = sorted(settings.EXPERIMENT_CONFIG_DIR.glob("*.yml"))
+        if config_paths:
+            configs_by_name = {path.name: path for path in config_paths}
+            config_name = st.selectbox(
+                "Configuration file",
+                list(configs_by_name),
+                key="rag_config_file",
+            )
+            if st.button("Register RAG configuration"):
+                try:
+                    config = load_rag_config(configs_by_name[config_name])
+                    registered_config = api_client.register_rag_config(config)
+                except (OSError, ValueError, HTTPError) as exc:
+                    st.error(f"Unable to register RAG configuration: {exc}")
+                else:
+                    st.session_state.active_rag_config_id = registered_config.id
+                    st.success(f"Registered RAG configuration {registered_config.id}.")
+                    st.rerun()
+        else:
+            st.info("No RAG configuration files are available.")
 
     if experiments:
         experiments_by_label = {f"{item.id}: {item.name}": item for item in experiments}
@@ -93,8 +115,20 @@ with st.sidebar:
             f"{item.config.llm.model_name}": item
             for item in rag_configs
         }
-        selected_config = st.selectbox("RAG configuration", list(configs_by_label))
+        selected_config = st.selectbox(
+            "RAG configuration",
+            list(configs_by_label),
+            index=next(
+                (
+                    index
+                    for index, item in enumerate(configs_by_label.values())
+                    if item.id == st.session_state.get("active_rag_config_id")
+                ),
+                0,
+            ),
+        )
         active_config = configs_by_label[selected_config]
+        st.session_state.active_rag_config_id = active_config.id
     else:
         st.info("Register a RAG configuration before asking questions.")
 
@@ -109,7 +143,7 @@ with st.sidebar:
                     active_experiment.source_id,
                     active_config.id,
                 )
-            except httpx.HTTPError as exc:
+            except HTTPError as exc:
                 st.error(f"Unable to rebuild index: {exc}")
             else:
                 st.success(
@@ -132,7 +166,7 @@ if st.button("Ask", type="primary", disabled=not can_ask):
                 answer_result = api_client.answer(
                     query.strip(), active_experiment.id, active_config.id
                 )
-            except httpx.HTTPError as exc:
+            except HTTPError as exc:
                 st.error(f"Unable to get an answer from the API: {exc}")
             else:
                 st.subheader("Answer")

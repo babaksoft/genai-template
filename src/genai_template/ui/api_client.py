@@ -1,6 +1,6 @@
 from httpx import get, post, put
 
-from genai_template.config import settings
+from genai_template.config import RagConfig, settings
 from genai_template.schemas import (
     AnswerResponse,
     ExperimentResponse,
@@ -167,6 +167,28 @@ class ApiClient:
         response.raise_for_status()
         return [ExperimentResponse.model_validate(item) for item in response.json()]
 
+    def get_experiment(self, experiment_id: int) -> ExperimentResponse:
+        """Get an experiment by its canonical identifier.
+
+        Args:
+            experiment_id:
+                Canonical experiment identifier.
+
+        Returns:
+            Requested experiment metadata.
+
+        Raises:
+            httpx.HTTPStatusError:
+                If the API returns an unsuccessful HTTP status code.
+        """
+
+        response = get(
+            f"{self._base_url}{settings.API_URL_PREFIX}/experiments/{experiment_id}",
+            timeout=settings.REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+        return ExperimentResponse.model_validate(response.json())
+
     def create_experiment(
         self,
         source_id: int,
@@ -216,3 +238,48 @@ class ApiClient:
         )
         response.raise_for_status()
         return [RagConfigResponse.model_validate(item) for item in response.json()]
+
+    def get_rag_config(self, rag_config_id: int) -> RagConfigResponse:
+        """Get a RAG configuration by its canonical identifier.
+
+        Args:
+            rag_config_id:
+                Canonical RAG configuration identifier.
+
+        Returns:
+            Requested immutable configuration.
+
+        Raises:
+            httpx.HTTPStatusError:
+                If the API returns an unsuccessful HTTP status code.
+        """
+
+        response = get(
+            f"{self._base_url}{settings.API_URL_PREFIX}/rag-configs/{rag_config_id}",
+            timeout=settings.REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+        return RagConfigResponse.model_validate(response.json())
+
+    def register_rag_config(self, config: RagConfig) -> RagConfigResponse:
+        """Idempotently register a resolved RAG configuration.
+
+        Args:
+            config:
+                Fully resolved RAG configuration.
+
+        Returns:
+            Existing or newly registered immutable configuration.
+
+        Raises:
+            httpx.HTTPStatusError:
+                If the API returns an unsuccessful HTTP status code.
+        """
+
+        response = post(
+            f"{self._base_url}{settings.API_URL_PREFIX}/rag-configs",
+            json=config.model_dump(mode="json"),
+            timeout=settings.REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+        return RagConfigResponse.model_validate(response.json())

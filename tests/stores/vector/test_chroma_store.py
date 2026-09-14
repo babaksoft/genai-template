@@ -23,7 +23,7 @@ def test_exists_does_not_create_missing_collection(
     client = mock_client_class.return_value
     client.get_collection.side_effect = NotFoundError("missing")
 
-    store = ChromaStore()
+    store = ChromaStore(collection_name="documents")
 
     assert store.exists() is False
     client.get_or_create_collection.assert_not_called()
@@ -41,7 +41,7 @@ def test_constructor(
     mock_client.get_or_create_collection.return_value = mock_collection
     mock_client_class.return_value = mock_client
 
-    ChromaStore()
+    ChromaStore(collection_name="documents")
 
     mock_client_class.assert_called_once_with(
         path=settings.CHROMA_PERSIST_DIR,
@@ -88,7 +88,7 @@ def test_upsert(
     mock_client.get_or_create_collection.return_value = mock_collection
     mock_client_class.return_value = mock_client
 
-    store = ChromaStore()
+    store = ChromaStore(collection_name="documents")
 
     chunk = DocumentChunk(
         id="chunk-001",
@@ -121,7 +121,7 @@ def test_count(mock_client_class: MagicMock) -> None:
     mock_collection = mock_client_class.return_value.get_collection.return_value
     mock_collection.count.return_value = 7
 
-    store = ChromaStore()
+    store = ChromaStore(collection_name="documents")
 
     assert store.count() == 7
 
@@ -138,7 +138,7 @@ def test_upsert_empty_list(
     mock_client.get_or_create_collection.return_value = mock_collection
     mock_client_class.return_value = mock_client
 
-    store = ChromaStore()
+    store = ChromaStore(collection_name="documents")
 
     store.upsert([])
 
@@ -157,7 +157,7 @@ def test_upsert_missing_embedding(
     mock_client.get_or_create_collection.return_value = mock_collection
     mock_client_class.return_value = mock_client
 
-    store = ChromaStore()
+    store = ChromaStore(collection_name="documents")
 
     chunk = DocumentChunk(
         id="chunk-001",
@@ -198,7 +198,7 @@ def test_search(
     mock_client.get_collection.return_value = mock_collection
     mock_client_class.return_value = mock_client
 
-    store = ChromaStore()
+    store = ChromaStore(collection_name="documents")
     result = store.search(
         embedding=[0.1, 0.2, 0.3],
         top_k=1,
@@ -239,7 +239,7 @@ def test_search_empty_result(
     mock_client.get_collection.return_value = mock_collection
     mock_client_class.return_value = mock_client
 
-    store = ChromaStore()
+    store = ChromaStore(collection_name="documents")
 
     assert (
         store.search(
