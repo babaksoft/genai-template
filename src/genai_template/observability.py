@@ -1,4 +1,4 @@
-"""OpenInference-compatible spans for the RAG answer path."""
+"""OpenInference-compatible spans for application RAG workflows."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ def application_span(
     """Create an application span when a configured provider is active.
 
     The OpenTelemetry proxy provider makes this a no-op when Phoenix tracing is
-    disabled, so the answer path does not need a configuration branch.
+    disabled, so application workflows do not need configuration branches.
 
     Args:
         name:

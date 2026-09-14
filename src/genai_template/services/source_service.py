@@ -19,6 +19,7 @@ from genai_template.db.models import Source
 from genai_template.factories.embedder_factory import create_embedder
 from genai_template.factories.splitter_factory import create_splitter
 from genai_template.factories.vector_store_factory import create_vector_store
+from genai_template.observability import application_span
 from genai_template.pipelines import IndexingPipeline
 from genai_template.protocols import VectorStore
 from genai_template.schemas import IndexingResult
@@ -188,11 +189,35 @@ class SourceService:
         collection_name = self.index_collection_name(source_id, config)
         rebuild_lock = self._get_rebuild_lock(collection_name)
 
-        with rebuild_lock:
-            store = create_vector_store(config.vector_store, collection_name)
-            store.delete()
-            pipeline = self._create_indexing_pipeline(config, store)
-            result = pipeline.run(directory)
+        with application_span(
+            "rag.index.rebuild",
+            "CHAIN",
+            {
+                "rag.source.id": source.id,
+                "rag.config.id": record.id,
+                "rag.config.fingerprint": record.config_fingerprint,
+                "rag.index.fingerprint": index_config_fingerprint(config),
+                "rag.index.collection": collection_name,
+                "rag.splitter.type": config.splitter.type,
+                "rag.embedding.provider": config.embedder.type,
+                "rag.embedding.model": config.embedder.model_name,
+                "rag.vector_store.type": config.vector_store.type,
+                "rag.vector_store.distance": config.vector_store.distance.value,
+            },
+        ) as span:
+            with rebuild_lock:
+                store = create_vector_store(config.vector_store, collection_name)
+                with application_span(
+                    "rag.index.delete",
+                    "CHAIN",
+                    {"rag.index.collection": collection_name},
+                ):
+                    store.delete()
+                pipeline = self._create_indexing_pipeline(config, store)
+                result = pipeline.run(directory)
+
+            span.set_attribute("rag.document.count", result.documents_indexed)
+            span.set_attribute("rag.chunk.count", result.chunks_indexed)
 
         logger.info(
             "Rebuilt source %d index '%s' with RAG config %d: documents=%d, "

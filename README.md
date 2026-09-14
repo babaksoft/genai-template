@@ -89,15 +89,17 @@ server with:
 uv run phoenix serve
 ```
 
-Then set ``PHOENIX_ENABLED=true`` before starting the API. FastAPI request traces, retrieval,
-Chroma search, context/prompt construction, and LlamaIndex embedding/LLM spans are sent
-to ``http://localhost:6006/v1/traces`` and appear at
-``http://localhost:6006`` under the ``genai-template`` project. Override the defaults
-with ``PHOENIX_COLLECTOR_ENDPOINT`` and ``PHOENIX_PROJECT_NAME`` if needed.
+Then set ``PHOENIX_ENABLED=true`` before starting the API. FastAPI request traces,
+index rebuild stages, retrieval, vector-store operations, context/prompt construction,
+and LlamaIndex embedding/LLM spans are sent to
+``http://localhost:6006/v1/traces`` and appear at ``http://localhost:6006`` under the
+``genai-template`` project. Override the defaults with
+``PHOENIX_COLLECTOR_ENDPOINT`` and ``PHOENIX_PROJECT_NAME`` if needed.
 
 Phoenix tracing is intended for local experimentation: traces retain full user queries,
-retrieved chunk contents, prompts, and generated answers. Do not enable it with sensitive
-data unless the local Phoenix storage is appropriately protected.
+corpus content processed by LlamaIndex, retrieved chunk contents, prompts, and generated
+answers. Do not enable it with sensitive data unless the local Phoenix storage is
+appropriately protected.
 
 ### 4️⃣ (Optional) Launch the UI
 ```bash
