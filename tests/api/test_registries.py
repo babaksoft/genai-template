@@ -3,7 +3,7 @@
 import asyncio
 from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import httpx
 from fastapi import FastAPI

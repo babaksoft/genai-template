@@ -6,9 +6,6 @@ from fastapi import FastAPI
 
 from genai_template.api.observability import initialize_observability
 from genai_template.config.logging import configure_logging
-from genai_template.config.rag import load_rag_config
-from genai_template.db import SessionLocal
-from genai_template.services.rag_config_service import RagConfigService
 
 logger = logging.getLogger(__name__)
 
