@@ -1,5 +1,6 @@
 """Retrieval-Augmented Generation execution service."""
 
+import json
 import logging
 
 from genai_template.components.context import ContextBuilder, resolve_citations
@@ -157,6 +158,26 @@ class RagService:
                 total_time=total_timer.elapsed,
             )
             span.set_attribute(OUTPUT_VALUE, response)
+            unsupported_labels = [
+                label
+                for warning in citation_warnings
+                if warning.code == "unsupported_citation_labels"
+                for label in warning.labels
+            ]
+            span.set_attribute("rag.citation.source_count", len(sources))
+            span.set_attribute(
+                "rag.citation.cited_source_count",
+                sum(source.cited for source in sources),
+            )
+            span.set_attribute(
+                "rag.citation.unsupported_label_count",
+                len(unsupported_labels),
+            )
+            if unsupported_labels:
+                span.set_attribute(
+                    "rag.citation.unsupported_labels",
+                    json.dumps(unsupported_labels),
+                )
 
         self._experiment_service.complete_run(run=run, metrics=metrics)
         logger.info(

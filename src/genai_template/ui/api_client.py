@@ -38,7 +38,8 @@ class ApiClient:
                 Canonical RAG configuration identifier.
 
         Returns:
-            API response containing the generated answer and metrics.
+            API response containing the generated answer, metrics, sources, and
+            citation warnings.
 
         Raises:
             httpx.HTTPStatusError:

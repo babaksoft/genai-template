@@ -48,7 +48,7 @@ def test_answer_emits_nested_rag_spans(mock_client_class: MagicMock) -> None:
     embedder = MagicMock()
     embedder.embed_query.return_value = [0.1, 0.2]
     language_model = MagicMock()
-    language_model.generate.return_value = "FastAPI is a web framework."
+    language_model.generate.return_value = "FastAPI is a web framework [S1] [S9]."
     default_config = load_rag_config()
     config = default_config.model_copy(
         update={
@@ -168,3 +168,15 @@ def test_answer_emits_nested_rag_spans(mock_client_class: MagicMock) -> None:
     assert answer_attributes["rag.embedding.model"] == "trace-embedder"
     assert answer_attributes["rag.vector_store.type"] == "chroma"
     assert answer_attributes["rag.llm.model"] == "trace-llm"
+    assert answer_attributes["rag.citation.source_count"] == 1
+    assert answer_attributes["rag.citation.cited_source_count"] == 1
+    assert answer_attributes["rag.citation.unsupported_label_count"] == 1
+    unsupported_labels = answer_attributes["rag.citation.unsupported_labels"]
+    assert isinstance(unsupported_labels, str)
+    assert json.loads(unsupported_labels) == ["S9"]
+    citation_attributes = {
+        key: value
+        for key, value in answer_attributes.items()
+        if key.startswith("rag.citation.")
+    }
+    assert "FastAPI is a Python web framework." not in str(citation_attributes)

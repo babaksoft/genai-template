@@ -5,6 +5,7 @@ from httpx import HTTPError
 
 from genai_template.config import load_rag_config, settings
 from genai_template.schemas import ExperimentResponse, RagConfigResponse
+from genai_template.ui.answer_view import render_answer
 from genai_template.ui.api_client import ApiClient
 
 st.set_page_config(page_title="GenAI Template", page_icon="🤖", layout="wide")
@@ -169,8 +170,7 @@ if st.button("Ask", type="primary", disabled=not can_ask):
             except HTTPError as exc:
                 st.error(f"Unable to get an answer from the API: {exc}")
             else:
-                st.subheader("Answer")
-                st.write(answer_result.answer)
+                render_answer(answer_result)
                 with st.sidebar:
                     st.header("Execution Metrics")
                     with st.expander("Timing", expanded=True):

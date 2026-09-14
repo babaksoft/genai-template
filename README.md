@@ -35,7 +35,8 @@
   - `vector` – Chroma and local/server Qdrant vector stores.
   - `kv`, `document`, `index` (placeholders for future stores).
 - **`src/genai_template/api`** – FastAPI app (`main.py`) with routers for:
-  - `answer` – POST `/answer` returns generated answer + metrics.
+  - `answer` – POST `/answer` returns a generated answer with inline source labels,
+    metrics, structured sources, and non-fatal citation warnings.
   - `sources` – register corpora and explicitly rebuild selected indexes.
   - `experiments` – create and inspect source-bound experiments.
   - `rag-configs` – register and inspect immutable RAG configurations.
@@ -139,6 +140,54 @@ curl -X POST http://localhost:8000/api/v1/answer \
   -H 'Content-Type: application/json' \
   -d '{"query":"What is RAG?","experiment_id":1,"rag_config_id":1}'
 ```
+
+The answer response associates inline labels such as `[S1]` with the exact retrieved
+chunks supplied to the model. Every context source is returned, including uncited
+sources, and labels remain distinct when several chunks come from the same document:
+
+```json
+{
+  "answer": "RAG grounds a generated response in retrieved evidence [S1].",
+  "metrics": {
+    "query": "What is RAG?",
+    "embedding_model": "BAAI/bge-base-en-v1.5",
+    "vector_store": "Chroma",
+    "llm_model": "gpt-oss:20b-cloud",
+    "top_k": 5,
+    "retrieved_chunks": 1,
+    "best_distance": 0.12,
+    "worst_distance": 0.12,
+    "context_length": 128,
+    "prompt_length": 640,
+    "response_length": 65,
+    "retrieval_time": 0.08,
+    "generation_time": 0.45,
+    "total_time": 0.53
+  },
+  "sources": [
+    {
+      "label": "S1",
+      "chunk_id": "guide.md-001",
+      "document_name": "guide.md",
+      "section": "/Introduction/",
+      "content": "Exact retrieved chunk text...",
+      "distance": 0.12,
+      "cited": true
+    }
+  ],
+  "citation_warnings": [
+    {
+      "code": "unsupported_citation_labels",
+      "message": "The answer references labels not present in its context.",
+      "labels": ["S9"]
+    }
+  ]
+}
+```
+
+Unsupported labels do not fail or rewrite the generated answer. They are reported in
+`citation_warnings` so callers can make them visible. Answers, structured sources, and
+citation warnings are response-only data and are not retained in the run database.
 
 The application registers the resolved default configuration at startup. Post
 another fully resolved configuration to `POST /api/v1/rag-configs`; repeating

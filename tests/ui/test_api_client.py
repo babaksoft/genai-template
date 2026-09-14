@@ -3,6 +3,9 @@
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
+import pytest
+from pydantic import ValidationError
+
 from genai_template.config import load_rag_config
 from genai_template.schemas import RunMetrics
 from genai_template.ui.api_client import ApiClient
@@ -36,20 +39,66 @@ def test_answer_sends_experiment_and_config_ids(mock_post: MagicMock) -> None:
     """Answer requests should use canonical execution identifiers."""
 
     mock_post.return_value.json.return_value = {
-        "answer": "Answer",
+        "answer": "Answer [S1] [S9]",
         "metrics": metrics_json(),
-        "sources": [],
-        "citation_warnings": [],
+        "sources": [
+            {
+                "label": "S1",
+                "chunk_id": "guide-001",
+                "document_name": "guide.md",
+                "section": "/Introduction/",
+                "content": "Exact retrieved content.",
+                "distance": 0.12,
+                "cited": True,
+            }
+        ],
+        "citation_warnings": [
+            {
+                "code": "unsupported_citation_labels",
+                "message": "The answer references an unavailable source.",
+                "labels": ["S9"],
+            }
+        ],
     }
 
     response = ApiClient("http://localhost:8000").answer("Question", 2, 3)
 
-    assert response.answer == "Answer"
+    assert response.answer == "Answer [S1] [S9]"
+    assert response.sources[0].document_name == "guide.md"
+    assert response.sources[0].cited is True
+    assert response.citation_warnings[0].labels == ["S9"]
     assert mock_post.call_args.kwargs["json"] == {
         "query": "Question",
         "experiment_id": 2,
         "rag_config_id": 3,
     }
+
+
+@pytest.mark.parametrize("missing_field", ["sources", "citation_warnings"])
+@patch("genai_template.ui.api_client.post")
+def test_answer_requires_citation_fields(
+    mock_post: MagicMock, missing_field: str
+) -> None:
+    """Answer responses must contain both citation contract fields.
+
+    Args:
+        mock_post:
+            Mocked HTTP POST function.
+        missing_field:
+            Required citation field omitted from the response.
+    """
+
+    payload = {
+        "answer": "Answer",
+        "metrics": metrics_json(),
+        "sources": [],
+        "citation_warnings": [],
+    }
+    del payload[missing_field]
+    mock_post.return_value.json.return_value = payload
+
+    with pytest.raises(ValidationError):
+        ApiClient("http://localhost:8000").answer("Question", 2, 3)
 
 
 @patch("genai_template.ui.api_client.get")
