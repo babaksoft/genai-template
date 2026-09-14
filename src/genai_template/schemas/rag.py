@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from genai_template.schemas.retrieved_chunk import RetrievedChunk
+from genai_template.schemas.citation import CitationSource, CitationWarning
 from genai_template.schemas.run_metrics import RunMetrics
 
 
@@ -18,7 +18,12 @@ class RagResult(BaseModel):
         description="Runtime metrics collected during answer generation.",
     )
 
-    retrieved_chunks: list[RetrievedChunk] = Field(
+    sources: list[CitationSource] = Field(
         ...,
-        description="Retrieved chunks used for building RAG context.",
+        description="Ordered sources supplied to the language model.",
+    )
+
+    citation_warnings: list[CitationWarning] = Field(
+        ...,
+        description="Non-fatal warnings produced while resolving citations.",
     )

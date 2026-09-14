@@ -38,6 +38,8 @@ def test_answer_sends_experiment_and_config_ids(mock_post: MagicMock) -> None:
     mock_post.return_value.json.return_value = {
         "answer": "Answer",
         "metrics": metrics_json(),
+        "sources": [],
+        "citation_warnings": [],
     }
 
     response = ApiClient("http://localhost:8000").answer("Question", 2, 3)

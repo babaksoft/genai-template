@@ -2,7 +2,7 @@
 
 import logging
 
-from genai_template.components.context import ContextBuilder
+from genai_template.components.context import ContextBuilder, resolve_citations
 from genai_template.components.prompt import PromptBuilder
 from genai_template.config import RagConfig, index_config_fingerprint
 from genai_template.factories import (
@@ -75,7 +75,7 @@ class RagService:
                 Canonical RAG configuration identifier.
 
         Returns:
-            Generated answer, runtime metrics, and retrieved chunks.
+            Generated answer, runtime metrics, sources, and citation warnings.
 
         Raises:
             IndexNotBuiltError:
@@ -127,11 +127,17 @@ class RagService:
                         query, config.retrieval.top_k
                     )
 
-                context = self._context_builder.build(retrieved_chunks)
-                prompt = self._prompt_builder.build(query=query, context=context)
+                citation_context = self._context_builder.build(retrieved_chunks)
+                prompt = self._prompt_builder.build(
+                    query=query, context=citation_context.text
+                )
 
                 with Timer() as generation_timer:
                     response = language_model.generate(prompt)
+
+                sources, citation_warnings = resolve_citations(
+                    response, citation_context.sources
+                )
 
             distances = [chunk.distance for chunk in retrieved_chunks]
             metrics = RunMetrics(
@@ -143,7 +149,7 @@ class RagService:
                 retrieved_chunks=len(retrieved_chunks),
                 best_distance=min(distances) if distances else None,
                 worst_distance=max(distances) if distances else None,
-                context_length=len(context),
+                context_length=len(citation_context.text),
                 prompt_length=len(prompt),
                 response_length=len(response),
                 retrieval_time=retrieval_timer.elapsed,
@@ -166,7 +172,8 @@ class RagService:
         return RagResult(
             answer=response,
             metrics=metrics,
-            retrieved_chunks=retrieved_chunks,
+            sources=sources,
+            citation_warnings=citation_warnings,
         )
 
     @staticmethod

@@ -53,4 +53,8 @@ def test_build_includes_instructions() -> None:
 
     assert "Use the provided context" in prompt
     assert "If the answer cannot be found in the context" in prompt
+    assert "immediately after every claim" in prompt
+    assert "Use only source labels" in prompt
+    assert "do not generate a bibliography" in prompt
+    assert 'An "I don\'t know" response does not require a citation' in prompt
     assert prompt.endswith("Answer:")

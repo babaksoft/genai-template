@@ -8,7 +8,12 @@ from genai_template.config import load_rag_config
 from genai_template.db.models import Experiment
 from genai_template.db.models import RagConfig as RagConfigRecord
 from genai_template.db.models import Source
-from genai_template.schemas import RetrievedChunk
+from genai_template.schemas import (
+    CitationContext,
+    CitationSource,
+    DocumentChunk,
+    RetrievedChunk,
+)
 from genai_template.services import IndexNotBuiltError, RagService, SourceService
 
 
@@ -69,7 +74,16 @@ def test_answer_loads_config_and_completes_canonical_run(
     store = mock_create_store.return_value
     store.exists.return_value = True
     retrieval = mock_create_retrieval.return_value
-    retrieved_chunks: list[RetrievedChunk] = []
+    retrieved_chunks = [
+        RetrievedChunk(
+            chunk=DocumentChunk(
+                id="chunk-1",
+                document_id="guide.md",
+                text="RAG uses retrieval.",
+            ),
+            distance=0.25,
+        )
+    ]
     retrieval.retrieve.return_value = retrieved_chunks
     mocks["experiments"].get_experiment.return_value = experiment
     mocks["experiments"].start_run.return_value = run
@@ -77,9 +91,20 @@ def test_answer_loads_config_and_completes_canonical_run(
     mocks["sources"].index_collection_name.return_value = "idx-selected"
     mocks["configs"].get_config.return_value = record
     mocks["configs"].parse_config.return_value = config
-    mocks["context"].build.return_value = "context"
+    citation_source = CitationSource(
+        label="S1",
+        chunk_id="chunk-1",
+        document_name="guide.md",
+        section=None,
+        content="RAG uses retrieval.",
+        distance=0.25,
+        cited=False,
+    )
+    mocks["context"].build.return_value = CitationContext(
+        text="[S1] labeled context", sources=[citation_source]
+    )
     mocks["prompt"].build.return_value = "prompt"
-    mock_create_llm.return_value.generate.return_value = "final answer"
+    mock_create_llm.return_value.generate.return_value = "final answer [S1] [S9]"
 
     result = service.answer("What is RAG?", experiment_id=3, rag_config_id=5)
 
@@ -93,10 +118,18 @@ def test_answer_loads_config_and_completes_canonical_run(
     )
     mock_create_llm.assert_called_once_with(config.llm)
     retrieval.retrieve.assert_called_once_with("What is RAG?", 9)
+    mocks["context"].build.assert_called_once_with(retrieved_chunks)
+    mocks["prompt"].build.assert_called_once_with(
+        query="What is RAG?", context="[S1] labeled context"
+    )
     mocks["experiments"].complete_run.assert_called_once_with(
         run=run, metrics=result.metrics
     )
-    assert result.answer == "final answer"
+    assert result.answer == "final answer [S1] [S9]"
+    assert result.sources[0].cited is True
+    assert result.citation_warnings[0].labels == ["S9"]
+    assert result.metrics.retrieved_chunks == 1
+    assert result.metrics.context_length == len("[S1] labeled context")
     assert result.metrics.embedding_model == "configured-embedder"
     assert result.metrics.llm_model == "configured-llm"
 
@@ -158,7 +191,7 @@ def test_execution_failure_leaves_started_run_unfinished(
     mocks["configs"].parse_config.return_value = config
     mock_create_store.return_value.exists.return_value = True
     mock_create_retrieval.return_value.retrieve.return_value = []
-    mocks["context"].build.return_value = "context"
+    mocks["context"].build.return_value = CitationContext(text="context", sources=[])
     mocks["prompt"].build.return_value = "prompt"
     mock_create_llm.return_value.generate.side_effect = RuntimeError("provider failed")
 

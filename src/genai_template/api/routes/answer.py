@@ -28,7 +28,7 @@ async def answer(
             Configured RAG service.
 
     Returns:
-        Generated answer and runtime metrics.
+        Generated answer, runtime metrics, sources, and citation warnings.
     """
 
     try:
@@ -51,4 +51,6 @@ async def answer(
     return AnswerResponse(
         answer=result.answer,
         metrics=result.metrics,
+        sources=result.sources,
+        citation_warnings=result.citation_warnings,
     )

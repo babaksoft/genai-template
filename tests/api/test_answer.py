@@ -4,7 +4,12 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from genai_template.api.dependencies import get_rag_service
-from genai_template.schemas import RagResult, RunMetrics
+from genai_template.schemas import (
+    CitationSource,
+    CitationWarning,
+    RagResult,
+    RunMetrics,
+)
 from genai_template.services import IndexNotBuiltError, RagService
 
 
@@ -45,9 +50,26 @@ def test_answer_returns_generated_response(
 
     mock_service = Mock(spec=RagService)
     mock_service.answer.return_value = RagResult(
-        answer="Generated answer.",
+        answer="Generated answer [S1].",
         metrics=get_test_metrics(),
-        retrieved_chunks=[],
+        sources=[
+            CitationSource(
+                label="S1",
+                chunk_id="guide-001",
+                document_name="guide.md",
+                section="/Introduction/",
+                content="Exact content.",
+                distance=0.1,
+                cited=True,
+            )
+        ],
+        citation_warnings=[
+            CitationWarning(
+                code="unsupported_citation_labels",
+                message="The answer references labels not present in its context.",
+                labels=["S9"],
+            )
+        ],
     )
 
     app.dependency_overrides[get_rag_service] = lambda: mock_service
@@ -66,8 +88,28 @@ def test_answer_returns_generated_response(
 
     body = response.json()
 
-    assert body["answer"] == "Generated answer."
-    assert body["metrics"]["retrieved_chunks"] == 2
+    assert body == {
+        "answer": "Generated answer [S1].",
+        "metrics": get_test_metrics().model_dump(mode="json"),
+        "sources": [
+            {
+                "label": "S1",
+                "chunk_id": "guide-001",
+                "document_name": "guide.md",
+                "section": "/Introduction/",
+                "content": "Exact content.",
+                "distance": 0.1,
+                "cited": True,
+            }
+        ],
+        "citation_warnings": [
+            {
+                "code": "unsupported_citation_labels",
+                "message": "The answer references labels not present in its context.",
+                "labels": ["S9"],
+            }
+        ],
+    }
     mock_service.answer.assert_called_once_with("What is RAG?", 1, 2)
 
     app.dependency_overrides.clear()

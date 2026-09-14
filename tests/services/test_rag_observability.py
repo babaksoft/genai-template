@@ -152,7 +152,7 @@ def test_answer_emits_nested_rag_spans(mock_client_class: MagicMock) -> None:
         }
     ]
     assert chroma_attributes["rag.result_count"] == 1
-    assert context_output.startswith("Chunk 1")
+    assert context_output.startswith("[S1]")
     assert prompt_output
     answer_attributes = answer_span.attributes
     assert answer_attributes is not None

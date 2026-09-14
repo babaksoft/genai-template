@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 from genai_template.config import RagConfig
+from genai_template.schemas.citation import CitationSource, CitationWarning
 from genai_template.schemas.run_metrics import RunMetrics
 
 
@@ -53,6 +54,16 @@ class AnswerResponse(BaseModel):
     metrics: RunMetrics = Field(
         ...,
         description="Runtime metrics collected during answer generation.",
+    )
+
+    sources: list[CitationSource] = Field(
+        ...,
+        description="Ordered sources supplied to the language model.",
+    )
+
+    citation_warnings: list[CitationWarning] = Field(
+        ...,
+        description="Non-fatal warnings produced while resolving citations.",
     )
 
 
