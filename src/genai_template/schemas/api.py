@@ -108,8 +108,8 @@ class SourceResponse(BaseModel):
 class IndexBuildResponse(BaseModel):
     """Transient result of rebuilding a deterministic source index."""
 
-    documents_indexed: int = Field(..., ge=0, description="Indexed documents.")
-    chunks_indexed: int = Field(..., ge=0, description="Indexed chunks.")
+    documents_indexed: int = Field(..., ge=0, description="Count of indexed documents.")
+    chunks_indexed: int = Field(..., ge=0, description="Count of indexed chunks.")
     indexing_time: float = Field(..., ge=0, description="Build duration in seconds.")
 
 

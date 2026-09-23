@@ -316,4 +316,4 @@ The repository is deliberately modular:
 
 ---
 
-For deeper details, see the automatically generated `AGENTS.md` which lists non‑obvious commands, settings, and gotchas for OpenCode agents.
+For deeper details, see the automatically generated `AGENTS.md` which lists non‑obvious commands, settings, and gotchas for coding agent harnesses.

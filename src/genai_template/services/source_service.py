@@ -16,9 +16,11 @@ from sqlalchemy.orm import Session
 
 from genai_template.config import RagConfig, index_config_fingerprint
 from genai_template.db.models import Source
-from genai_template.factories.embedder_factory import create_embedder
-from genai_template.factories.splitter_factory import create_splitter
-from genai_template.factories.vector_store_factory import create_vector_store
+from genai_template.factories import (
+    create_embedder,
+    create_splitter,
+    create_vector_store,
+)
 from genai_template.observability import application_span
 from genai_template.pipelines import IndexingPipeline
 from genai_template.protocols import VectorStore
