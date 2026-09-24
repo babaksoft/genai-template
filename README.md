@@ -56,16 +56,32 @@ Portfolio RAG is a proposed experiment for generating a technical corpus from ac
 Python repositories, comparing RAG configurations against curated evaluation data,
 and supporting cited multi-turn questions from portfolio reviewers.
 
-The first planned stage reads one committed snapshot from a local Git repository,
-ignoring staged, modified, and untracked working-tree files. Later stages generate a
+The first stage reads one committed snapshot from a local Git repository, ignoring
+staged, modified, and untracked working-tree files. Later stages generate a
 flat, manifest-backed corpus under `data/portfolio`, track index freshness, add
 versioned evaluation trials, optimize retrieval, and introduce persistent Portfolio
 Q&A conversations.
 
-This experiment is not implemented yet. Its design and delivery documents are:
+Inspect the exact files and logical summary work selected from the current committed
+snapshot with:
+
+```bash
+uv run python -m genai_template.workflow.portfolio.inspect_snapshot \
+  --config src/genai_template/workflow/configs/portfolio-local.yml
+```
+
+Pass ``--project <slug>`` to inspect one configured project or ``--json`` for a
+machine-readable report. The command reads committed Git objects at the resolved
+commit and never checks out a ref, so working-tree modifications, staged changes, and
+untracked files do not affect the result. Reports omit source contents and absolute
+local repository paths. Selected symlinks, submodules, Git LFS pointers, binary or
+non-UTF-8 files, and files over the configured limit are rejected; entries outside
+the include/exclude selection are ignored.
+
+The experiment's design and delivery documents are:
 
 - [Portfolio RAG master plan](PLAN.md), currently **Proposed**;
-- [Stage 0 sliced implementation plan](work/ongoing/PLAN.md), currently **Planned**;
+- [Stage 0 sliced implementation plan](work/ongoing/PLAN.md), now **Implemented**;
   and
 - [Architecture decision records](docs/decisions/).
 

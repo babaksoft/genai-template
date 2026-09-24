@@ -1,6 +1,6 @@
 # Portfolio RAG Stage 0 — Snapshot and Corpus Contract
 
-**Status:** Planned
+**Status:** Implemented
 
 ## Goal
 
