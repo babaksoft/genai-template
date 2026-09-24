@@ -17,8 +17,8 @@
 ---
 
 ## Quality standards
-- Complete Google-style docstrings is required in all functions, classes and methods. `None` return value is omitted from docstrings.
-- Keep docstrings consistent with existing modules, but don't make wholesale changes to existing modules. 
+- Complete Google-style docstrings is required in all functions, classes and methods. `None` arguments and return value is omitted from docstrings.
+- All new Pydantic models have complete Google-style `Attributes` section on class and `description` argument in fields.
 
 ---
 

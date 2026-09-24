@@ -72,6 +72,37 @@ class CommittedRepositoryEntry(_ImmutableDomainModel):
         return self
 
 
+class RepositoryReadResult(_ImmutableDomainModel):
+    """Provider-neutral contents read from one immutable repository commit.
+
+    Attributes:
+        repository_url:
+            Normalized repository URL when one is available.
+        requested_ref:
+            Repository ref requested before immutable commit resolution.
+        resolved_commit_sha:
+            Full object identifier of the resolved commit.
+        entries:
+            Committed blob and gitlink entries returned by the repository reader.
+    """
+
+    repository_url: str | None = Field(
+        default=None,
+        description="Normalized repository URL when available.",
+    )
+    requested_ref: str = Field(
+        min_length=1,
+        description="Repository ref requested before commit resolution.",
+    )
+    resolved_commit_sha: str = Field(
+        pattern=r"^[0-9a-f]{40}(?:[0-9a-f]{24})?$",
+        description="Full hexadecimal identifier of the resolved commit.",
+    )
+    entries: tuple[CommittedRepositoryEntry, ...] = Field(
+        description="Committed blob and gitlink entries from the resolved commit."
+    )
+
+
 class SnapshotFile(_ImmutableDomainModel):
     """A normalized UTF-8 text file selected from a repository commit.
 
