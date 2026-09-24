@@ -17,8 +17,20 @@
 ---
 
 ## Quality standards
-- Complete Google-style docstrings is required in all functions, classes and methods. `None` arguments and return value is omitted from docstrings.
-- All new Pydantic models have complete Google-style `Attributes` section on class and `description` argument in fields.
+- Use four-space indentation.
+- Add complete type hints to every function.
+- Add complete Google-style docstrings to every class, method, and function.
+- In `Args:` and `Raises:` sections, put each item name on its own line and indent
+  its description beneath it.
+- Omit `Args:` when there are no arguments. Omit `Returns:` when a function or
+  method returns `None`.
+- Use absolute package-level imports everywhere; do not use relative imports.
+- Name modules and functions in `snake_case`, classes in `PascalCase`, test modules
+  as `test_<behavior>.py`, and test cases as `test_<expected_behavior>()`.
+- Give every field on a persistence model a concise `doc` description, including
+  mapped columns and relationships.
+- Give every new Pydantic model a complete Google-style `Attributes:` section and
+  every field a `description` argument.
 
 ---
 

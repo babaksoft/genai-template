@@ -30,32 +30,44 @@ Stage 1 visible and verifiable.
 - The configuration shape permits multiple project entries, but the first example
   and end-to-end acceptance path use one project.
 
-## Proposed Package Layout
+## Implemented Package Layout
 
 ```text
 src/genai_template/workflow/portfolio/
   __init__.py
-  config.py
-  models.py
-  readers.py
-  selection.py
-  planning.py
-  inspect_snapshot.py
-
-src/genai_template/workflow/configs/
-  __init__.py
-  portfolio-local.yml
+  inspect_snapshot.py              # compatibility CLI entry point
+  adapters/repositories/local_git.py
+  cli/inspect.py
+  config/
+    __init__.py
+    loader.py
+    models.py
+    profiles/local.yml
+  domain/
+    errors.py
+    snapshot.py
+    summary.py
+  inspection/
+    reports.py
+    service.py
+  ports/repository.py
+  snapshot/
+    planning.py
+    selection.py
 
 tests/workflow/portfolio/
-  test_config.py
-  test_local_git_reader.py
-  test_selection.py
-  test_planning.py
-  test_inspect_snapshot.py
+  adapters/repositories/test_local_git_snapshot_reading.py
+  config/test_config_loading.py
+  domain/test_domain_models.py
+  inspection/test_snapshot_inspection.py
+  snapshot/
+    test_snapshot_selection.py
+    test_summary_planning.py
 ```
 
-Names may be adjusted during implementation if existing project conventions require
-it, but responsibilities and public boundaries should remain as described below.
+The Stage 0 migration preserved the original curated package exports and legacy CLI
+module while separating domain, port, adapter, application-service, and interface
+responsibilities.
 
 ## Public Model and Protocol Direction
 
@@ -151,8 +163,8 @@ canonical Stage 0 domain types without invoking Git.
   - rejects absolute repository-file patterns and patterns containing `..`; and
   - requires at least one include pattern and one summary unit.
 - Add a documented one-project example configuration under
-  `src/genai_template/workflow/configs/` using the current repository as a fixture
-  target.
+  `src/genai_template/workflow/portfolio/config/profiles/` using the current
+  repository as a fixture target.
 - Export only the intended public models and loader from the portfolio workflow
   package.
 
@@ -168,7 +180,7 @@ canonical Stage 0 domain types without invoking Git.
 Run:
 
 ```bash
-uv run pytest tests/workflow/portfolio/test_config.py -v
+uv run pytest tests/workflow/portfolio/config/test_config_loading.py -v
 ```
 
 ### Acceptance
@@ -274,8 +286,8 @@ units become a stable `SummaryPlan` suitable for Stage 1 LLM calls.
 Run:
 
 ```bash
-uv run pytest tests/workflow/portfolio/test_selection.py \
-  tests/workflow/portfolio/test_planning.py -v
+uv run pytest tests/workflow/portfolio/snapshot/test_snapshot_selection.py \
+  tests/workflow/portfolio/snapshot/test_summary_planning.py -v
 ```
 
 ### Acceptance
@@ -317,8 +329,8 @@ through a read-only command before Stage 1 is implemented.
 Proposed command:
 
 ```bash
-uv run python -m genai_template.workflow.portfolio.inspect_snapshot \
-  --config src/genai_template/workflow/configs/portfolio-local.yml
+uv run python -m genai_template.workflow.portfolio.cli.inspect \
+  --config src/genai_template/workflow/portfolio/config/profiles/local.yml
 ```
 
 ### Verification

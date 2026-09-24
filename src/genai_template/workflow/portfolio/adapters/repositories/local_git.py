@@ -5,76 +5,16 @@ from __future__ import annotations
 import os
 import subprocess
 from pathlib import Path
-from typing import Literal, Protocol, runtime_checkable
+from typing import Literal
 
-from genai_template.workflow.portfolio.config import LocalGitRepositoryConfig
-from genai_template.workflow.portfolio.models import (
+from genai_template.workflow.portfolio.config.models import LocalGitRepositoryConfig
+from genai_template.workflow.portfolio.domain.errors import RepositoryReadError
+from genai_template.workflow.portfolio.domain.snapshot import (
     CommittedRepositoryEntry,
     RepositoryReadResult,
 )
 
 _TreeRecord = tuple[str, Literal["blob", "commit"], str, str]
-
-
-class RepositoryReadError(RuntimeError):
-    """Failure to read an immutable repository revision.
-
-    Attributes:
-        repository_path:
-            Configured local repository path involved in the failure.
-        requested_ref:
-            Configured ref involved in the failure, when ref resolution had begun.
-        operation:
-            Short description of the failed read operation.
-    """
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        repository_path: Path,
-        requested_ref: str | None = None,
-        operation: str,
-    ) -> None:
-        """Initialize a contextual repository read failure.
-
-        Args:
-            message:
-                Human-readable description of the failure.
-            repository_path:
-                Configured path involved in the failure.
-            requested_ref:
-                Ref involved in the failure, when applicable.
-            operation:
-                Short description of the failed read operation.
-        """
-
-        super().__init__(message)
-        self.repository_path = repository_path
-        self.requested_ref = requested_ref
-        self.operation = operation
-
-
-@runtime_checkable
-class RepositoryReader(Protocol):
-    """Provider-neutral interface for reading one immutable repository revision."""
-
-    def read(self, repository: LocalGitRepositoryConfig) -> RepositoryReadResult:
-        """Read committed entries and identity for a configured repository.
-
-        Args:
-            repository:
-                Validated repository source and ref settings.
-
-        Returns:
-            Immutable commit identity and committed repository entries.
-
-        Raises:
-            RepositoryReadError:
-                If the repository or configured revision cannot be read.
-        """
-
-        ...
 
 
 class LocalGitSnapshotReader:

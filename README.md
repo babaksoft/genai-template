@@ -66,8 +66,8 @@ Inspect the exact files and logical summary work selected from the current commi
 snapshot with:
 
 ```bash
-uv run python -m genai_template.workflow.portfolio.inspect_snapshot \
-  --config src/genai_template/workflow/configs/portfolio-local.yml
+uv run python -m genai_template.workflow.portfolio.cli.inspect \
+  --config src/genai_template/workflow/portfolio/config/profiles/local.yml
 ```
 
 Pass ``--project <slug>`` to inspect one configured project or ``--json`` for a

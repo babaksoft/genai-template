@@ -1,4 +1,4 @@
-"""Tests for deterministic repository snapshot selection and normalization."""
+"""Tests for deterministic repository snapshot-selection behavior."""
 
 from __future__ import annotations
 
@@ -13,7 +13,9 @@ from genai_template.workflow.portfolio import (
     SnapshotSelectionError,
     build_repository_snapshot,
 )
-from genai_template.workflow.portfolio.selection import matches_repository_pattern
+from genai_template.workflow.portfolio.snapshot.selection import (
+    matches_repository_pattern,
+)
 
 _COMMIT_SHA = "a" * 40
 _OBJECT_ID = "b" * 40

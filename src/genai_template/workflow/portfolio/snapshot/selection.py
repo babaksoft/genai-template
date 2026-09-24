@@ -8,8 +8,8 @@ import json
 import re
 from pathlib import PurePosixPath
 
-from genai_template.workflow.portfolio.config import SelectionConfig
-from genai_template.workflow.portfolio.models import (
+from genai_template.workflow.portfolio.config.models import SelectionConfig
+from genai_template.workflow.portfolio.domain.snapshot import (
     CommittedRepositoryEntry,
     RepositoryReadResult,
     RepositorySnapshot,

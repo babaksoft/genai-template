@@ -1,4 +1,4 @@
-"""Tests for deterministic logical summary planning."""
+"""Tests for deterministic logical Portfolio summary-planning behavior."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Tests for the read-only local Git portfolio repository reader."""
+"""Tests for read-only local Git Portfolio snapshot behavior."""
 
 from __future__ import annotations
 

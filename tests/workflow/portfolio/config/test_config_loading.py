@@ -1,4 +1,4 @@
-"""Tests for portfolio configuration and Stage 0 domain models."""
+"""Tests for Portfolio configuration model and loading behavior."""
 
 from __future__ import annotations
 
@@ -11,17 +11,11 @@ from pydantic import BaseModel, ValidationError
 
 from genai_template.config import settings
 from genai_template.workflow.portfolio import (
-    CommittedRepositoryEntry,
     LocalGitRepositoryConfig,
     PortfolioConfig,
     ProjectConfig,
-    RepositoryReadResult,
-    RepositorySnapshot,
     SelectionConfig,
-    SnapshotFile,
-    SummaryPlan,
     SummaryUnitConfig,
-    SummaryUnitPlan,
     load_portfolio_config,
 )
 
@@ -72,7 +66,14 @@ def _write_config(tmp_path: Path, data: object) -> Path:
 def test_loads_documented_configuration() -> None:
     """The packaged one-project example is complete and valid."""
 
-    config_path = settings.PKG_ROOT / "workflow" / "configs" / "portfolio-local.yml"
+    config_path = (
+        settings.PKG_ROOT
+        / "workflow"
+        / "portfolio"
+        / "config"
+        / "profiles"
+        / "local.yml"
+    )
 
     config = load_portfolio_config(config_path)
 
@@ -93,7 +94,7 @@ def test_relative_config_and_repository_paths_use_repository_root(
     """Neither relative path depends on the process working directory."""
 
     relative_config_path = Path(
-        "src/genai_template/workflow/configs/portfolio-local.yml"
+        "src/genai_template/workflow/portfolio/config/profiles/local.yml"
     )
     monkeypatch.chdir(tmp_path)
 
@@ -228,55 +229,8 @@ def test_configuration_models_are_immutable(tmp_path: Path) -> None:
         config.projects[0].slug = "changed"
 
 
-def test_domain_models_are_immutable_and_composable() -> None:
-    """Canonical Stage 0 domain values compose without repository access."""
-
-    content_hash = "1" * 64
-    commit_sha = "2" * 40
-    source_fingerprint = "3" * 64
-    unit_fingerprint = "4" * 64
-    file = SnapshotFile(
-        path="src/example.py",
-        text="print('example')\n",
-        content_hash=content_hash,
-        byte_size=17,
-    )
-    snapshot = RepositorySnapshot(
-        project_slug="sample-project",
-        repository_url=None,
-        requested_ref="HEAD",
-        resolved_commit_sha=commit_sha,
-        source_fingerprint=source_fingerprint,
-        files=(file,),
-    )
-    plan = SummaryPlan(
-        project_slug=snapshot.project_slug,
-        resolved_commit_sha=snapshot.resolved_commit_sha,
-        source_fingerprint=snapshot.source_fingerprint,
-        units=(
-            SummaryUnitPlan(
-                unit_id="application-core",
-                input_fingerprint=unit_fingerprint,
-                files=snapshot.files,
-            ),
-        ),
-    )
-    entry = CommittedRepositoryEntry(
-        path="src/example.py",
-        mode="100644",
-        object_type="blob",
-        object_id=commit_sha,
-        content=b"print('example')\n",
-    )
-
-    assert plan.units[0].files == snapshot.files
-    assert entry.content == b"print('example')\n"
-    with pytest.raises(ValidationError):
-        file.text = "changed"
-
-
-def test_unknown_domain_model_fields_are_rejected() -> None:
-    """Workflow boundary values reject accidental additional fields."""
+def test_unknown_configuration_fields_are_rejected() -> None:
+    """Configuration boundary values reject accidental additional fields."""
 
     with pytest.raises(ValidationError):
         PortfolioConfig.model_validate(
@@ -292,12 +246,6 @@ def test_unknown_domain_model_fields_are_rejected() -> None:
         SummaryUnitConfig,
         ProjectConfig,
         PortfolioConfig,
-        CommittedRepositoryEntry,
-        RepositoryReadResult,
-        SnapshotFile,
-        RepositorySnapshot,
-        SummaryUnitPlan,
-        SummaryPlan,
     ],
 )
 def test_public_models_document_classes_and_fields(
