@@ -50,6 +50,25 @@ always names an experiment ID and configuration ID. Vector collections are not
 SQL records: their names are deterministic hashes of the source ID and the
 configuration's index-affecting settings.
 
+## Portfolio RAG Experiment
+
+Portfolio RAG is a proposed experiment for generating a technical corpus from active
+Python repositories, comparing RAG configurations against curated evaluation data,
+and supporting cited multi-turn questions from portfolio reviewers.
+
+The first planned stage reads one committed snapshot from a local Git repository,
+ignoring staged, modified, and untracked working-tree files. Later stages generate a
+flat, manifest-backed corpus under `data/portfolio`, track index freshness, add
+versioned evaluation trials, optimize retrieval, and introduce persistent Portfolio
+Q&A conversations.
+
+This experiment is not implemented yet. Its design and delivery documents are:
+
+- [Portfolio RAG master plan](PLAN.md), currently **Proposed**;
+- [Stage 0 sliced implementation plan](work/ongoing/PLAN.md), currently **Planned**;
+  and
+- [Architecture decision records](docs/decisions/).
+
 ## Getting Started
 
 ### 1️⃣ Install dependencies
