@@ -1,0 +1,24 @@
+# Stage 0 example: inspect the current repository's committed Python sources.
+version: 1
+
+projects:
+  - slug: genai-template
+    display_name: GenAI Template
+    repository:
+      type: local_git
+      path: .
+      ref: HEAD
+    selection:
+      include:
+        - README.md
+        - pyproject.toml
+        - src/**/*.py
+        - tests/**/*.py
+      exclude:
+        - "**/__pycache__/**"
+      max_file_bytes: 262144
+    summary_units:
+      - id: components-splitters
+        paths:
+          - src/genai_template/components/splitters/**/*.py
+          - tests/components/splitters/**/*.py
