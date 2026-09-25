@@ -78,6 +78,8 @@ Local Git repository at an immutable commit
 
 ## Stage 0 — Snapshot and Corpus Contract
 
+**Status: Complete**
+
 **Goal:** Produce a verified, content-addressed repository snapshot and logical
 summary plan without invoking an LLM or generating corpus documents.
 
@@ -108,6 +110,8 @@ Exit criteria:
   operations.
 
 ## Stage 1 — Local Portfolio Corpus Workflow
+
+**Status: Planned**
 
 **Goal:** Generate and atomically publish a focused flat Markdown corpus from the
 Stage 0 snapshot.
@@ -141,6 +145,8 @@ Exit criteria:
 
 ## Stage 2 — Flat Ingestion, Provenance, and Index Freshness
 
+**Status: Planned**
+
 **Goal:** Index the generated corpus with project metadata while retaining the
 existing flat-directory ingestion model.
 
@@ -172,6 +178,8 @@ Exit criteria:
 
 ## Stage 3 — Evaluation Dataset and Trial Model
 
+**Status: Planned**
+
 **Goal:** Create a versioned evaluation system that compares configurations against
 the same corpus and evidence.
 
@@ -199,6 +207,8 @@ Exit criteria:
 
 ## Stage 4 — Retrieval and Answer Optimization
 
+**Status: Planned**
+
 **Goal:** Select a Portfolio RAG configuration through controlled comparisons rather
 than ad hoc UI testing.
 
@@ -224,6 +234,8 @@ Exit criteria:
 - the decision record explains quality, latency, cost, and operational tradeoffs.
 
 ## Stage 5 — Durable Multi-Turn Portfolio Q&A
+
+**Status: Planned**
 
 **Goal:** Replace isolated questions with persistent reviewer conversations while
 keeping retrieval and generation behavior auditable per turn.
@@ -252,6 +264,8 @@ Exit criteria:
   boundary.
 
 ## Stage 6 — Reviewer UI and End-to-End Validation
+
+**Status: Planned**
 
 **Goal:** Deliver a portfolio-review experience and validate the complete lifecycle.
 
