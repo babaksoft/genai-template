@@ -1,6 +1,6 @@
 # Portfolio RAG Stage 1 — Local Portfolio Corpus Workflow
 
-**Status:** In Progress (Slice 1 complete)
+**Status:** In Progress (Slices 1–2 complete)
 
 ## Goal
 
@@ -153,7 +153,7 @@ uv run pytest tests/workflow/portfolio/config \
 
 ## Slice 2 — Structured Summary Generation and Evidence Validation
 
-**Status: Planned**
+**Status: Complete**
 
 ### Outcome
 

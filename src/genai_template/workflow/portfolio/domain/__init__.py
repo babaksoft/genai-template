@@ -1,6 +1,9 @@
 """Portfolio workflow domain models and failures."""
 
-from genai_template.workflow.portfolio.domain.errors import RepositoryReadError
+from genai_template.workflow.portfolio.domain.errors import (
+    RepositoryReadError,
+    StructuredGenerationError,
+)
 from genai_template.workflow.portfolio.domain.generation import (
     ArtifactProvenance,
     CachedArtifact,
@@ -21,27 +24,46 @@ from genai_template.workflow.portfolio.domain.snapshot import (
     RepositorySnapshot,
     SnapshotFile,
 )
+from genai_template.workflow.portfolio.domain.summaries import (
+    OUTPUT_SCHEMA_VERSION,
+    ArchitectureSummary,
+    ComponentSummary,
+    EvidenceSection,
+    ProjectOverviewSummary,
+    StructuredSummary,
+    TestingOperationsSummary,
+    summary_evidence_paths,
+)
 from genai_template.workflow.portfolio.domain.summary import (
     SummaryPlan,
     SummaryUnitPlan,
 )
 
 __all__ = [
+    "OUTPUT_SCHEMA_VERSION",
+    "ArchitectureSummary",
     "ArtifactProvenance",
     "ArtifactRunReport",
     "CachedArtifact",
     "CommittedRepositoryEntry",
+    "ComponentSummary",
     "CorpusBuild",
+    "EvidenceSection",
     "GenerationRequest",
     "GenerationResult",
     "GenerationRunReport",
+    "ProjectOverviewSummary",
     "ProviderAuditMetadata",
     "RenderedDocument",
     "RepositoryReadError",
     "RepositoryReadResult",
     "RepositorySnapshot",
     "SnapshotFile",
+    "StructuredGenerationError",
+    "StructuredSummary",
     "SummaryPlan",
     "SummaryUnitPlan",
+    "TestingOperationsSummary",
     "TokenUsage",
+    "summary_evidence_paths",
 ]

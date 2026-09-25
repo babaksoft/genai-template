@@ -51,9 +51,12 @@
 ## Quality Checks & Test Suite
 - Run all formatting, import, lint, type, and unit-test checks with:
   ```bash
-  ./scripts/check.sh
+  PHOENIX_ENABLED=false ./scripts/check.sh
   ```
   The script runs Black, isort, Ruff, mypy, and `pytest -m "not integration" -v` through `uv`; it excludes the `@pytest.mark.integration` suite.
+- API tests require a running Phoenix server when tracing is enabled. In local
+  environments without Phoenix, either skip `tests/api/` or run the full suite
+  with `PHOENIX_ENABLED=false`.
 - To run **only** the integration tests (requires a running Ollama instance and any vector store you configure):
   ```bash
   uv run pytest -m integration -v
@@ -81,7 +84,9 @@
 
 ## Conventional Workflow
 1. **Sync** dependencies with `uv sync --all-groups`.
-2. **Run quality checks and unit tests** with `./scripts/check.sh` before committing.
+2. **Run quality checks and unit tests** with
+   `PHOENIX_ENABLED=false ./scripts/check.sh` before committing unless a Phoenix
+   server is already running.
 3. **Start API** (`uv run uvicorn …`) and, optionally, **UI** (`uv run streamlit …`). Register a source, create an experiment, select/register a config, then explicitly rebuild that source/config index.
 4. **Run integration tests** only when external services (Ollama, Chroma, etc.) are available.
 

@@ -40,3 +40,42 @@ class RepositoryReadError(RuntimeError):
         self.repository_path = repository_path
         self.requested_ref = requested_ref
         self.operation = operation
+
+
+class StructuredGenerationError(RuntimeError):
+    """Provider-neutral structured generation boundary failure.
+
+    Attributes:
+        provider:
+            Stable provider identifier.
+        model:
+            Provider model involved in the failure.
+        reason:
+            Stable short reason suitable for workflow handling.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        provider: str,
+        model: str,
+        reason: str,
+    ) -> None:
+        """Initialize a structured generation failure.
+
+        Args:
+            message:
+                Human-readable failure description without sensitive content.
+            provider:
+                Provider involved in the failure.
+            model:
+                Model involved in the failure.
+            reason:
+                Stable failure category.
+        """
+
+        super().__init__(message)
+        self.provider = provider
+        self.model = model
+        self.reason = reason
