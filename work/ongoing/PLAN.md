@@ -1,6 +1,6 @@
 # Portfolio RAG Stage 1 — Local Portfolio Corpus Workflow
 
-**Status:** In Progress (Slices 1–2 complete)
+**Status:** In Progress (Slices 1–3 complete)
 
 ## Goal
 
@@ -220,7 +220,7 @@ uv run pytest tests/workflow/portfolio/generation -v
 
 ## Slice 3 — Validated Artifact Cache and Component Summaries
 
-**Status: Planned**
+**Status: Complete**
 
 ### Outcome
 

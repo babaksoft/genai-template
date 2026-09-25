@@ -79,3 +79,69 @@ class StructuredGenerationError(RuntimeError):
         self.provider = provider
         self.model = model
         self.reason = reason
+
+
+class ArtifactCacheError(RuntimeError):
+    """Failure to read, validate, or atomically write a cached artifact.
+
+    Attributes:
+        generation_fingerprint:
+            Stable cache key involved in the failure.
+        reason:
+            Stable short reason suitable for workflow handling.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        generation_fingerprint: str,
+        reason: str,
+    ) -> None:
+        """Initialize a cache failure without exposing machine-local paths.
+
+        Args:
+            message:
+                Human-readable failure description without cached content.
+            generation_fingerprint:
+                Stable cache key involved in the failure.
+            reason:
+                Stable failure category.
+        """
+
+        super().__init__(message)
+        self.generation_fingerprint = generation_fingerprint
+        self.reason = reason
+
+
+class ArtifactValidationError(RuntimeError):
+    """Failure to reconcile generated output with requested provenance.
+
+    Attributes:
+        generation_fingerprint:
+            Stable generation identity involved in the failure.
+        reason:
+            Stable short reason suitable for workflow handling.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        generation_fingerprint: str,
+        reason: str,
+    ) -> None:
+        """Initialize a generated-artifact validation failure.
+
+        Args:
+            message:
+                Human-readable failure description without provider content.
+            generation_fingerprint:
+                Stable generation identity involved in the failure.
+            reason:
+                Stable failure category.
+        """
+
+        super().__init__(message)
+        self.generation_fingerprint = generation_fingerprint
+        self.reason = reason

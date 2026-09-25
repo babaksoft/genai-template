@@ -114,7 +114,9 @@ def assemble_component_prompt(
 
     if definition.artifact_kind != "component":
         raise ValueError("component prompt assembly requires a component definition")
-    ordered_files = _ordered_files(files)
+
+    ordered_files = _order_files(files)
+
     return _prompt_template(definition).replace(
         "{repository_files}", _render_files(ordered_files)
     )
@@ -149,12 +151,14 @@ def assemble_project_prompt(
 
     if definition.artifact_kind == "component":
         raise ValueError("project prompt assembly requires a project definition")
-    ordered_files = _ordered_files(repository_files)
+
+    ordered_files = _order_files(repository_files)
     components = {
         unit_id: _json_value(output)
         for unit_id, output in sorted(component_outputs.items())
     }
     component_json = canonical_json_bytes(components).decode("utf-8")
+
     template = _prompt_template(definition)
     before_files, separator, after_files = template.partition("{repository_files}")
     before_components, component_separator, after_components = after_files.partition(
@@ -162,6 +166,7 @@ def assemble_project_prompt(
     )
     if not separator or not component_separator:
         raise ValueError("project prompt template is missing input placeholders")
+
     return (
         before_files
         + _render_files(ordered_files)
@@ -202,6 +207,7 @@ def _prompt_template(definition: PromptDefinition) -> str:
     header = _prompt_header(definition)
     if definition.artifact_kind == "component":
         return f"{header}\n\n{{repository_files}}"
+
     return (
         f"{header}\n\n<repository-context>\n{{repository_files}}\n"
         "</repository-context>\n\n<component-summaries>\n"
@@ -209,7 +215,7 @@ def _prompt_template(definition: PromptDefinition) -> str:
     )
 
 
-def _ordered_files(files: tuple[SnapshotFile, ...]) -> tuple[SnapshotFile, ...]:
+def _order_files(files: tuple[SnapshotFile, ...]) -> tuple[SnapshotFile, ...]:
     """Order files canonically and reject ambiguous duplicate paths.
 
     Args:
@@ -227,6 +233,7 @@ def _ordered_files(files: tuple[SnapshotFile, ...]) -> tuple[SnapshotFile, ...]:
     paths = [file.path for file in files]
     if len(paths) != len(set(paths)):
         raise ValueError("prompt input paths must be unique")
+
     return tuple(sorted(files, key=lambda file: file.path))
 
 
@@ -248,6 +255,7 @@ def _render_files(files: tuple[SnapshotFile, ...]) -> str:
             f"<content>\n{file.text}\n</content>\n"
             "</repository-file>"
         )
+
     return "\n".join(blocks)
 
 
@@ -265,4 +273,5 @@ def _json_value(value: object) -> object:
     model_dump = getattr(value, "model_dump", None)
     if callable(model_dump):
         return model_dump(mode="json")
+
     return value

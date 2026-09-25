@@ -1,5 +1,8 @@
 """Structured portfolio summary generation."""
 
+from genai_template.workflow.portfolio.generation.components import (
+    generate_component_summaries,
+)
 from genai_template.workflow.portfolio.generation.costs import estimate_generation_cost
 from genai_template.workflow.portfolio.generation.prompts import (
     ARCHITECTURE_PROMPT,
@@ -27,6 +30,7 @@ __all__ = [
     "assemble_component_prompt",
     "assemble_project_prompt",
     "estimate_generation_cost",
+    "generate_component_summaries",
     "generate_validated_summary",
     "validate_component_evidence",
     "validate_project_evidence",

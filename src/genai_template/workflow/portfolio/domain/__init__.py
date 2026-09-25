@@ -1,6 +1,9 @@
 """Portfolio workflow domain models and failures."""
 
+from genai_template.workflow.portfolio.domain.components import ComponentSummaryArtifact
 from genai_template.workflow.portfolio.domain.errors import (
+    ArtifactCacheError,
+    ArtifactValidationError,
     RepositoryReadError,
     StructuredGenerationError,
 )
@@ -42,11 +45,14 @@ from genai_template.workflow.portfolio.domain.summary import (
 __all__ = [
     "OUTPUT_SCHEMA_VERSION",
     "ArchitectureSummary",
+    "ArtifactCacheError",
     "ArtifactProvenance",
     "ArtifactRunReport",
+    "ArtifactValidationError",
     "CachedArtifact",
     "CommittedRepositoryEntry",
     "ComponentSummary",
+    "ComponentSummaryArtifact",
     "CorpusBuild",
     "EvidenceSection",
     "GenerationRequest",
