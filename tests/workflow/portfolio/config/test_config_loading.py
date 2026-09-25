@@ -85,7 +85,18 @@ def test_loads_documented_configuration() -> None:
     assert project.repository.path == settings.REPO_ROOT
     assert project.repository.ref == "HEAD"
     assert project.selection.max_file_bytes == 262144
-    assert project.summary_units[0].id == "components-splitters"
+    assert {unit.id for unit in project.summary_units} >= {
+        "api",
+        "components-splitters",
+        "portfolio-workflow",
+        "rag-services",
+    }
+    generation = config.require_generation()
+    assert generation.profile == "balanced"
+    assert (
+        generation.locations.cache == settings.REPO_ROOT / "storage/portfolio-artifacts"
+    )
+    assert generation.locations.publication == settings.REPO_ROOT / "data/portfolio"
 
 
 def test_relative_config_and_repository_paths_use_repository_root(

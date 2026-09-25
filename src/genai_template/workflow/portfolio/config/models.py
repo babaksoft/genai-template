@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import re
+from decimal import Decimal
 from pathlib import Path, PurePosixPath
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from genai_template.config import settings
 
 _IDENTIFIER_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 _WINDOWS_ABSOLUTE_PATTERN = re.compile(r"^[A-Za-z]:[\\/]")
@@ -233,6 +236,313 @@ class SummaryUnitConfig(_ImmutableConfigModel):
         return tuple(_validate_repository_pattern(value) for value in values)
 
 
+class InferenceConfig(_ImmutableConfigModel):
+    """Content-affecting structured-generation settings.
+
+    Attributes:
+        temperature:
+            Sampling temperature supplied to the structured-output provider.
+        seed:
+            Optional deterministic seed supported by the selected provider.
+    """
+
+    temperature: float = Field(
+        ge=0.0,
+        le=2.0,
+        description="Sampling temperature supplied to the generation provider.",
+    )
+    seed: int | None = Field(
+        default=None,
+        ge=0,
+        le=2_147_483_647,
+        description="Optional non-negative provider sampling seed.",
+    )
+
+
+class StructuredGenerationConfig(_ImmutableConfigModel):
+    """Provider settings for validated structured generation.
+
+    Stage 1 deliberately treats OpenAI seed behavior as unsupported because its
+    adapter cannot promise that every selectable OpenAI model honors a seed.
+
+    Attributes:
+        provider:
+            Supported structured-generation provider identifier.
+        model:
+            Provider model name used to generate artifacts.
+        inference:
+            Content-affecting inference settings.
+        timeout_seconds:
+            Request timeout excluded from generation identity.
+    """
+
+    provider: Literal["ollama", "openai"] = Field(
+        description="Structured-generation provider identifier."
+    )
+    model: str = Field(
+        min_length=1,
+        description="Provider model name used for structured generation.",
+    )
+    inference: InferenceConfig = Field(
+        description="Content-affecting structured-generation settings."
+    )
+    timeout_seconds: float = Field(
+        default=180.0,
+        gt=0.0,
+        description="Provider request timeout in seconds.",
+    )
+
+    @field_validator("model")
+    @classmethod
+    def validate_model(cls, value: str) -> str:
+        """Reject empty or silently normalized model names.
+
+        Args:
+            value:
+                Provider model name supplied by configuration.
+
+        Returns:
+            The validated provider model name.
+
+        Raises:
+            ValueError:
+                If the model name is blank or padded.
+        """
+
+        if not value or value != value.strip():
+            raise ValueError("model must be non-empty and normalized")
+        return value
+
+    @model_validator(mode="after")
+    def validate_provider_settings(self) -> StructuredGenerationConfig:
+        """Reject inference settings the selected adapter cannot honor.
+
+        Returns:
+            The validated structured-generation configuration.
+
+        Raises:
+            ValueError:
+                If an OpenAI configuration requests deterministic seeding.
+        """
+
+        if self.provider == "openai" and self.inference.seed is not None:
+            raise ValueError("seed is not supported by the OpenAI adapter")
+        return self
+
+
+class ProjectDocumentContextConfig(_ImmutableConfigModel):
+    """Repository context patterns for balanced project documents.
+
+    Attributes:
+        overview:
+            Patterns supplying repository context to overview synthesis.
+        architecture:
+            Patterns supplying repository context to architecture synthesis.
+        testing_operations:
+            Patterns supplying context to testing and operations synthesis.
+    """
+
+    overview: tuple[str, ...] = Field(
+        min_length=1,
+        description="Repository patterns supplying overview context.",
+    )
+    architecture: tuple[str, ...] = Field(
+        min_length=1,
+        description="Repository patterns supplying architecture context.",
+    )
+    testing_operations: tuple[str, ...] = Field(
+        min_length=1,
+        description="Repository patterns supplying testing and operations context.",
+    )
+
+    @field_validator("overview", "architecture", "testing_operations")
+    @classmethod
+    def validate_patterns(cls, values: tuple[str, ...]) -> tuple[str, ...]:
+        """Validate project-document repository patterns.
+
+        Args:
+            values:
+                Patterns supplied by configuration.
+
+        Returns:
+            The validated patterns.
+        """
+
+        return tuple(_validate_repository_pattern(value) for value in values)
+
+
+class GenerationInputLimits(_ImmutableConfigModel):
+    """Hard input limits applied to each structured-generation call.
+
+    Attributes:
+        max_files:
+            Maximum repository files supplied to a single provider call.
+        max_bytes:
+            Maximum UTF-8 source and artifact bytes supplied to one call.
+    """
+
+    max_files: int = Field(
+        gt=0,
+        description="Maximum repository files supplied to one generation call.",
+    )
+    max_bytes: int = Field(
+        gt=0,
+        description="Maximum input bytes supplied to one generation call.",
+    )
+
+
+class GenerationLocations(_ImmutableConfigModel):
+    """Repository-root-relative storage locations used by corpus generation.
+
+    Attributes:
+        cache:
+            Resolved directory for validated generation artifacts.
+        publication:
+            Resolved path of the atomically published corpus pointer.
+    """
+
+    cache: Path = Field(description="Resolved validated-artifact cache directory.")
+    publication: Path = Field(description="Resolved published-corpus pointer path.")
+
+    @field_validator("cache", "publication")
+    @classmethod
+    def validate_safe_location(cls, value: Path) -> Path:
+        """Require output locations to remain below the repository root.
+
+        Args:
+            value:
+                Resolved output location.
+
+        Returns:
+            The safe resolved location.
+
+        Raises:
+            ValueError:
+                If the location is not absolute or escapes the repository root.
+        """
+
+        if not value.is_absolute() or value == settings.REPO_ROOT:
+            raise ValueError("generation locations must be below repository root")
+        if not value.is_relative_to(settings.REPO_ROOT):
+            raise ValueError("generation locations must not escape repository root")
+        return value
+
+    @model_validator(mode="after")
+    def validate_distinct_locations(self) -> GenerationLocations:
+        """Keep cache and publication trees independent.
+
+        Returns:
+            The validated locations.
+
+        Raises:
+            ValueError:
+                If either configured location contains the other.
+        """
+
+        if self.cache == self.publication:
+            raise ValueError("cache and publication locations must be distinct")
+        if self.cache.is_relative_to(
+            self.publication
+        ) or self.publication.is_relative_to(self.cache):
+            raise ValueError("cache and publication locations must not overlap")
+        if not self.publication.is_relative_to(settings.CORPORA_DIR):
+            raise ValueError("publication location must be below corpora root")
+        return self
+
+
+class TokenPricingConfig(_ImmutableConfigModel):
+    """Explicit rates used only to estimate generation cost.
+
+    Attributes:
+        input_per_million_tokens:
+            Currency units charged per million input tokens.
+        output_per_million_tokens:
+            Currency units charged per million output tokens.
+    """
+
+    input_per_million_tokens: Decimal = Field(
+        ge=Decimal(0),
+        allow_inf_nan=False,
+        description="Cost rate per million input tokens.",
+    )
+    output_per_million_tokens: Decimal = Field(
+        ge=Decimal(0),
+        allow_inf_nan=False,
+        description="Cost rate per million output tokens.",
+    )
+
+
+class GenerationConfig(_ImmutableConfigModel):
+    """Balanced corpus-generation profile and stable artifact settings.
+
+    Attributes:
+        profile:
+            Supported Stage 1 generation profile.
+        structured_generation:
+            Provider, model, inference, and transport settings.
+        prompt_version:
+            Version of the prompt family used for generation.
+        output_schema_version:
+            Version of the validated structured-output schemas.
+        project_context:
+            Repository context patterns for project-level documents.
+        input_limits:
+            Per-call source and artifact input limits.
+        locations:
+            Resolved cache and publication locations.
+        pricing:
+            Token rates used exclusively for estimated-cost reporting.
+    """
+
+    profile: Literal["balanced"] = Field(
+        description="Supported Stage 1 corpus-generation profile."
+    )
+    structured_generation: StructuredGenerationConfig = Field(
+        description="Structured-generation provider and model settings."
+    )
+    prompt_version: str = Field(
+        min_length=1,
+        description="Version of the prompt family used for generation.",
+    )
+    output_schema_version: str = Field(
+        min_length=1,
+        description="Version of the validated structured-output schemas.",
+    )
+    project_context: ProjectDocumentContextConfig = Field(
+        description="Repository context patterns for project-level documents."
+    )
+    input_limits: GenerationInputLimits = Field(
+        description="Per-call source and artifact input limits."
+    )
+    locations: GenerationLocations = Field(
+        description="Resolved artifact-cache and corpus-publication locations."
+    )
+    pricing: TokenPricingConfig = Field(
+        description="Rates used only for estimated-cost reporting."
+    )
+
+    @field_validator("prompt_version", "output_schema_version")
+    @classmethod
+    def validate_version_label(cls, value: str) -> str:
+        """Require normalized non-blank version labels.
+
+        Args:
+            value:
+                Version label supplied by configuration.
+
+        Returns:
+            The validated label.
+
+        Raises:
+            ValueError:
+                If the label is padded.
+        """
+
+        if value != value.strip():
+            raise ValueError("version labels must be non-empty and normalized")
+        return value
+
+
 class ProjectConfig(_ImmutableConfigModel):
     """Identity and snapshot settings for one portfolio project.
 
@@ -330,12 +640,18 @@ class PortfolioConfig(_ImmutableConfigModel):
             Supported portfolio configuration schema version.
         projects:
             Projects whose committed repository snapshots can be processed.
+        generation:
+            Optional Stage 1 generation profile; absent for Stage 0 inspection.
     """
 
     version: Literal[1] = Field(description="Portfolio configuration schema version.")
     projects: tuple[ProjectConfig, ...] = Field(
         min_length=1,
         description="Projects configured for committed-snapshot processing.",
+    )
+    generation: GenerationConfig | None = Field(
+        default=None,
+        description="Optional Stage 1 balanced-generation configuration.",
     )
 
     @model_validator(mode="after")
@@ -354,3 +670,18 @@ class PortfolioConfig(_ImmutableConfigModel):
         if len(slugs) != len(set(slugs)):
             raise ValueError("project slugs must be unique")
         return self
+
+    def require_generation(self) -> GenerationConfig:
+        """Return generation settings for commands that require them.
+
+        Returns:
+            The configured balanced-generation settings.
+
+        Raises:
+            ValueError:
+                If this is a Stage 0 snapshot-only configuration.
+        """
+
+        if self.generation is None:
+            raise ValueError("generation settings are required for corpus generation")
+        return self.generation

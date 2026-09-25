@@ -38,6 +38,36 @@ def _resolve_repository_paths(data: dict[str, Any]) -> None:
         repository["path"] = repository_path.resolve()
 
 
+def _resolve_generation_paths(data: dict[str, Any]) -> None:
+    """Resolve configured output paths without permitting traversal.
+
+    Args:
+        data:
+            Mutable YAML mapping to prepare for Pydantic validation.
+
+    Raises:
+        ValueError:
+            If an output path is absolute, traversing, or malformed.
+    """
+
+    generation = data.get("generation")
+    if not isinstance(generation, dict):
+        return
+    locations = generation.get("locations")
+    if not isinstance(locations, dict):
+        return
+    for name in ("cache", "publication"):
+        raw_path = locations.get(name)
+        if not isinstance(raw_path, (str, Path)):
+            continue
+        path = Path(raw_path)
+        if path.is_absolute() or ".." in path.parts or not path.parts:
+            raise ValueError(
+                f"generation {name} path must be repository-root-relative and safe"
+            )
+        locations[name] = (settings.REPO_ROOT / path).absolute()
+
+
 def load_portfolio_config(path: Path) -> PortfolioConfig:
     """Load and validate a versioned portfolio YAML configuration.
 
@@ -76,4 +106,5 @@ def load_portfolio_config(path: Path) -> PortfolioConfig:
         )
 
     _resolve_repository_paths(loaded)
+    _resolve_generation_paths(loaded)
     return PortfolioConfig.model_validate(loaded)

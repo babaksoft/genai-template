@@ -96,9 +96,6 @@ Deliverables:
 - focused tests proving that working-tree changes do not affect a local Git
   snapshot.
 
-Detailed execution slices are maintained in
-[`work/ongoing/PLAN.md`](work/ongoing/PLAN.md).
-
 Exit criteria:
 
 - the same committed inputs produce the same selected files and fingerprints;
@@ -133,6 +130,9 @@ Deliverables:
 The first profile is `balanced`: project-level documents plus an explicitly selected
 set of high-value component summaries. Minimal and deep profiles may be introduced
 as later corpus variants.
+
+Detailed execution slices are maintained in
+[`work/ongoing/PLAN.md`](work/ongoing/PLAN.md).
 
 Exit criteria:
 

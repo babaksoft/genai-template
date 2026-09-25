@@ -1,5 +1,38 @@
-# Stage 0 example: inspect the current repository's committed Python sources.
+# Balanced local profile for Stage 0 inspection and Stage 1 corpus generation.
 version: 1
+
+generation:
+  profile: balanced
+  structured_generation:
+    provider: ollama
+    model: gpt-oss:20b-cloud
+    inference:
+      temperature: 0.1
+      seed: 7
+    timeout_seconds: 180
+  prompt_version: v1
+  output_schema_version: v1
+  project_context:
+    overview:
+      - README.md
+      - pyproject.toml
+    architecture:
+      - src/genai_template/**/*.py
+      - docs/decisions/*.md
+    testing_operations:
+      - README.md
+      - pyproject.toml
+      - scripts/*.sh
+      - tests/**/*.py
+  input_limits:
+    max_files: 200
+    max_bytes: 1048576
+  locations:
+    cache: storage/portfolio-artifacts
+    publication: data/portfolio
+  pricing:
+    input_per_million_tokens: 0
+    output_per_million_tokens: 0
 
 projects:
   - slug: genai-template
@@ -18,7 +51,19 @@ projects:
         - "**/__pycache__/**"
       max_file_bytes: 262144
     summary_units:
+      - id: api
+        paths:
+          - src/genai_template/api/**/*.py
+          - tests/api/**/*.py
       - id: components-splitters
         paths:
           - src/genai_template/components/splitters/**/*.py
           - tests/components/splitters/**/*.py
+      - id: portfolio-workflow
+        paths:
+          - src/genai_template/workflow/portfolio/**/*.py
+          - tests/workflow/portfolio/**/*.py
+      - id: rag-services
+        paths:
+          - src/genai_template/services/**/*.py
+          - tests/services/**/*.py
