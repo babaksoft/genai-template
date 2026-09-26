@@ -1,6 +1,6 @@
 # Portfolio RAG Stage 1 — Local Portfolio Corpus Workflow
 
-**Status:** In Progress (Slices 1–3 complete)
+**Status:** In Progress (Slices 1–4 complete)
 
 ## Goal
 
@@ -281,7 +281,7 @@ uv run pytest tests/workflow/portfolio/artifacts \
 
 ## Slice 4 — Project Synthesis and Deterministic Markdown Rendering
 
-**Status: Planned**
+**Status: Complete**
 
 ### Outcome
 

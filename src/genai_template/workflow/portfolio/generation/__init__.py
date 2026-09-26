@@ -4,6 +4,10 @@ from genai_template.workflow.portfolio.generation.components import (
     generate_component_summaries,
 )
 from genai_template.workflow.portfolio.generation.costs import estimate_generation_cost
+from genai_template.workflow.portfolio.generation.projects import (
+    generate_project_summaries,
+    resolve_project_context,
+)
 from genai_template.workflow.portfolio.generation.prompts import (
     ARCHITECTURE_PROMPT,
     COMPONENT_PROMPT,
@@ -31,7 +35,9 @@ __all__ = [
     "assemble_project_prompt",
     "estimate_generation_cost",
     "generate_component_summaries",
+    "generate_project_summaries",
     "generate_validated_summary",
+    "resolve_project_context",
     "validate_component_evidence",
     "validate_project_evidence",
 ]

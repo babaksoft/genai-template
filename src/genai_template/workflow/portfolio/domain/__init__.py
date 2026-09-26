@@ -8,6 +8,7 @@ from genai_template.workflow.portfolio.domain.errors import (
     StructuredGenerationError,
 )
 from genai_template.workflow.portfolio.domain.generation import (
+    ArtifactKind,
     ArtifactProvenance,
     CachedArtifact,
     CorpusBuild,
@@ -16,6 +17,10 @@ from genai_template.workflow.portfolio.domain.generation import (
     ProviderAuditMetadata,
     RenderedDocument,
     TokenUsage,
+)
+from genai_template.workflow.portfolio.domain.projects import (
+    ProjectArtifactKind,
+    ProjectSummaryArtifact,
 )
 from genai_template.workflow.portfolio.domain.reports import (
     ArtifactRunReport,
@@ -46,6 +51,7 @@ __all__ = [
     "OUTPUT_SCHEMA_VERSION",
     "ArchitectureSummary",
     "ArtifactCacheError",
+    "ArtifactKind",
     "ArtifactProvenance",
     "ArtifactRunReport",
     "ArtifactValidationError",
@@ -58,7 +64,9 @@ __all__ = [
     "GenerationRequest",
     "GenerationResult",
     "GenerationRunReport",
+    "ProjectArtifactKind",
     "ProjectOverviewSummary",
+    "ProjectSummaryArtifact",
     "ProviderAuditMetadata",
     "RenderedDocument",
     "RepositoryReadError",
