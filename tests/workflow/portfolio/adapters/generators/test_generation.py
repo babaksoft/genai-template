@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from genai_template.workflow.portfolio.adapters.generation.base import (
+from genai_template.workflow.portfolio.adapters.generators.base import (
     LlamaIndexStructuredSummaryGenerator,
 )
 from genai_template.workflow.portfolio.config.models import TokenPricingConfig

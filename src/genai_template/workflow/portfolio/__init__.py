@@ -1,6 +1,5 @@
 """Public configuration and domain types for portfolio snapshot workflows."""
 
-from genai_template.workflow.portfolio import inspect_snapshot
 from genai_template.workflow.portfolio.adapters.repositories import (
     LocalGitSnapshotReader,
 )

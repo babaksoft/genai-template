@@ -1,13 +1,13 @@
 """Snapshot inspection application service and reports."""
 
-from genai_template.workflow.portfolio.inspection.reports import (
+from genai_template.workflow.portfolio.cli.inspection.reports import (
     PortfolioInspection,
     ProjectInspection,
     SummaryUnitInspection,
     render_json_report,
     render_text_report,
 )
-from genai_template.workflow.portfolio.inspection.service import (
+from genai_template.workflow.portfolio.cli.inspection.service import (
     SnapshotInspectionError,
     inspect_portfolio,
 )

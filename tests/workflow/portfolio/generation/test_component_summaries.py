@@ -10,7 +10,9 @@ from typing import cast
 import pytest
 
 from genai_template.config import settings
-from genai_template.workflow.portfolio.artifacts import FilesystemArtifactCache
+from genai_template.workflow.portfolio.adapters.caches import (
+    FilesystemArtifactCache,
+)
 from genai_template.workflow.portfolio.config import (
     GenerationConfig,
     GenerationInputLimits,

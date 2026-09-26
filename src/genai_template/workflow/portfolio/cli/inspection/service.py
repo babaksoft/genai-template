@@ -7,14 +7,14 @@ from pathlib import Path
 from genai_template.workflow.portfolio.adapters.repositories.local_git import (
     LocalGitSnapshotReader,
 )
-from genai_template.workflow.portfolio.config import (
-    ProjectConfig,
-    load_portfolio_config,
-)
-from genai_template.workflow.portfolio.inspection.reports import (
+from genai_template.workflow.portfolio.cli.inspection.reports import (
     PortfolioInspection,
     ProjectInspection,
     SummaryUnitInspection,
+)
+from genai_template.workflow.portfolio.config import (
+    ProjectConfig,
+    load_portfolio_config,
 )
 from genai_template.workflow.portfolio.ports.repository import RepositoryReader
 from genai_template.workflow.portfolio.snapshot.planning import build_summary_plan

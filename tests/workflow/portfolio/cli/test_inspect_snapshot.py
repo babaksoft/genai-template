@@ -10,9 +10,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from genai_template.workflow.portfolio import inspect_snapshot as compatibility_module
 from genai_template.workflow.portfolio.cli.inspect import main
-from genai_template.workflow.portfolio.inspection import (
+from genai_template.workflow.portfolio.cli.inspection import (
     SnapshotInspectionError,
     inspect_portfolio,
     render_json_report,
@@ -277,9 +276,3 @@ def test_cli_json_mode_and_project_alias(
     assert json.loads(stdout.getvalue())["projects"][0]["project_slug"] == (
         "sample-project"
     )
-
-
-def test_legacy_cli_module_delegates_to_canonical_entry_point() -> None:
-    """The documented legacy module path retains one CLI implementation."""
-
-    assert compatibility_module.main is main

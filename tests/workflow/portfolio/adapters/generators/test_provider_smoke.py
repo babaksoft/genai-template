@@ -7,7 +7,7 @@ from typing import Literal
 
 import pytest
 
-from genai_template.workflow.portfolio.adapters.generation import (
+from genai_template.workflow.portfolio.adapters.generators import (
     OllamaStructuredSummaryGenerator,
     OpenAIStructuredSummaryGenerator,
 )

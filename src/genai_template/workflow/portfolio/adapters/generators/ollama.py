@@ -7,7 +7,7 @@ from typing import Any
 from llama_index.llms.ollama import Ollama
 
 from genai_template.config.ollama import resolve_ollama_base_url
-from genai_template.workflow.portfolio.adapters.generation.base import (
+from genai_template.workflow.portfolio.adapters.generators.base import (
     LlamaIndexStructuredSummaryGenerator,
     optional_non_negative_int,
     optional_string,

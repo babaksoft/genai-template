@@ -7,7 +7,9 @@ from dataclasses import dataclass
 from decimal import Decimal
 from time import perf_counter
 
-from genai_template.workflow.portfolio.artifacts.cache import CACHE_SCHEMA_VERSION
+from genai_template.workflow.portfolio.adapters.caches.file_cache import (
+    CACHE_SCHEMA_VERSION,
+)
 from genai_template.workflow.portfolio.artifacts.fingerprints import (
     project_generation_fingerprint,
     sha256_canonical_json,

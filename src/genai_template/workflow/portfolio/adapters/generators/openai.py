@@ -6,7 +6,7 @@ from typing import Any
 
 from llama_index.llms.openai import OpenAI
 
-from genai_template.workflow.portfolio.adapters.generation.base import (
+from genai_template.workflow.portfolio.adapters.generators.base import (
     LlamaIndexStructuredSummaryGenerator,
     optional_non_negative_int,
     optional_string,

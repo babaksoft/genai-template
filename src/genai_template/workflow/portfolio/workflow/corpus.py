@@ -10,7 +10,9 @@ from time import perf_counter
 from llama_index.core.workflow import StopEvent, Workflow, step
 
 from genai_template.observability import application_span
-from genai_template.workflow.portfolio.artifacts.cache import FilesystemArtifactCache
+from genai_template.workflow.portfolio.adapters.caches.file_cache import (
+    FilesystemArtifactCache,
+)
 from genai_template.workflow.portfolio.config.loader import load_portfolio_config
 from genai_template.workflow.portfolio.config.models import (
     GenerationConfig,

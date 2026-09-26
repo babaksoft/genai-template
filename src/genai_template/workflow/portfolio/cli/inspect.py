@@ -8,11 +8,11 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TextIO
 
-from genai_template.workflow.portfolio.inspection.reports import (
+from genai_template.workflow.portfolio.cli.inspection import (
+    inspect_portfolio,
     render_json_report,
     render_text_report,
 )
-from genai_template.workflow.portfolio.inspection.service import inspect_portfolio
 
 
 def _build_argument_parser() -> argparse.ArgumentParser:

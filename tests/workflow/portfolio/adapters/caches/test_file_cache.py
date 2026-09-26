@@ -9,9 +9,11 @@ from typing import Any
 
 import pytest
 
-from genai_template.workflow.portfolio.artifacts import (
+from genai_template.workflow.portfolio.adapters.caches import (
     CACHE_SCHEMA_VERSION,
     FilesystemArtifactCache,
+)
+from genai_template.workflow.portfolio.artifacts import (
     canonical_json_bytes,
     sha256_canonical_json,
 )
@@ -207,7 +209,8 @@ def test_failed_atomic_replace_leaves_no_entry_or_temporary_file(
         raise OSError("simulated")
 
     monkeypatch.setattr(
-        "genai_template.workflow.portfolio.artifacts.cache.os.replace", fail_replace
+        "genai_template.workflow.portfolio.adapters.caches.file_cache.os.replace",
+        fail_replace,
     )
     with pytest.raises(ArtifactCacheError) as caught:
         cache.put(_artifact(), output_type=ComponentSummary)

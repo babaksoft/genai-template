@@ -10,9 +10,11 @@ from typing import cast
 import pytest
 
 from genai_template.config import settings
-from genai_template.workflow.portfolio.artifacts import (
+from genai_template.workflow.portfolio.adapters.caches import (
     CACHE_SCHEMA_VERSION,
     FilesystemArtifactCache,
+)
+from genai_template.workflow.portfolio.artifacts import (
     sha256_canonical_json,
 )
 from genai_template.workflow.portfolio.config import (
