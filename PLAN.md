@@ -108,7 +108,7 @@ Exit criteria:
 
 ## Stage 1 — Local Portfolio Corpus Workflow
 
-**Status: Planned**
+**Status: Complete**
 
 **Goal:** Generate and atomically publish a focused flat Markdown corpus from the
 Stage 0 snapshot.
@@ -130,9 +130,6 @@ Deliverables:
 The first profile is `balanced`: project-level documents plus an explicitly selected
 set of high-value component summaries. Minimal and deep profiles may be introduced
 as later corpus variants.
-
-Detailed execution slices are maintained in
-[`work/ongoing/PLAN.md`](work/ongoing/PLAN.md).
 
 Exit criteria:
 
@@ -167,6 +164,9 @@ The current deterministic collection naming remains in place. Corpus changes reb
 the selected collection instead of automatically creating and deleting historical
 collections. `manifest.json` acts as the corpus-build record until scheduled and
 historical corpus management justifies a dedicated database model.
+
+Detailed execution slices are recorded in
+[`work/ongoing/PLAN.md`](work/ongoing/PLAN.md).
 
 Exit criteria:
 

@@ -1,530 +1,608 @@
-# Portfolio RAG Stage 1 — Local Portfolio Corpus Workflow
+# Portfolio RAG Stage 2 — Flat Ingestion, Provenance, and Index Freshness
 
-**Status:** Complete (Slices 1–6 complete)
+**Status:** Proposed
 
 ## Goal
 
-Generate, validate, and atomically publish one reproducible flat Markdown corpus
-from the immutable local-Git snapshot delivered by Stage 0.
+Index a validated, manifest-backed Portfolio corpus without introducing a second
+directory-ingestion architecture, preserve project and generation provenance on
+every chunk and citation, and refuse to answer from an index that does not represent
+the currently published corpus.
 
-Stage 1 ends at `data/portfolio`: it does not ingest the generated documents,
-rebuild a vector index, write SQL records, run evaluation trials, add GitHub
-access, or schedule corpus refreshes.
+Stage 2 ends with explicit, observable index rebuilds. It does not automatically
+rebuild after publication, retain historical vector collections, add evaluation
+trials, filter retrieval by project, or add conversations.
+
+## Baseline and Contract Gap
+
+Stages 0 and 1 already provide immutable repository snapshots, deterministic
+project-prefixed Markdown filenames, canonical manifests, stable corpus
+fingerprints, and atomic publication through an immutable release symlink.
+
+The current RAG path still:
+
+- loads Markdown without interpreting `manifest.json`;
+- lets reader-generated absolute paths influence document and chunk identity;
+- exposes only document basename and section in citations;
+- treats collection existence as proof that an index is usable; and
+- deletes and replaces a collection without persisting build intent or outcome.
+
+There is also one deliberate Stage 1 limitation to resolve at the consumer
+boundary. Its manifest describes one project, while the Stage 2 exit criteria
+require documents from several projects to coexist in one flat corpus. Stage 2
+therefore introduces a versioned, multi-project manifest projection while retaining
+read compatibility with the Stage 1 single-project manifest. The Stage 1 generation
+command may continue to emit one project per run; multi-project generation
+orchestration remains out of scope.
 
 ## Decisions Fixed for This Stage
 
-- One command processes exactly one configured project. The configuration may
-  continue to describe multiple projects, but multi-project orchestration is
-  deferred.
-- The first generation profile is `balanced`: overview, architecture, and
-  testing/operations documents plus one component document for every explicitly
-  configured Stage 0 summary unit.
-- Repository text is untrusted prompt data. Prompts delimit it as source material,
-  instruct the model not to follow instructions found in it, and never execute
-  repository code or tools.
-- Structured generation has a dedicated port. The existing RAG
-  `LanguageModel.generate()` contract remains unchanged because it cannot expose
-  validated Pydantic output or provider usage metadata.
-- Every generated artifact is cached after validation. Component keys include the
-  Stage 0 unit input fingerprint; project-document keys also include the hashes of
-  the validated component artifacts they consume.
-- A generation fingerprint includes the relevant source or artifact identities,
-  prompt-template identity and hash, structured-output schema version, model
-  provider/name, and content-affecting inference settings. It excludes credentials,
-  timeouts, absolute paths, timestamps, latency, current-run cache status, and
-  pricing rates.
-- Evidence validation proves exact path membership in the selected immutable
-  snapshot and the artifact's actual generation input scope. It does not claim
-  that a cited path semantically entails every model statement; factual quality is
-  measured in later evaluation stages.
-- Markdown is rendered by application code from validated structured summaries.
-  Model-produced Markdown is not published directly.
-- Published filenames are deterministic:
-  - `<project>--overview.md`;
-  - `<project>--architecture.md`;
-  - `<project>--testing-operations.md`; and
-  - `<project>--component--<unit-id>.md`.
-- `manifest.json` is canonical JSON and contains no publication timestamp.
-  Volatile execution metrics are returned in a separate run report.
-- Atomic publication uses immutable release directories and an atomically replaced
-  `data/portfolio` symlink. Previous releases are retained and are never deleted
-  automatically.
-- Provider-backed end-to-end tests are marked `integration`; the normal suite uses
-  deterministic fakes and requires no network or model service.
+- Keep `TextReader` as the generic flat Markdown/text reader. Add a manifest-aware
+  Portfolio loader around it instead of teaching generic ingestion about Portfolio
+  workflow domain types.
+- Resolve `data/portfolio` to its immutable release directory once at the start of
+  a read. Manifest validation and document loading use that pinned path so an atomic
+  publication switch cannot mix two releases in one build.
+- Introduce manifest schema v2 with an ordered project registry and an explicit
+  `project_slug` on every document record. Normalize both the existing v1 shape and
+  v2 into one consumer model. New Stage 1 publications use v2; already published v1
+  releases remain readable and keep their original fingerprints.
+- A v2 manifest may describe several projects, but every Markdown filename remains
+  globally unique and project-prefixed. Stage 2 supplies and tests the manifest
+  construction/validation boundary; a CLI that composes several project releases is
+  deferred unless implementation proves it necessary for the first experiment.
+- Validate a published corpus without reopening repositories: canonical manifest
+  bytes, safe flat file set, document byte sizes and hashes, corpus fingerprint,
+  project references, and filename ownership are sufficient at ingestion time.
+  Snapshot evidence membership remains a producer-side Stage 1 invariant.
+- Use the project-prefixed filename as the portable document ID. Use a documented,
+  deterministic filename-plus-ordinal format for chunk IDs. Absolute paths,
+  publication release paths, timestamps, and vector-store-specific IDs never enter
+  either identity.
+- Define stable metadata keys rather than passing through arbitrary reader metadata.
+  Portfolio chunks carry project slug/display name, document type, optional
+  component ID, repository URL when configured, resolved commit, corpus
+  fingerprint, and document generation fingerprint. `file_name` and Markdown
+  `header_path` remain available for current splitters and citations.
+- Preserve non-manifest sources. They continue through generic ingestion and use the
+  current collection-existence behavior; manifest freshness is reported as
+  `untracked` rather than fabricating Portfolio provenance.
+- Keep collection names derived from source ID and index-affecting RAG configuration.
+  A corpus change makes that collection stale; it does not select another collection
+  and does not delete any historical collection automatically.
+- Persist every rebuild attempt before the existing destructive collection reset.
+  The newest attempt for a source/index pair must have succeeded before the
+  collection can be used. This prevents an older successful record from blessing a
+  collection left absent or partial by a later failed rebuild.
+- Determine manifest freshness from the latest successful build, but determine
+  operational availability from both that successful build and the newest attempt.
+  A building or failed newer attempt makes the index unavailable even when its
+  corpus fingerprint happens to match.
+- A successful status additionally requires the collection to exist and its current
+  count to equal the persisted successful chunk count. The SQL record is not treated
+  as proof that external vector-store state still exists.
+- Rebuild failures store a bounded, sanitized operator-facing summary. Source text,
+  prompts, generated prose, embeddings, credentials, and full provider payloads are
+  never persisted in build records or attached to custom trace attributes.
+- Stale, building, failed, missing, or inconsistent indexes fail before a RAG `Run`
+  is created or an LLM is invoked. The API reports an actionable conflict and the UI
+  requires an explicit rebuild.
 
-## Proposed Package Layout
+## Proposed Package Changes
 
 ```text
-src/genai_template/workflow/portfolio/
-  artifacts/
-    cache.py
-    fingerprints.py
-  corpus/
-    manifest.py
-    publisher.py
-    renderers.py
-    validation.py
-  domain/
-    generation.py
-    manifest.py
-    reports.py
-  generation/
-    prompts.py
-    service.py
-  ports/
-    artifact_cache.py
-    structured_generator.py
-  workflow/
-    events.py
+src/genai_template/
+  components/readers/
+    portfolio_reader.py
+  db/models/
+    index_build.py
+  schemas/
     corpus.py
-  cli/generate.py
+    index_build.py
+  services/
+    index_build_service.py
+  workflow/portfolio/
+    corpus/
+      loading.py
+    domain/
+      manifest.py              # v1 input plus v2/normalized contracts
 
-tests/workflow/portfolio/
-  artifacts/
-  corpus/
-  generation/
-  workflow/
-  cli/test_generate_corpus.py
+alembic/versions/
+  <revision>_add_index_builds.py
+
+tests/
+  components/readers/test_portfolio_reader.py
+  db/test_index_build_migration.py
+  services/test_index_build_service.py
+  workflow/portfolio/corpus/test_loading.py
 ```
 
-Names may be consolidated during implementation when a module would otherwise be
-trivial, but domain, provider, rendering, publication, and CLI responsibilities
-must remain independently testable.
+Names may be consolidated when a module would otherwise be trivial. Manifest
+parsing, reader enrichment, splitters, persistence, freshness policy, and API/UI
+presentation must remain independently testable.
 
-## Slice 1 — Generation Configuration and Artifact Contracts
+## Slice 1 — Versioned Corpus Consumption Contract
 
-**Status: Complete**
+**Status: Proposed**
 
 ### Outcome
 
-A caller can load a typed balanced-generation profile and calculate stable input
-identities without invoking an LLM or writing files.
+A caller can pin and validate one published Portfolio release, normalize either the
+Stage 1 manifest or a multi-project v2 manifest, and obtain stable corpus provenance
+without loading a vector store or database.
 
 ### Implementation
 
-- Extend the Portfolio configuration additively with an optional generation
-  section so the existing Stage 0 inspection profile remains valid.
-- Add immutable Pydantic configuration for:
-  - profile name (`balanced` only in Stage 1);
-  - structured-generation provider and model;
-  - content-affecting inference settings such as temperature and optional seed;
-  - prompt and output-schema versions;
-  - explicit repository-path patterns supplying context to each project-level
-    document, plus per-call input limits;
-  - cache and publication locations, resolved from `settings.REPO_ROOT`; and
-  - explicit input/output token rates used only for estimated-cost reporting.
-- Reject unknown fields, unsafe output paths, unsupported profiles/providers,
-  negative token rates, and model settings that the selected provider cannot honor.
-- Do not serialize API keys or other credentials into configuration, fingerprints,
-  cache entries, reports, or manifests.
-- Add immutable domain types for generation requests/results, token usage, artifact
-  provenance, cached artifacts, rendered documents, corpus builds, and run reports.
-- Define canonical JSON helpers and SHA-256 generation fingerprints. Keep component
-  and project synthesis fingerprint construction separate so their dependencies are
-  explicit and testable.
-- Expand the checked-in local profile to a realistic balanced example with several
-  high-value summary units while preserving its usefulness for Stage 0 inspection.
+- Retain the existing manifest v1 model as an immutable input contract.
+- Add manifest v2 models containing:
+  - an ordered, non-empty project registry with slug, display name, repository URL,
+    requested ref, resolved commit, and source fingerprint;
+  - generation profile/provider/model and stable configuration provenance per
+    project, so projects generated differently are representable;
+  - document records with an explicit owning project slug plus the existing type,
+    component, evidence, artifact, generation, content-hash, and size fields; and
+  - one corpus fingerprint covering the complete ordered project and document
+    projection plus Markdown byte hashes.
+- Make the Stage 1 builder publish v2 for a single project without changing its
+  generation, rendering, cache, or atomic-publication behavior. Do not rewrite or
+  reinterpret existing v1 release bytes.
+- Add a normalized immutable consumer model used by ingestion. Convert v1 by
+  projecting its top-level project/generation values into one project entry and by
+  assigning that project to every document.
+- Add consumer-side corpus loading that:
+  - validates the source path and resolves a publication symlink exactly once;
+  - rejects a release path outside the configured source only when source
+    registration invariants require that restriction;
+  - reads strict UTF-8 canonical JSON with explicit schema dispatch;
+  - checks safe flat files, unique globally project-prefixed filenames, known project
+    references, content sizes/hashes, and the schema-appropriate corpus fingerprint;
+  - excludes `manifest.json` from documents; and
+  - returns the pinned release path, normalized manifest, and ordered document
+    records without exposing machine-local paths as stable metadata.
+- Separate consumer validation from Stage 1 snapshot validation. The latter still
+  proves evidence membership when producing a release.
+- Fail closed on unknown schema versions, non-canonical JSON, broken symlinks,
+  nested/symlinked document entries, filename collisions, orphan project references,
+  changed bytes, or fingerprint disagreement.
 
 ### Verification
 
-- Test backward-compatible loading of the existing Stage 0 shape.
-- Test valid balanced configuration and immutable models.
-- Test unknown fields, invalid paths, unsupported inference settings, missing
-  generation settings for the generation command, and malformed pricing data.
-- Test that stable inputs produce the same fingerprint regardless of dictionary
-  ordering, repository location, timeout, credentials, pricing, or timestamp.
-- Test that source, unit configuration, prompt, schema, model, or inference changes
-  alter the relevant generation fingerprint.
+- Test canonical one-project v2 construction and fingerprint stability.
+- Test normalization of an unchanged v1 fixture without changing its stored corpus
+  fingerprint.
+- Test a synthetic two-project v2 corpus with different repositories, commits,
+  models, and component IDs.
+- Test publication-pointer switching during a read and prove all bytes come from the
+  initially pinned release.
+- Test every malformed-manifest and malformed-directory failure before any reader,
+  database, embedder, or vector-store operation.
+- Re-run Stage 1 manifest, corpus validation, publisher, workflow, and CLI tests.
 
 Run:
 
 ```bash
-uv run pytest tests/workflow/portfolio/config \
-  tests/workflow/portfolio/domain \
-  tests/workflow/portfolio/artifacts/test_fingerprints.py -v
+uv run pytest tests/workflow/portfolio/corpus \
+  tests/workflow/portfolio/workflow \
+  tests/workflow/portfolio/cli -v
 ```
 
 ### Acceptance
 
-- Generation inputs have a canonical, secret-free identity before any provider
-  call.
-- Stage 0 inspection continues to accept snapshot-only configurations.
-- No LLM, cache, corpus, database, or vector-store operation occurs in this slice.
+- Existing v1 releases remain consumable and byte-identical.
+- New one- or multi-project v2 releases have one unambiguous normalized provenance
+  model.
+- One read cannot combine the manifest or Markdown bytes of different atomic
+  releases.
+- No LLM, SQL, embedding, or vector-store operation occurs in this slice.
 
-## Slice 2 — Structured Summary Generation and Evidence Validation
+## Slice 2 — Manifest-Aware Reader, Metadata, and Stable Identities
 
-**Status: Complete**
+**Status: Proposed**
 
 ### Outcome
 
-Focused prompts produce typed component, architecture, overview, and
-testing/operations summaries whose evidence paths are valid for their exact
-snapshot scope.
+The existing indexing pipeline can read a valid Portfolio corpus, and every chunk
+reaches either vector backend with portable identity and complete provenance.
 
 ### Implementation
 
-- Define strict, versioned Pydantic output models for:
-  - component responsibilities, important abstractions, behavior, constraints, and
-    testing evidence;
-  - architecture boundaries, dependencies, and principal flows;
-  - project purpose, capabilities, entry points, and technology choices; and
-  - testing strategy, local operation, configuration, observability, and known
-    operational constraints.
-- Give every output field a description and every model a complete `Attributes:`
-  docstring.
-- Represent evidence as normalized repository-relative paths, attached to the
-  relevant structured sections rather than as unconstrained prose citations.
-- Add versioned prompt definitions with stable identifiers and hashes. Assemble
-  source files in canonical path order with explicit path/content boundaries and
-  an instruction that repository content is evidence, not executable directions.
-- Define a `StructuredSummaryGenerator` port returning the validated value, provider
-  identity, input/output token counts when available, and provider metadata needed
-  for auditing. Do not return or log credentials, prompts, source text, or hidden
-  reasoning.
-- Implement LlamaIndex-backed OpenAI and Ollama adapters behind that port. Normalize
-  provider validation and usage failures into focused workflow exceptions.
-- Add evidence validators:
-  - component evidence must be an exact member of that component's planned files;
-  - project-document evidence must occur in the component evidence or selected
-    repository context actually supplied for that synthesis call; and
-  - paths must be non-empty, normalized, deduplicated, and deterministically sorted.
-- Treat absent provider token usage as `unknown`, not zero. Estimate cost only when
-  both usage and configured rates are available.
+- Define a typed `LoadedCorpus`/`LoadedDocuments` result carrying ordered
+  `Document` objects and optional normalized corpus provenance. Introduce the
+  smallest reader protocol needed by `IndexingPipeline` so both generic and
+  Portfolio readers implement the same boundary.
+- Add a Portfolio reader that layers on `TextReader` after Slice 1 validation. Map
+  documents to manifest records by exact safe basename and reject missing,
+  duplicated, extra, or reader-renamed documents.
+- Replace reader-supplied identity and path metadata for Portfolio documents with a
+  controlled metadata projection. In particular, remove absolute `file_path` and
+  release-directory values before splitting.
+- Set the canonical Portfolio document ID to its project-prefixed filename and load
+  files in manifest order.
+- Centralize Portfolio metadata key names and validation. Required values on every
+  Portfolio document and chunk are:
+  - `project_slug` and `project_display_name`;
+  - `document_type` and optional `component_id`;
+  - optional `repository_url` and required `resolved_commit_sha`;
+  - `corpus_fingerprint` and `generation_fingerprint`; and
+  - portable `file_name`, plus `header_path` when produced by the Markdown splitter.
+- Update sentence and Markdown splitters to derive document identity from the
+  canonical document ID, preserve controlled metadata, and emit deterministic chunk
+  IDs from filename and zero-padded ordinal. Reject duplicate document or chunk IDs
+  before embedding.
+- Extend the indexing result with the loaded corpus fingerprint when present, while
+  keeping existing document/chunk counts and timing.
+- Verify Chroma and Qdrant round-trip every supported metadata value. Backend-native
+  Qdrant UUID conversion remains an implementation detail; retrieved chunks expose
+  the canonical chunk ID.
+- Keep generic `.md`/`.txt` ingestion backward compatible. Generic sources do not
+  receive invented Portfolio fields or manifest freshness guarantees.
 
 ### Verification
 
-- Use a deterministic fake generator to test each prompt request and structured
-  result without network access.
-- Test prompt IDs/hashes, canonical file ordering, input delimiters, and untrusted
-  source instructions.
-- Test invalid structured output, missing evidence, paths outside the snapshot,
-  evidence from another component, duplicate/non-normalized paths, and provider
-  failures.
-- Test complete, partial, and unavailable token usage and cost calculations.
-- Add provider smoke tests under `@pytest.mark.integration`; do not include them in
-  the Stage 1 exit gate unless the relevant service and credentials are available.
+- Test exact document metadata for overview, architecture, testing/operations, and
+  component records.
+- Run both splitters against the same two-project fixture and assert unique,
+  deterministic document/chunk IDs with full provenance on every chunk.
+- Test that changing the checkout path, release directory, or publication symlink
+  does not alter IDs or metadata.
+- Test rejection of arbitrary reader paths, record mismatches, duplicate IDs, and
+  metadata loss.
+- Add Chroma and Qdrant persistence/search round-trip tests for all provenance keys.
+- Re-run the existing generic reader, splitter, pipeline, and vector-store tests.
 
 Run:
 
 ```bash
-uv run pytest tests/workflow/portfolio/generation -v
+uv run pytest tests/components/readers \
+  tests/components/splitters \
+  tests/pipelines/test_indexing_pipeline.py \
+  tests/stores/vector -v
 ```
 
 ### Acceptance
 
-- Downstream code receives validated domain values rather than model-authored
-  Markdown or unchecked JSON.
-- Every accepted evidence path belongs to the exact immutable input scope.
-- Source and prompt contents do not appear in normal logs or custom trace
-  attributes.
+- Every Portfolio chunk contains the exact project, repository revision, corpus,
+  document, component, and generation provenance represented by its manifest.
+- Two projects with similarly named logical documents cannot collide because the
+  manifest enforces project-prefixed filenames and splitters use those names as the
+  identity root.
+- Neither chunk identity nor indexed metadata contains an absolute local path.
+- Legacy flat sources still index through the generic reader.
 
-## Slice 3 — Validated Artifact Cache and Component Summaries
+## Slice 3 — Provenance-Rich Context and Citations
 
-**Status: Complete**
+**Status: Proposed**
 
 ### Outcome
 
-Every configured logical unit can be summarized once and then reused by exact
-generation fingerprint without another LLM call.
+Retrieved Portfolio chunks give the model and API caller enough information to
+distinguish projects and audit every citation back to the generated document and
+repository revision.
 
 ### Implementation
 
-- Define an artifact-cache port with `get` and atomic `put` operations keyed by the
-  full generation fingerprint.
-- Implement a filesystem cache outside `data/portfolio`, using versioned canonical
-  JSON envelopes containing:
-  - artifact kind and schema version;
-  - generation fingerprint and all non-secret provenance;
-  - validated structured output;
-  - output hash; and
-  - original provider usage and estimated cost, when available.
-- Write cache entries through a temporary file followed by same-directory
-  `os.replace`; never expose a partially written cache entry.
-- On lookup, validate the envelope, expected artifact kind, fingerprint, output
-  schema, and output hash. A corrupt or mismatched entry fails clearly instead of
-  becoming an implicit cache miss and unexpected billable call.
-- Implement component-summary generation in Stage 0 plan order:
-  - calculate the generation fingerprint;
-  - return a validated cache hit when present;
-  - otherwise call the structured generator exactly once;
-  - validate evidence and provenance; and
-  - cache only the validated result.
-- Keep cache-hit status and current-run latency in the run report, not in the cached
-  artifact identity.
+- Extend `CitationSource` with optional, backward-compatible provenance fields for
+  project slug/display name, document type, component ID, repository URL, resolved
+  commit, corpus fingerprint, and generation fingerprint.
+- Build those fields only from validated chunk metadata. Portfolio metadata that is
+  partially present or malformed is an indexing/retrieval contract error rather
+  than a silently incomplete Portfolio citation; generic sources may omit the whole
+  Portfolio provenance group.
+- Include concise project, repository, revision, document type/component, and
+  Markdown section labels in the model context. Omit absent optional repository URLs
+  rather than rendering `None`.
+- Continue using request-local `[S<n>]` labels and the current unsupported-label
+  resolver. Citation resolution must preserve all new provenance fields unchanged
+  when setting `cited`.
+- Keep the safe basename as the displayed generated document name. Never expose the
+  registered source directory or immutable release path.
+- Add provenance counts/identities to spans only where they are bounded and useful;
+  do not attach source content beyond the existing instrumentation policy.
 
 ### Verification
 
-- Test miss, write, hit, and repeated-hit behavior with a counting fake generator.
-- Test that an unchanged second run makes zero generator calls.
-- Test selective invalidation: changing one unit changes only that component's key;
-  prompt/model/schema changes invalidate every affected artifact.
-- Test truncated JSON, schema mismatch, key mismatch, altered output, wrong artifact
-  kind, and failed atomic writes.
-- Test that invalid model output is neither returned nor cached.
-- Test that cache entries and logs contain no source text, prompt text, local
-  repository path, or credential.
+- Test context formatting for two projects with the same section name and different
+  commits.
+- Test component and project-level documents, missing optional repository URLs, and
+  generic-source compatibility.
+- Test that malformed partial Portfolio metadata fails before LLM generation.
+- Test citation resolution and API serialization preserve every provenance value.
+- Test that absolute reader/release paths never appear in context, response models,
+  logs, or new custom span attributes.
 
 Run:
 
 ```bash
-uv run pytest tests/workflow/portfolio/artifacts \
-  tests/workflow/portfolio/generation/test_component_summaries.py -v
+uv run pytest tests/components/context \
+  tests/schemas/test_citation.py \
+  tests/api/test_answer.py -v
 ```
 
 ### Acceptance
 
-- A validated cache hit is behaviorally equivalent to its original component
-  result and causes no provider request.
-- Cache corruption cannot silently change the published corpus or trigger an
-  unplanned provider call.
-- A failure before validation leaves no reusable artifact.
+- A cited Portfolio source identifies its generated filename, project, repository
+  revision, corpus, and generation artifact.
+- Cross-project context is visibly disambiguated for both the LLM and API caller.
+- Existing citation labels and generic-source responses remain compatible.
 
-## Slice 4 — Project Synthesis and Deterministic Markdown Rendering
+## Slice 4 — Persistent Index-Build Attempts and Safe Lifecycle
 
-**Status: Complete**
+**Status: Proposed**
 
 ### Outcome
 
-Validated component artifacts become the balanced profile's project documents and
-deterministic flat Markdown files.
+Every explicit rebuild has a durable identity and terminal outcome, including
+failures that may have invalidated the selected collection.
 
 ### Implementation
 
-- Implement cached architecture, overview, and testing/operations synthesis. Their
-  input fingerprints include the snapshot identity, relevant prompt/model/schema
-  settings, and ordered hashes of the validated component artifacts they consume.
-- Resolve each project document's configured repository-context patterns against
-  the snapshot, then provide synthesis with those files and bounded structured
-  component summaries. Fail before a provider call when a context pattern is empty
-  or configured input limits are exceeded; do not silently truncate a file or
-  discard a component.
-- Reuse the cache contract from Slice 3 for all project-level artifacts so a fully
-  unchanged rerun makes no LLM calls.
-- Add pure Markdown renderers with fixed heading order, whitespace, list ordering,
-  evidence formatting, UTF-8/LF output, and exactly one terminal newline.
-- Render the title and prose safely; model values cannot inject arbitrary front
-  matter or control filenames.
-- Calculate each document's SHA-256 hash from its actual UTF-8 Markdown bytes.
-- Generate and validate the exact project-prefixed filename set for the balanced
-  profile. Reject collisions before any publication work.
+- Add an Alembic revision and `IndexBuild` persistence model with documented fields:
+  - primary key, source ID, and the RAG config ID that requested the build;
+  - deterministic collection name and full index-configuration fingerprint;
+  - nullable corpus fingerprint for legacy non-manifest sources;
+  - status (`building`, `succeeded`, or `failed`);
+  - started/finished timestamps and measured indexing duration;
+  - nullable document/chunk counts until success; and
+  - nullable bounded failure code/detail for operator diagnosis.
+- Add indexes supporting newest-attempt and newest-successful lookups by source,
+  collection, and index fingerprint. Do not make corpus fingerprint unique: explicit
+  unchanged rebuilds are valid audit events.
+- Add `Source.index_builds` and `RagConfig.index_builds` relationships with explicit
+  deletion behavior. A source cascade removes its local audit rows; referenced RAG
+  configurations remain restricted.
+- Implement a focused index-build persistence service with start, succeed, fail,
+  latest-attempt, and latest-successful operations. Each transition uses a short SQL
+  transaction and rejects invalid terminal-state rewrites.
+- In `SourceService.rebuild_index`:
+  1. acquire the existing per-collection process lock without waiting, returning a
+     focused in-progress conflict when another request in this process owns it;
+  2. validate source/config and pin/load the corpus;
+  3. persist and commit a `building` attempt before deleting the collection;
+  4. delete and rebuild the selected collection;
+  5. verify store count equals the pipeline's chunk count;
+  6. mark success with counts, timing, and the pinned corpus fingerprint; or
+  7. mark failure with sanitized bounded details and re-raise the original focused
+     error.
+- Always release the process lock in `finally`. A persisted `building` row left by a
+  dead process does not itself prevent a later explicit rebuild: the newer attempt
+  supersedes it for availability decisions.
+- If the process dies after step 3, the durable `building` row intentionally keeps
+  the index unavailable until an operator explicitly rebuilds. Automatic recovery,
+  leases, and distributed locks are deferred.
+- Add build IDs, status, fingerprints, counts, and timing to observability. Never
+  record document contents, embeddings, secrets, or raw provider payloads.
 
 ### Verification
 
-- Add golden tests for all four renderer types.
-- Test stable rendering across repeated runs and shuffled input collections.
-- Test headings, escaping, line endings, terminal newline, deterministic evidence
-  ordering, filename construction, and collision rejection.
-- Test synthesis cache hits, dependency invalidation after one component output
-  changes, and zero LLM calls on a fully unchanged rerun.
-- Test explicit failure for over-budget synthesis inputs.
+- Test migration upgrade/downgrade, foreign keys, indexes, nullability, status
+  constraints, and model metadata/doc descriptions.
+- Test valid transitions, double completion, failure sanitization/truncation, and
+  newest-attempt/newest-successful ordering.
+- Inject failures before delete, during delete/load/split/embed/upsert, during count
+  verification, and while marking success. Assert the durable outcome is honest at
+  every point where a build attempt exists.
+- Test that a rebuild which indexed a pinned old release succeeds with that release's
+  fingerprint even if publication switches during the build; freshness is evaluated
+  separately in Slice 5.
+- Re-run source service, migration, pipeline, Chroma, and Qdrant tests.
 
 Run:
 
 ```bash
-uv run pytest tests/workflow/portfolio/generation/test_project_synthesis.py \
-  tests/workflow/portfolio/corpus/test_renderers.py -v
+uv run pytest tests/db \
+  tests/services/test_index_build_service.py \
+  tests/services/test_source_service.py \
+  tests/pipelines \
+  tests/stores/vector -v
 ```
 
 ### Acceptance
 
-- The balanced profile produces exactly three project documents plus one document
-  per configured summary unit.
-- Identical validated artifacts produce byte-identical Markdown.
-- All published prose originates from validated structured fields and all evidence
-  remains traceable to the snapshot.
+- A build attempt is durable before the selected collection can be destroyed.
+- Success records exactly the pinned corpus and verified stored chunk count.
+- Any rebuild failure after attempt creation leaves a terminal failed row or, on
+  process death, a conservative building row; neither can be mistaken for a usable
+  current index.
+- Unchanged explicit rebuilds create audit records but retain the same deterministic
+  collection name.
 
-## Slice 5 — Manifest, Corpus Validation, and Atomic Publication
+## Slice 5 — Freshness Policy and Answer Gate
 
-**Status: Complete**
+**Status: Proposed**
 
 ### Outcome
 
-A complete staged corpus is validated as a unit, assigned a stable corpus
-fingerprint, and made visible at `data/portfolio` in one atomic pointer switch.
+One domain service reports an actionable index state, and Portfolio answers cannot
+run against an unbuilt, stale, rebuilding, failed, missing, or inconsistent index.
 
 ### Implementation
 
-- Define a versioned manifest model containing:
-  - project slug/display name and repository URL when available;
-  - requested ref, resolved commit SHA, and source fingerprint;
-  - generation profile plus prompt, schema, provider/model, and configuration
-    fingerprints;
-  - one record per document with filename, document type, optional component ID,
-    evidence paths, generation fingerprint, output artifact hash, Markdown content
-    hash, and byte size; and
-  - the resulting corpus fingerprint.
-- Serialize `manifest.json` as sorted, compact UTF-8 JSON with one terminal newline.
-  Omit timestamps, absolute paths, secrets, current-run latency, and current-run
-  cache-hit flags.
-- Define the corpus fingerprint over the ordered Markdown filenames and byte hashes
-  plus a canonical manifest projection with `corpus_fingerprint` omitted. Document
-  this non-circular calculation in code and tests.
-- Before publication, validate the complete staged corpus:
-  - exact expected file set and no nested files;
-  - safe unique filenames;
-  - manifest/document one-to-one correspondence;
-  - byte size and content-hash agreement;
-  - document type/component agreement;
-  - evidence membership in the supplied snapshot; and
-  - recomputed corpus fingerprint agreement.
-- Build an immutable release in a temporary directory under
-  `data/.portfolio-releases/`, then rename it to
-  `data/.portfolio-releases/<corpus-fingerprint>` on the same filesystem.
-- Publish through a temporary relative symlink followed by `os.replace` onto
-  `data/portfolio`. Readers therefore observe either the previous complete release
-  or the new complete release, never a partial directory.
-- Refuse to replace an existing real file or directory at `data/portfolio`; only an
-  absent target or a workflow-managed symlink is eligible for pointer switching.
-- If a release fingerprint already exists, validate it byte-for-byte and reuse it;
-  never overwrite conflicting contents.
-- Retain superseded releases. Cleanup, retention, and deletion remain manual and
-  out of scope.
+- Define a typed `IndexStatus` projection with source/config/collection/index
+  identity, current corpus fingerprint, built corpus fingerprint, latest build ID
+  and status, counts/timestamps, an availability boolean, and a machine-readable
+  reason.
+- Use explicit reason values such as `current`, `unbuilt`, `stale`, `building`,
+  `failed`, `collection_missing`, `count_mismatch`, `backend_unavailable`,
+  `corpus_invalid`, and `untracked`. Keep status derivation in the service layer
+  rather than duplicating it in routes, RAG execution, or Streamlit.
+- For a manifest-backed source:
+  1. resolve and validate the currently published manifest;
+  2. find the latest successful build for the selected source/index fingerprint;
+  3. compare its corpus fingerprint with the current manifest;
+  4. ensure no newer building or failed attempt invalidates the collection; and
+  5. confirm collection existence and exact count.
+- Treat a changed corpus fingerprint as `stale` even when filenames, collection
+  name, and chunk count are unchanged.
+- For generic sources, report `untracked` and retain collection existence as the
+  availability rule. This is a compatibility path, not a claim of manifest
+  freshness.
+- Replace the RAG service's direct `store.exists()` check with this status policy.
+  Raise one focused `IndexUnavailableError` containing the reason and rebuild action;
+  retain `IndexNotBuiltError` as an alias or compatibility subclass if needed.
+- Perform the gate before starting a `Run`, retrieval, or LLM generation. Attach the
+  successful build ID and corpus fingerprint to answer spans for auditability.
+- Document the small race boundary between status inspection and retrieval. Cross-
+  process read/write exclusion or backend aliases are deferred; persisted
+  `building` state and current service ordering provide fail-closed behavior for the
+  supported process model.
 
 ### Verification
 
-- Test canonical manifest bytes and golden manifest content.
-- Test corpus fingerprint stability and changes caused by Markdown or stable
-  provenance changes; confirm timestamps and run metrics cannot affect it.
-- Test every corpus validation rule with focused malformed fixtures.
-- Inject failures during generation, staging, release rename, and symlink switch;
-  verify the previously published corpus remains readable and unchanged.
-- Test first publication, replacement, same-release reuse, conflicting existing
-  release, relative symlink correctness, and absence of partial files.
-- Test that no old release is deleted.
+- Table-test every status and precedence combination, especially:
+  - old success plus newly changed manifest;
+  - matching old success plus newer failed/building attempt;
+  - matching success plus absent collection or count mismatch;
+  - a build pinned to the prior release after publication switched;
+  - retrieval/LLM factories not called for every unavailable state; and
+  - generic source compatibility.
+- Assert unavailable answers do not create a `Run` row.
+- Assert current answers record build/corpus identity in bounded spans without source
+  content.
+- Re-run all RAG and experiment service tests.
 
 Run:
 
 ```bash
-uv run pytest tests/workflow/portfolio/corpus -v
+uv run pytest tests/services/test_source_service.py \
+  tests/services/test_rag_service.py \
+  tests/services/test_rag_observability.py \
+  tests/integration/test_registry_workflow.py -v
 ```
 
 ### Acceptance
 
-- `data/portfolio` always resolves to one fully validated immutable release.
-- A failed run or publication attempt leaves the prior published corpus intact.
-- The manifest contains enough stable provenance to reproduce or audit every
-  generated document without exposing secrets or machine-local paths.
+- Publishing a different corpus makes the existing Portfolio index unavailable
+  immediately, without renaming or deleting its collection.
+- Only the newest valid successful rebuild of the currently published corpus can be
+  used for answers.
+- No unavailable-index request reaches retrieval, starts a durable RAG run, or calls
+  an LLM.
+- Legacy sources retain their pre-Stage 2 behavior and are clearly labeled
+  `untracked`.
 
-## Slice 6 — LlamaIndex Workflow, CLI, Metrics, and Stage Integration
+## Slice 6 — Index API, Streamlit Workflow, and Stage Integration
 
-**Status: Complete**
+**Status: Proposed**
 
 ### Outcome
 
-One command runs the complete Stage 1 lifecycle with typed workflow events and a
-clear report of LLM work, cache reuse, latency, tokens, cost, and publication.
+Operators can see why a selected index is unavailable, explicitly rebuild it, and
+inspect project/repository provenance on answer citations through the existing API
+and Streamlit workflow.
 
 ### Implementation
 
-- Add typed LlamaIndex Workflow events and steps for:
-  1. configuration and project selection;
-  2. repository ref resolution and committed snapshot selection;
-  3. logical summary planning;
-  4. component artifact generation or cache reuse;
-  5. project synthesis generation or cache reuse;
-  6. deterministic rendering;
-  7. manifest construction and full-corpus validation; and
-  8. atomic publication and final reporting.
-- Pass immutable domain objects through events. Use workflow context only for
-  bounded run state and aggregation, not as durable artifact storage.
-- Keep each side effect behind an injected port so workflow tests can use fake
-  repository readers, generators, caches, clocks, and publishers.
-- Execute generation sequentially in the initial implementation. Provider
-  concurrency, retries, and rate-limit policy remain future optimizations; caching
-  already makes command retry safe after completed artifacts.
-- Emit observability spans around workflow steps and provider calls with IDs,
-  fingerprints, counts, durations, and cache status. Do not attach source content,
-  rendered prompts, generated prose, credentials, or full structured outputs.
-- Produce a final typed run report with:
-  - commit, source, corpus, and generation identities;
-  - per-artifact cache hit/miss, token usage, provider latency, and estimated cost;
-  - current-run provider-call count and billed-token/cost totals;
-  - end-to-end and per-step latency; and
-  - published path and release path.
-- Add a CLI requiring `--config` and `--project`. Return non-zero status for config,
-  snapshot, generation, cache, validation, or publication failures. Print no source
-  or prompt contents.
-- Document the command, provider prerequisites, cache behavior, publication layout,
-  reproducibility boundaries, and manual release cleanup.
-
-Proposed command:
-
-```bash
-uv run python -m genai_template.workflow.portfolio.cli.generate \
-  --config src/genai_template/workflow/portfolio/config/profiles/local.yml \
-  --project genai-template
-```
+- Add `GET /sources/{source_id}/indexes/{rag_config_id}` returning the typed current
+  `IndexStatus` projection.
+- Change the existing `PUT` endpoint to return the persisted successful build plus
+  the resulting current status. Keep document count, chunk count, and duration fields
+  available to current clients.
+- Map unknown source/config to `404`, invalid corpus to a focused validation error,
+  concurrent/already-running rebuild to `409`, and unavailable answer states to
+  `409` with a machine-readable reason and explicit rebuild endpoint/action.
+- Extend the API client with index-status lookup and the expanded rebuild response.
+- In Streamlit, once an experiment and configuration are selected:
+  - load and display current/indexed corpus fingerprints in abbreviated form;
+  - distinguish current, stale, building, failed, missing, and untracked states;
+  - disable Ask for unavailable manifest-backed states;
+  - keep rebuild explicit and show persisted build ID, counts, duration, and any
+    safe failure guidance; and
+  - refresh status after a rebuild.
+- Extend answer source rendering with project display name/slug, generated document
+  type/component, repository URL when present, and full resolved commit. Repository
+  deep links remain Stage 6 master-plan scope.
+- Update README/operator documentation for generation → source registration → status
+  → explicit rebuild → answer, including stale-index behavior and legacy-source
+  semantics.
+- Add one end-to-end test using a temporary published Portfolio release, SQLite, a
+  deterministic fake embedder/store/LLM, and the API boundary:
+  1. register source/config/experiment;
+  2. observe `unbuilt`;
+  3. rebuild and observe `current`;
+  4. answer and inspect citation provenance;
+  5. atomically publish a changed release and observe `stale` plus rejected answer;
+  6. rebuild and answer from the new corpus; and
+  7. inject a failed rebuild and verify answers remain unavailable.
 
 ### Verification
 
-- Unit-test event routing and every step with injected deterministic fakes.
-- Run an end-to-end temporary-Git test through the real workflow, filesystem cache,
-  renderers, manifest validator, publisher, and CLI with only the generator faked.
-- Run that test twice and assert the second execution makes zero generator calls,
-  publishes the same corpus fingerprint, and reports all artifacts as cache hits.
-- Inject a failure in every workflow phase and verify no incomplete corpus is
-  published and the prior release remains unchanged.
-- Test stable CLI output fields, JSON report mode, project selection, exit codes,
-  and redaction boundaries.
-- Run the complete Stage 0 and Stage 1 tests, followed by the non-integration quality
-  suite.
+- Test API response schemas, status codes, error reason payloads, and compatibility
+  fields on rebuild responses.
+- Test API client requests and Streamlit rendering/disablement for every status.
+- Test citation presentation with and without repository URLs.
+- Run Stage 0–2 focused tests, the end-to-end lifecycle test, then the complete
+  non-integration quality suite with Phoenix disabled.
 
 Run:
 
 ```bash
-uv run pytest tests/workflow/portfolio -v
-./scripts/check.sh
+uv run pytest tests/workflow/portfolio \
+  tests/components/readers \
+  tests/components/splitters \
+  tests/components/context \
+  tests/db \
+  tests/pipelines \
+  tests/services \
+  tests/api \
+  tests/ui \
+  tests/stores/vector -v
+PHOENIX_ENABLED=false ./scripts/check.sh
 ```
 
 ### Acceptance
 
-- The first successful fake-provider end-to-end run publishes a valid corpus and
-  manifest for one committed repository snapshot.
-- Repeating unchanged inputs makes zero LLM calls and publishes byte-identical
-  Markdown and manifest content.
-- A failed run leaves the prior corpus intact.
-- Reports distinguish original artifact usage from current-run billed usage and do
-  not claim zero usage when a provider omitted usage metadata.
-- Every accepted evidence path exists in the exact selected snapshot.
-- `./scripts/check.sh` passes.
+- API and UI expose one consistent, actionable freshness decision.
+- The UI never presents Ask as available for a stale or operationally invalid
+  Portfolio index.
+- A successful rebuild serves the current corpus fingerprint and provenance-rich
+  citations.
+- The full non-integration quality suite passes without Phoenix, Ollama, Qdrant
+  server, or an external LLM.
 
-## Stage 1 Completion Criteria
+## Stage 2 Completion Criteria
 
-Stage 1 is complete only when all six slices are implemented and verified, and:
+Stage 2 is complete only when all six slices are implemented and verified, and:
 
-- the master plan's Stage 1 deliverables and exit criteria are satisfied;
-- the checked-in balanced profile produces project overview, architecture,
-  testing/operations, and selected high-value component documents;
-- source, prompt, model, schema, artifact, document, and corpus identities are
-  individually auditable;
-- unchanged work is served entirely from validated cache artifacts;
-- publication cannot expose a partial corpus or destroy the previous release;
-- source text, prompts, generated prose, credentials, and secrets are absent from
-  routine logs and custom trace attributes;
+- every Portfolio chunk and citation carries correct document, project, repository
+  revision, corpus, and generation provenance;
+- one flat v2 corpus can represent and index several projects without document or
+  chunk-ID collisions;
+- existing Stage 1 v1 releases and generic flat corpora retain documented
+  compatibility behavior;
+- changing only the published corpus fingerprint makes the selected Portfolio index
+  unavailable until an explicit successful rebuild;
+- the newest destructive rebuild attempt cannot be bypassed by an older success;
+- SQL build records, vector-store existence/counts, and current manifest identity
+  must agree before an answer runs;
+- cited answers identify the generated document, project, and repository revision;
+- source text, generated prose, embeddings, credentials, and machine-local release
+  paths are absent from build records and new custom trace attributes;
 - all new functions, classes, and methods have complete type hints and Google-style
-  docstrings; and
-- all normal quality checks pass without requiring an external model service.
+  docstrings, and all new persistence fields include concise `doc` descriptions; and
+- `PHOENIX_ENABLED=false ./scripts/check.sh` passes.
 
 ## Explicitly Deferred
 
-- minimal and deep generation profiles;
-- processing several configured projects in one workflow run;
-- GitHub repository/archive readers and authentication;
-- automatic scheduling, concurrency locks, retries, and provider rate limiting;
-- automatic cache or release retention and cleanup;
-- automatic index rebuilds and manifest-aware ingestion;
-- SQL corpus-build history;
-- evaluation datasets and trials;
-- semantic verification that evidence entails each generated claim; and
-- agentic repository exploration, tool execution, or dirty-working-tree inputs.
+- automatic rebuilds triggered by corpus publication;
+- scheduled refreshes, leases, distributed rebuild locks, and crash recovery;
+- atomic vector-collection aliases or blue/green collection swaps;
+- historical vector collections, automatic deletion, and retention policies;
+- a CLI or scheduler that generates or composes several projects in one run;
+- project metadata filtering, reranking, hybrid retrieval, and other Stage 4 work;
+- evaluation datasets, durable evaluation trials, and configuration comparison;
+- conversation persistence and history-aware retrieval;
+- GitHub repository links beyond displaying available repository/revision metadata;
+- semantic validation that an evidence path entails a generated claim; and
+- migration of legacy generic corpora into Portfolio manifests.
 
 ## Commit and Review Guidance
 
 - Keep one reviewable commit per slice.
-- Each slice must leave its focused tests passing and must not require an unfinished
-  later slice.
-- Preserve the user's existing `PLAN.md` edit that points Stage 1 to this file.
-- Do not commit generated caches, release directories, the `data/portfolio` symlink,
-  or provider-backed corpus output unless a later data-versioning decision
-  explicitly adds them.
-- Run `./scripts/check.sh` after Slice 6 before declaring Stage 1 complete.
+- Each slice must leave its focused tests passing and preserve generic corpus
+  ingestion.
+- Commit the Alembic revision with the `IndexBuild` model in Slice 4; do not rewrite
+  the existing initial revision.
+- Do not commit generated caches, immutable corpus releases, the `data/portfolio`
+  symlink, vector-store data, or local SQLite contents.
+- Run the complete check script only after Slice 6, while running the focused command
+  listed under every earlier slice before review.
