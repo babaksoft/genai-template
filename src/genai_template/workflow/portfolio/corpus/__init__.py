@@ -20,6 +20,7 @@ from genai_template.workflow.portfolio.corpus.validation import (
     CorpusValidationError,
     read_manifest,
     validate_corpus_directory,
+    validate_rendered_corpus,
 )
 
 __all__ = [
@@ -36,4 +37,5 @@ __all__ = [
     "render_component_document",
     "render_project_document",
     "validate_corpus_directory",
+    "validate_rendered_corpus",
 ]

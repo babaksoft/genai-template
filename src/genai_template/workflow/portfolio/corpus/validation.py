@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from collections.abc import Sequence
 from pathlib import Path, PurePosixPath
 
 from pydantic import ValidationError
@@ -14,6 +15,7 @@ from genai_template.workflow.portfolio.corpus.manifest import (
     manifest_bytes,
 )
 from genai_template.workflow.portfolio.corpus.renderers import build_document_filename
+from genai_template.workflow.portfolio.domain.generation import RenderedDocument
 from genai_template.workflow.portfolio.domain.manifest import CorpusManifest
 from genai_template.workflow.portfolio.domain.snapshot import RepositorySnapshot
 
@@ -24,6 +26,52 @@ _SAFE_FILENAME = re.compile(
 
 class CorpusValidationError(RuntimeError):
     """Failure to validate a complete corpus as one publication unit."""
+
+
+def validate_rendered_corpus(
+    manifest: CorpusManifest,
+    documents: Sequence[RenderedDocument],
+    snapshot: RepositorySnapshot,
+) -> None:
+    """Validate a complete rendered corpus before filesystem staging.
+
+    Args:
+        manifest:
+            Stable manifest proposed for publication.
+        documents:
+            Complete rendered Markdown document set.
+        snapshot:
+            Exact immutable snapshot defining valid evidence paths.
+
+    Raises:
+        CorpusValidationError:
+            If identities, records, content bytes, or evidence disagree.
+    """
+
+    _validate_source_identity(manifest, snapshot)
+    _validate_document_records(manifest, snapshot)
+    records = {record.filename: record for record in manifest.documents}
+    supplied = {document.filename: document for document in documents}
+    if len(supplied) != len(documents) or supplied.keys() != records.keys():
+        raise CorpusValidationError("rendered documents do not match the manifest")
+    for filename, document in supplied.items():
+        record = records[filename]
+        content = document.content.encode("utf-8")
+        if (
+            document.document_type != record.document_type
+            or document.component_id != record.component_id
+            or document.generation_fingerprint != record.generation_fingerprint
+            or document.artifact_hash != record.artifact_hash
+            or document.content_hash != record.content_hash
+            or document.evidence_paths != record.evidence_paths
+            or len(content) != record.byte_size
+            or hashlib.sha256(content).hexdigest() != record.content_hash
+        ):
+            raise CorpusValidationError(
+                "rendered document metadata differs from manifest"
+            )
+    if calculate_corpus_fingerprint(manifest) != manifest.corpus_fingerprint:
+        raise CorpusValidationError("corpus fingerprint does not match manifest")
 
 
 def read_manifest(path: Path) -> CorpusManifest:

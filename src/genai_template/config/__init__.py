@@ -1,3 +1,4 @@
+from genai_template.config import ollama
 from genai_template.config.rag import (
     AnyEmbedderConfig,
     AnyLLMConfig,
@@ -44,4 +45,5 @@ __all__ = [
     "config_fingerprint",
     "index_config_fingerprint",
     "load_rag_config",
+    "ollama",
 ]

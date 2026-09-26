@@ -382,6 +382,8 @@ def _generate_project_summary(
                 cache_hit=True,
                 token_usage=TokenUsage(),
                 estimated_cost=None,
+                original_token_usage=cached.token_usage,
+                original_estimated_cost=cached.estimated_cost,
                 latency_seconds=_elapsed(clock, started_at),
             ),
         )
@@ -450,6 +452,8 @@ def _generate_project_summary(
             cache_hit=False,
             token_usage=response.token_usage,
             estimated_cost=estimated_cost,
+            original_token_usage=response.token_usage,
+            original_estimated_cost=estimated_cost,
             latency_seconds=_elapsed(clock, started_at),
         ),
     )
@@ -558,6 +562,8 @@ def _run_report(
     cache_hit: bool,
     token_usage: TokenUsage,
     estimated_cost: Decimal | None,
+    original_token_usage: TokenUsage,
+    original_estimated_cost: Decimal | None,
     latency_seconds: float,
 ) -> ArtifactRunReport:
     """Build one current-run project artifact report.
@@ -573,6 +579,10 @@ def _run_report(
             Tokens billed during this run.
         estimated_cost:
             Estimated cost billed during this run.
+        original_token_usage:
+            Usage recorded by the original provider call.
+        original_estimated_cost:
+            Cost recorded by the original provider call.
         latency_seconds:
             Current-run operation duration.
 
@@ -586,5 +596,7 @@ def _run_report(
         cache_hit=cache_hit,
         token_usage=token_usage,
         estimated_cost=estimated_cost,
+        original_token_usage=original_token_usage,
+        original_estimated_cost=original_estimated_cost,
         latency_seconds=latency_seconds,
     )

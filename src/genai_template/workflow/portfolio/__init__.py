@@ -1,5 +1,6 @@
 """Public configuration and domain types for portfolio snapshot workflows."""
 
+from genai_template.workflow.portfolio import inspect_snapshot
 from genai_template.workflow.portfolio.adapters.repositories import (
     LocalGitSnapshotReader,
 )
@@ -36,6 +37,7 @@ from genai_template.workflow.portfolio.domain import (
     RepositoryReadResult,
     RepositorySnapshot,
     SnapshotFile,
+    StepRunReport,
     SummaryPlan,
     SummaryUnitPlan,
     TokenUsage,
@@ -78,6 +80,7 @@ __all__ = [
     "SelectionConfig",
     "SnapshotFile",
     "SnapshotSelectionError",
+    "StepRunReport",
     "StructuredGenerationConfig",
     "SummaryPlan",
     "SummaryPlanningError",
@@ -87,5 +90,6 @@ __all__ = [
     "TokenUsage",
     "build_repository_snapshot",
     "build_summary_plan",
+    "inspect_snapshot",
     "load_portfolio_config",
 ]

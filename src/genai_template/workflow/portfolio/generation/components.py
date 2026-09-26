@@ -159,6 +159,8 @@ def _generate_component_summary(
                 cache_hit=True,
                 token_usage=TokenUsage(),
                 estimated_cost=None,
+                original_token_usage=cached.token_usage,
+                original_estimated_cost=cached.estimated_cost,
                 latency_seconds=_elapsed(clock, started_at),
             ),
         )
@@ -216,6 +218,8 @@ def _generate_component_summary(
             cache_hit=False,
             token_usage=response.token_usage,
             estimated_cost=estimated_cost,
+            original_token_usage=response.token_usage,
+            original_estimated_cost=estimated_cost,
             latency_seconds=_elapsed(clock, started_at),
         ),
     )

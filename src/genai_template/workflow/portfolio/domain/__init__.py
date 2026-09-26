@@ -30,6 +30,7 @@ from genai_template.workflow.portfolio.domain.projects import (
 from genai_template.workflow.portfolio.domain.reports import (
     ArtifactRunReport,
     GenerationRunReport,
+    StepRunReport,
 )
 from genai_template.workflow.portfolio.domain.snapshot import (
     CommittedRepositoryEntry,
@@ -81,6 +82,7 @@ __all__ = [
     "RepositoryReadResult",
     "RepositorySnapshot",
     "SnapshotFile",
+    "StepRunReport",
     "StructuredGenerationError",
     "StructuredSummary",
     "SummaryPlan",

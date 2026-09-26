@@ -78,6 +78,24 @@ local repository paths. Selected symlinks, submodules, Git LFS pointers, binary 
 non-UTF-8 files, and files over the configured limit are rejected; entries outside
 the include/exclude selection are ignored.
 
+Generate and atomically publish the balanced corpus for one project with:
+
+```bash
+uv run python -m genai_template.workflow.portfolio.cli.generate \
+  --config src/genai_template/workflow/portfolio/config/profiles/local.yml \
+  --project genai-template
+```
+
+Use ``--json`` for a machine-readable run report. OpenAI generation requires an
+``OPENAI_API_KEY``; Ollama generation requires the configured model to be available
+at ``OLLAMA_BASE_URL``. Validated structured artifacts are cached outside the
+published corpus, so an unchanged rerun makes no provider calls. Releases live in
+``data/.portfolio-releases/<corpus-fingerprint>`` and ``data/portfolio`` is an
+atomically replaced relative symlink. Releases and cache entries are retained;
+cleanup is intentionally manual. Reproducibility covers the committed snapshot,
+generation configuration, prompts, schemas, structured artifacts, rendered bytes,
+and manifest—not provider determinism for a new cache miss.
+
 The experiment's design and delivery documents are:
 
 - [Portfolio RAG master plan](PLAN.md), currently **Proposed**;

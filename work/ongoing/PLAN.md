@@ -1,6 +1,6 @@
 # Portfolio RAG Stage 1 — Local Portfolio Corpus Workflow
 
-**Status:** In Progress (Slices 1–5 complete)
+**Status:** Complete (Slices 1–6 complete)
 
 ## Goal
 
@@ -407,7 +407,7 @@ uv run pytest tests/workflow/portfolio/corpus -v
 
 ## Slice 6 — LlamaIndex Workflow, CLI, Metrics, and Stage Integration
 
-**Status: Planned**
+**Status: Complete**
 
 ### Outcome
 
