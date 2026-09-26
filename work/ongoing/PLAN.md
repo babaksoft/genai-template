@@ -1,6 +1,6 @@
 # Portfolio RAG Stage 1 — Local Portfolio Corpus Workflow
 
-**Status:** In Progress (Slices 1–4 complete)
+**Status:** In Progress (Slices 1–5 complete)
 
 ## Goal
 
@@ -335,7 +335,7 @@ uv run pytest tests/workflow/portfolio/generation/test_project_synthesis.py \
 
 ## Slice 5 — Manifest, Corpus Validation, and Atomic Publication
 
-**Status: Planned**
+**Status: Complete**
 
 ### Outcome
 

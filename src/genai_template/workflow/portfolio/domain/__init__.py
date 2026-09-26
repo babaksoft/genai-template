@@ -18,6 +18,11 @@ from genai_template.workflow.portfolio.domain.generation import (
     RenderedDocument,
     TokenUsage,
 )
+from genai_template.workflow.portfolio.domain.manifest import (
+    CorpusManifest,
+    ManifestDocument,
+    ManifestPrompt,
+)
 from genai_template.workflow.portfolio.domain.projects import (
     ProjectArtifactKind,
     ProjectSummaryArtifact,
@@ -60,10 +65,13 @@ __all__ = [
     "ComponentSummary",
     "ComponentSummaryArtifact",
     "CorpusBuild",
+    "CorpusManifest",
     "EvidenceSection",
     "GenerationRequest",
     "GenerationResult",
     "GenerationRunReport",
+    "ManifestDocument",
+    "ManifestPrompt",
     "ProjectArtifactKind",
     "ProjectOverviewSummary",
     "ProjectSummaryArtifact",
