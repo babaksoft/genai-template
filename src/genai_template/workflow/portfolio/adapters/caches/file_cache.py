@@ -240,24 +240,24 @@ class FilesystemArtifactCache:
             )
 
         try:
-            validated_output = output_type.model_validate(artifact.structured_output)
+            validated_output = output_type.model_validate(artifact.summary)
         except ValidationError as error:
             raise FilesystemArtifactCache._error(
                 generation_fingerprint,
-                "cache entry structured output is invalid",
+                "cache entry summary is invalid",
                 "invalid-output",
             ) from error
 
-        if validated_output.model_dump(mode="json") != artifact.structured_output:
+        if validated_output.model_dump(mode="json") != artifact.summary:
             raise FilesystemArtifactCache._error(
                 generation_fingerprint,
-                "cache entry structured output is not canonical",
+                "cache entry summary is not canonical",
                 "noncanonical-output",
             )
-        if sha256_canonical_json(artifact.structured_output) != artifact.output_hash:
+        if sha256_canonical_json(artifact.summary) != artifact.output_hash:
             raise FilesystemArtifactCache._error(
                 generation_fingerprint,
-                "cache entry structured output hash does not match",
+                "cache entry summary hash does not match",
                 "output-hash-mismatch",
             )
 

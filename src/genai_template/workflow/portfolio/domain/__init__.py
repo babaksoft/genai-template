@@ -33,6 +33,7 @@ from genai_template.workflow.portfolio.domain.reports import (
     ArtifactRunReport,
     GenerationRunReport,
     StepRunReport,
+    count_generation_warnings,
 )
 from genai_template.workflow.portfolio.domain.snapshot import (
     CommittedRepositoryEntry,
@@ -93,5 +94,6 @@ __all__ = [
     "TestingOperationsSummary",
     "TextGenerationError",
     "TokenUsage",
+    "count_generation_warnings",
     "summary_evidence_paths",
 ]

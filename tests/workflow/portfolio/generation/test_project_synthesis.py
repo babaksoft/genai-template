@@ -246,9 +246,10 @@ def _component(content: str = "Component behavior.") -> ComponentSummaryArtifact
     artifact = CachedArtifact(
         cache_schema_version=CACHE_SCHEMA_VERSION,
         provenance=provenance,
-        structured_output=output,
+        summary=output,
         output_hash=output_hash,
-        token_usage=TokenUsage(input_tokens=5, output_tokens=2),
+        raw_response_hash="e" * 64,
+        original_token_usage=TokenUsage(input_tokens=5, output_tokens=2),
     )
     return ComponentSummaryArtifact(
         unit_id="api",
@@ -258,7 +259,7 @@ def _component(content: str = "Component behavior.") -> ComponentSummaryArtifact
             artifact_kind="component",
             generation_fingerprint=fingerprint,
             cache_hit=False,
-            token_usage=artifact.token_usage,
+            token_usage=artifact.original_token_usage,
             latency_seconds=0,
         ),
     )
@@ -357,6 +358,9 @@ def test_recoverable_project_responses_are_cached_and_reported(
         assert generated.run_report.generation_warning_count == len(warnings)
         assert cached.artifact.generation_warnings == warnings
         assert cached.run_report.generation_warning_count == len(warnings)
+        assert cached.run_report.generation_warning_counts == (
+            generated.run_report.generation_warning_counts
+        )
         assert cached.run_report.cache_hit is True
     assert second_generator.calls == []
 

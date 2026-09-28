@@ -248,7 +248,7 @@ complete atomically published corpus.
 
 ## Slice 5 — Cache Envelope and Reporting Update
 
-**Status:** Proposed
+**Status:** Complete
 
 ### Outcome
 

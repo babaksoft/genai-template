@@ -234,13 +234,15 @@ class CachedArtifact(_ImmutableDomainModel):
             Version of the cache envelope schema.
         provenance:
             Stable non-secret generation provenance.
-        structured_output:
-            Validated JSON-compatible structured output.
+        summary:
+            Validated JSON-compatible application-owned summary.
         output_hash:
-            SHA-256 identity of the canonical structured output.
-        token_usage:
+            SHA-256 identity of the canonical validated summary.
+        raw_response_hash:
+            SHA-256 digest of the original provider response text.
+        original_token_usage:
             Usage reported by the original provider call.
-        estimated_cost:
+        original_estimated_cost:
             Optional original-call cost estimate.
         provider_metadata:
             Narrow non-secret provider audit metadata.
@@ -253,15 +255,21 @@ class CachedArtifact(_ImmutableDomainModel):
         description="Version of the cache envelope schema.",
     )
     provenance: ArtifactProvenance = Field(description="Stable artifact provenance.")
-    structured_output: dict[str, JsonValue] = Field(
-        description="JSON-compatible validated structured output."
+    summary: dict[str, JsonValue] = Field(
+        description="JSON-compatible validated application-owned summary."
     )
     output_hash: str = Field(
         pattern=r"^[0-9a-f]{64}$",
-        description="SHA-256 identity of the canonical structured output.",
+        description="SHA-256 identity of the canonical validated summary.",
     )
-    token_usage: TokenUsage = Field(description="Original provider token usage.")
-    estimated_cost: Decimal | None = Field(
+    raw_response_hash: str = Field(
+        pattern=r"^[0-9a-f]{64}$",
+        description="SHA-256 digest of the original provider response text.",
+    )
+    original_token_usage: TokenUsage = Field(
+        description="Original provider token usage."
+    )
+    original_estimated_cost: Decimal | None = Field(
         default=None,
         ge=Decimal(0),
         description="Optional cost estimated for the original provider call.",

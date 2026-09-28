@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +24,8 @@ from genai_template.workflow.portfolio.domain import (
     CachedArtifact,
     ComponentSummary,
     EvidenceSection,
+    GenerationWarning,
+    ProviderAuditMetadata,
     TokenUsage,
 )
 
@@ -72,9 +75,21 @@ def _artifact(*, fingerprint: str = "1" * 64) -> CachedArtifact:
             model="test-model",
             temperature=0,
         ),
-        structured_output=output,
+        summary=output,
         output_hash=sha256_canonical_json(output),
-        token_usage=TokenUsage(input_tokens=10, output_tokens=5),
+        raw_response_hash="5" * 64,
+        original_token_usage=TokenUsage(input_tokens=10, output_tokens=5),
+        original_estimated_cost=Decimal("0.0001"),
+        provider_metadata=ProviderAuditMetadata(
+            request_id="request-1", finish_reason="stop"
+        ),
+        generation_warnings=(
+            GenerationWarning(
+                code="missing_section",
+                section="Behavior",
+                detail="Missing section recovered.",
+            ),
+        ),
     )
 
 
@@ -137,6 +152,7 @@ def test_cache_miss_write_hit_and_repeated_hit(tmp_path: Path) -> None:
             "output-schema-mismatch",
         ),
         (lambda value: value.update(output_hash="8" * 64), "output-hash-mismatch"),
+        (lambda value: value.update(raw_response_hash="invalid"), "invalid-envelope"),
     ],
 )
 def test_cache_rejects_mismatched_envelopes(
@@ -166,6 +182,17 @@ def test_cache_rejects_mismatched_envelopes(
         _get(FilesystemArtifactCache(root), "1" * 64)
 
     assert caught.value.reason == reason
+
+
+def test_cache_round_trip_without_warnings(tmp_path: Path) -> None:
+    """Canonical envelopes also round-trip with no parser recoveries."""
+
+    artifact = _artifact().model_copy(update={"generation_warnings": ()})
+    cache = FilesystemArtifactCache(tmp_path / "cache")
+
+    cache.put(artifact, output_type=ComponentSummary)
+
+    assert _get(cache, artifact.provenance.generation_fingerprint) == artifact
 
 
 def test_cache_rejects_truncated_and_noncanonical_json(tmp_path: Path) -> None:

@@ -264,7 +264,7 @@ def _render_document(
     if artifact.provenance.artifact_kind != document_type:
         raise ValueError("rendered document type does not match artifact provenance")
     expected_output = summary.model_dump(mode="json")
-    if artifact.structured_output != expected_output:
+    if artifact.summary != expected_output:
         raise ValueError("rendered summary does not match its artifact output")
     if artifact.output_hash != sha256_canonical_json(expected_output):
         raise ValueError("rendered artifact output hash does not match its summary")

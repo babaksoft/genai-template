@@ -36,6 +36,12 @@ def render_text_report(report: GenerationRunReport) -> str:
     generation_warnings = sum(
         artifact.generation_warning_count for artifact in report.artifacts
     )
+    warning_lines = tuple(
+        "generation_warning_counts."
+        f"{artifact.artifact_kind}.{artifact.generation_fingerprint}.{code}: {count}"
+        for artifact in report.artifacts
+        for code, count in artifact.generation_warning_counts.items()
+    )
     generation_identity = report.generation_configuration_fingerprint
     return "\n".join(
         (
@@ -54,6 +60,7 @@ def render_text_report(report: GenerationRunReport) -> str:
             f"elapsed_seconds: {report.elapsed_seconds:.6f}",
             f"published_path: {report.published_path}",
             f"release_path: {report.release_path}",
+            *warning_lines,
         )
     )
 

@@ -37,7 +37,10 @@ def _report() -> GenerationRunReport:
                 generation_fingerprint="e" * 64,
                 cache_hit=False,
                 token_usage=TokenUsage(input_tokens=0, output_tokens=0),
-                generation_warning_count=2,
+                generation_warning_counts={
+                    "missing_section": 1,
+                    "evidence_scope_fallback": 2,
+                },
                 latency_seconds=0.5,
             ),
         ),
@@ -62,7 +65,10 @@ def test_json_report_contains_stable_metrics_without_generation_content() -> Non
         "input_tokens": 0,
         "output_tokens": 0,
     }
-    assert value["artifacts"][0]["generation_warning_count"] == 2
+    assert value["artifacts"][0]["generation_warning_counts"] == {
+        "evidence_scope_fallback": 2,
+        "missing_section": 1,
+    }
     assert "prompt" not in rendered
     assert "structured_output" not in rendered
 
@@ -72,7 +78,15 @@ def test_text_report_summarizes_generation_warnings() -> None:
 
     rendered = generate_cli.render_text_report(_report())
 
-    assert "generation_warnings: 2" in rendered.splitlines()
+    lines = rendered.splitlines()
+    assert "generation_warnings: 3" in lines
+    assert (
+        "generation_warning_counts.overview." f"{'e' * 64}.missing_section: 1" in lines
+    )
+    assert (
+        "generation_warning_counts.overview."
+        f"{'e' * 64}.evidence_scope_fallback: 2" in lines
+    )
 
 
 def test_cli_returns_one_and_uses_stderr_for_workflow_failure(

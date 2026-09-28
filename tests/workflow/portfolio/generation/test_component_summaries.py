@@ -242,8 +242,23 @@ def test_second_unchanged_run_uses_cache_without_generator_calls(
     assert [result.run_report.cache_hit for result in first] == [False, False]
     assert [result.run_report.cache_hit for result in second] == [True, True]
     assert second[0].run_report.token_usage == TokenUsage()
-    assert first[0].artifact.token_usage.input_tokens == 100
-    assert first[0].artifact.estimated_cost == Decimal("0.0004")
+    assert first[0].artifact.original_token_usage.input_tokens == 100
+    assert first[0].artifact.original_estimated_cost == Decimal("0.0004")
+    expected_response = "\n\n".join(
+        f"## {heading}\n\nSummary for src/api.py.\n\n" "### Evidence\n\n- src/api.py"
+        for heading in (
+            "Responsibilities",
+            "Important Abstractions",
+            "Behavior",
+            "Constraints",
+            "Testing Evidence",
+        )
+    )
+    assert (
+        first[0].artifact.raw_response_hash
+        == hashlib.sha256(expected_response.encode("utf-8")).hexdigest()
+    )
+    assert second[0].artifact.raw_response_hash == first[0].artifact.raw_response_hash
     cache_bytes = b"".join(path.read_bytes() for path in cache.root.iterdir())
     assert b"api source" not in cache_bytes
     assert b"test source" not in cache_bytes

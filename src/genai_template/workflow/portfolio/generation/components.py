@@ -24,7 +24,10 @@ from genai_template.workflow.portfolio.domain.generation import (
     GenerationRequest,
     TokenUsage,
 )
-from genai_template.workflow.portfolio.domain.reports import ArtifactRunReport
+from genai_template.workflow.portfolio.domain.reports import (
+    ArtifactRunReport,
+    count_generation_warnings,
+)
 from genai_template.workflow.portfolio.domain.summaries import (
     OUTPUT_SCHEMA_VERSION,
     ComponentSummary,
@@ -157,7 +160,7 @@ def _generate_component_summary(
         fingerprint,
     )
     if cached is not None:
-        summary = ComponentSummary.model_validate(cached.structured_output)
+        summary = ComponentSummary.model_validate(cached.summary)
         validate_component_evidence(summary, paths)
         logger.info("Component summary %s accepted from cache", unit.unit_id)
         return ComponentSummaryArtifact(
@@ -170,9 +173,11 @@ def _generate_component_summary(
                 cache_hit=True,
                 token_usage=TokenUsage(),
                 estimated_cost=None,
-                original_token_usage=cached.token_usage,
-                original_estimated_cost=cached.estimated_cost,
-                generation_warning_count=len(cached.generation_warnings),
+                original_token_usage=cached.original_token_usage,
+                original_estimated_cost=cached.original_estimated_cost,
+                generation_warning_counts=count_generation_warnings(
+                    cached.generation_warnings
+                ),
                 latency_seconds=_elapsed(clock, started_at),
             ),
         )
@@ -213,10 +218,11 @@ def _generate_component_summary(
     artifact = CachedArtifact(
         cache_schema_version=CACHE_SCHEMA_VERSION,
         provenance=provenance,
-        structured_output=structured_output,
+        summary=structured_output,
         output_hash=sha256_canonical_json(structured_output),
-        token_usage=response.token_usage,
-        estimated_cost=estimated_cost,
+        raw_response_hash=response.raw_response_hash,
+        original_token_usage=response.token_usage,
+        original_estimated_cost=estimated_cost,
         provider_metadata=response.provider_metadata,
         generation_warnings=response.warnings,
     )
@@ -234,7 +240,7 @@ def _generate_component_summary(
             estimated_cost=estimated_cost,
             original_token_usage=response.token_usage,
             original_estimated_cost=estimated_cost,
-            generation_warning_count=len(response.warnings),
+            generation_warning_counts=count_generation_warnings(response.warnings),
             latency_seconds=_elapsed(clock, started_at),
         ),
     )

@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from decimal import Decimal
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, PositiveInt
 
 from genai_template.workflow.portfolio.domain.generation import (
     ArtifactKind,
+    GenerationWarning,
+    GenerationWarningCode,
     TokenUsage,
 )
 from genai_template.workflow.portfolio.domain.snapshot import _ImmutableDomainModel
@@ -32,8 +35,8 @@ class ArtifactRunReport(_ImmutableDomainModel):
             Usage recorded by the provider call that created the artifact.
         original_estimated_cost:
             Cost recorded when the artifact was originally created.
-        generation_warning_count:
-            Number of deterministic response recoveries retained with the artifact.
+        generation_warning_counts:
+            Response-recovery counts keyed by stable warning code.
         latency_seconds:
             Current-run provider or cache lookup latency.
     """
@@ -59,15 +62,43 @@ class ArtifactRunReport(_ImmutableDomainModel):
         ge=Decimal(0),
         description="Original estimated provider cost retained with the artifact.",
     )
-    generation_warning_count: int = Field(
-        default=0,
-        ge=0,
-        description="Deterministic response recoveries retained with the artifact.",
+    generation_warning_counts: dict[GenerationWarningCode, PositiveInt] = Field(
+        default_factory=dict,
+        description="Response-recovery counts keyed by stable warning code.",
     )
     latency_seconds: float = Field(
         ge=0.0,
         description="Current-run artifact latency in seconds.",
     )
+
+    @property
+    def generation_warning_count(self) -> int:
+        """Return the total number of retained response recoveries.
+
+        Returns:
+            Sum of all per-code warning counts.
+        """
+
+        return sum(self.generation_warning_counts.values())
+
+
+def count_generation_warnings(
+    warnings: Iterable[GenerationWarning],
+) -> dict[GenerationWarningCode, int]:
+    """Count ordered generation warnings by stable code.
+
+    Args:
+        warnings:
+            Deterministic parser warnings to aggregate.
+
+    Returns:
+        Positive counts in first-seen warning-code order.
+    """
+
+    counts: dict[GenerationWarningCode, int] = {}
+    for warning in warnings:
+        counts[warning.code] = counts.get(warning.code, 0) + 1
+    return counts
 
 
 class StepRunReport(_ImmutableDomainModel):

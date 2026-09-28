@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Iterable
 from typing import cast
 
@@ -43,6 +44,8 @@ class SummaryGenerationResponse[SummaryT: StructuredSummary](_ImmutableDomainMod
             Complete, partial, or unavailable provider usage.
         provider_metadata:
             Narrow non-secret provider audit metadata.
+        raw_response_hash:
+            SHA-256 digest of the exact provider response text.
         warnings:
             Ordered deterministic Markdown-parser recoveries.
     """
@@ -54,6 +57,10 @@ class SummaryGenerationResponse[SummaryT: StructuredSummary](_ImmutableDomainMod
     provider_metadata: ProviderAuditMetadata = Field(
         default_factory=ProviderAuditMetadata,
         description="Narrow non-secret provider audit metadata.",
+    )
+    raw_response_hash: str = Field(
+        pattern=r"^[0-9a-f]{64}$",
+        description="SHA-256 digest of the exact provider response text.",
     )
     warnings: tuple[GenerationWarning, ...] = Field(
         default=(),
@@ -115,5 +122,6 @@ def generate_validated_summary[SummaryT: StructuredSummary](
         model=response.model,
         token_usage=response.token_usage,
         provider_metadata=response.provider_metadata,
+        raw_response_hash=hashlib.sha256(response.text.encode("utf-8")).hexdigest(),
         warnings=parsed.warnings,
     )

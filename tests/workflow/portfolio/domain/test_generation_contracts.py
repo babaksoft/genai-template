@@ -64,10 +64,11 @@ def test_generation_contracts_are_immutable_and_composable() -> None:
     artifact = CachedArtifact(
         cache_schema_version="v1",
         provenance=provenance,
-        structured_output=result.structured_output,
+        summary=result.structured_output,
         output_hash="5" * 64,
-        token_usage=usage,
-        estimated_cost=Decimal("0.0001"),
+        raw_response_hash="6" * 64,
+        original_token_usage=usage,
+        original_estimated_cost=Decimal("0.0001"),
         provider_metadata=result.provider_metadata,
     )
     document = RenderedDocument(
@@ -77,7 +78,7 @@ def test_generation_contracts_are_immutable_and_composable() -> None:
         generation_fingerprint=provenance.generation_fingerprint,
         artifact_hash=artifact.output_hash,
         content="# Core\n",
-        content_hash="6" * 64,
+        content_hash="7" * 64,
         evidence_paths=request.input_paths,
     )
     build = CorpusBuild(
@@ -105,7 +106,7 @@ def test_generation_contracts_are_immutable_and_composable() -> None:
         elapsed_seconds=1.0,
     )
 
-    assert report.artifacts[0].token_usage == artifact.token_usage
+    assert report.artifacts[0].token_usage == artifact.original_token_usage
     with pytest.raises(ValidationError):
         report.provider_call_count = 2
 

@@ -70,9 +70,10 @@ def _artifact(
             model="test-model",
             temperature=0,
         ),
-        structured_output=output,
+        summary=output,
         output_hash=sha256_canonical_json(output),
-        token_usage=TokenUsage(),
+        raw_response_hash="e" * 64,
+        original_token_usage=TokenUsage(),
     )
 
 

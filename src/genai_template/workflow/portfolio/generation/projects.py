@@ -22,13 +22,17 @@ from genai_template.workflow.portfolio.domain.generation import (
     ArtifactProvenance,
     CachedArtifact,
     GenerationRequest,
+    GenerationWarning,
     TokenUsage,
 )
 from genai_template.workflow.portfolio.domain.projects import (
     ProjectArtifactKind,
     ProjectSummaryArtifact,
 )
-from genai_template.workflow.portfolio.domain.reports import ArtifactRunReport
+from genai_template.workflow.portfolio.domain.reports import (
+    ArtifactRunReport,
+    count_generation_warnings,
+)
 from genai_template.workflow.portfolio.domain.snapshot import (
     RepositorySnapshot,
     SnapshotFile,
@@ -295,7 +299,7 @@ def _validate_components(
         if (
             provenance.artifact_kind != "component"
             or provenance.source_fingerprint != snapshot.source_fingerprint
-            or artifact.structured_output != expected_output
+            or artifact.summary != expected_output
             or artifact.output_hash != sha256_canonical_json(expected_output)
         ):
             raise ArtifactValidationError(
@@ -380,7 +384,7 @@ def _generate_project_summary(
         output_type=spec.output_type,
     )
     if cached is not None:
-        summary = spec.output_type.model_validate(cached.structured_output)
+        summary = spec.output_type.model_validate(cached.summary)
         validate_project_evidence(summary, repository_paths, component_evidence)
         logger.info("Project summary %s accepted from cache", spec.artifact_kind)
         return ProjectSummaryArtifact(
@@ -393,9 +397,9 @@ def _generate_project_summary(
                 cache_hit=True,
                 token_usage=TokenUsage(),
                 estimated_cost=None,
-                original_token_usage=cached.token_usage,
-                original_estimated_cost=cached.estimated_cost,
-                generation_warning_count=len(cached.generation_warnings),
+                original_token_usage=cached.original_token_usage,
+                original_estimated_cost=cached.original_estimated_cost,
+                generation_warnings=cached.generation_warnings,
                 latency_seconds=_elapsed(clock, started_at),
             ),
         )
@@ -447,10 +451,11 @@ def _generate_project_summary(
     artifact = CachedArtifact(
         cache_schema_version=CACHE_SCHEMA_VERSION,
         provenance=provenance,
-        structured_output=structured_output,
+        summary=structured_output,
         output_hash=sha256_canonical_json(structured_output),
-        token_usage=response.token_usage,
-        estimated_cost=estimated_cost,
+        raw_response_hash=response.raw_response_hash,
+        original_token_usage=response.token_usage,
+        original_estimated_cost=estimated_cost,
         provider_metadata=response.provider_metadata,
         generation_warnings=response.warnings,
     )
@@ -468,7 +473,7 @@ def _generate_project_summary(
             estimated_cost=estimated_cost,
             original_token_usage=response.token_usage,
             original_estimated_cost=estimated_cost,
-            generation_warning_count=len(response.warnings),
+            generation_warnings=response.warnings,
             latency_seconds=_elapsed(clock, started_at),
         ),
     )
@@ -579,7 +584,7 @@ def _run_report(
     estimated_cost: Decimal | None,
     original_token_usage: TokenUsage,
     original_estimated_cost: Decimal | None,
-    generation_warning_count: int,
+    generation_warnings: tuple[GenerationWarning, ...],
     latency_seconds: float,
 ) -> ArtifactRunReport:
     """Build one current-run project artifact report.
@@ -599,8 +604,8 @@ def _run_report(
             Usage recorded by the original provider call.
         original_estimated_cost:
             Cost recorded by the original provider call.
-        generation_warning_count:
-            Number of deterministic recoveries retained with the artifact.
+        generation_warnings:
+            Ordered deterministic recoveries retained with the artifact.
         latency_seconds:
             Current-run operation duration.
 
@@ -616,6 +621,6 @@ def _run_report(
         estimated_cost=estimated_cost,
         original_token_usage=original_token_usage,
         original_estimated_cost=original_estimated_cost,
-        generation_warning_count=generation_warning_count,
+        generation_warning_counts=count_generation_warnings(generation_warnings),
         latency_seconds=latency_seconds,
     )
