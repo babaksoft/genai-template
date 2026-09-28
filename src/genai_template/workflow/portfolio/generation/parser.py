@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Literal
 
 from pydantic import Field
 
+from genai_template.workflow.portfolio.domain.generation import GenerationWarning
 from genai_template.workflow.portfolio.domain.snapshot import _ImmutableDomainModel
 from genai_template.workflow.portfolio.domain.summaries import (
     ComponentSummary,
@@ -22,39 +22,6 @@ from genai_template.workflow.portfolio.generation.validation import (
 )
 
 _PLACEHOLDER = "No supported information was provided."
-
-GenerationWarningCode = Literal[
-    "missing_section",
-    "duplicate_section",
-    "reordered_section",
-    "unexpected_section",
-    "unassigned_content",
-    "invalid_evidence_path",
-    "evidence_scope_fallback",
-]
-
-
-class GenerationWarning(_ImmutableDomainModel):
-    """One typed deterministic recovery performed while parsing Markdown.
-
-    Attributes:
-        code:
-            Stable machine-readable recovery category.
-        section:
-            Affected configured or unexpected heading when applicable.
-        detail:
-            Stable human-readable description without provider prose.
-    """
-
-    code: GenerationWarningCode = Field(description="Stable recovery category.")
-    section: str | None = Field(
-        default=None,
-        description="Affected Markdown heading when applicable.",
-    )
-    detail: str = Field(
-        min_length=1,
-        description="Stable recovery description without provider prose.",
-    )
 
 
 class ParsedSummary(_ImmutableDomainModel):

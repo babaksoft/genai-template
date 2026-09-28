@@ -10,6 +10,38 @@ from pydantic import Field, JsonValue, model_validator
 from genai_template.workflow.portfolio.domain.snapshot import _ImmutableDomainModel
 
 ArtifactKind = Literal["component", "overview", "architecture", "testing_operations"]
+GenerationWarningCode = Literal[
+    "missing_section",
+    "duplicate_section",
+    "reordered_section",
+    "unexpected_section",
+    "unassigned_content",
+    "invalid_evidence_path",
+    "evidence_scope_fallback",
+]
+
+
+class GenerationWarning(_ImmutableDomainModel):
+    """One typed deterministic recovery performed while parsing Markdown.
+
+    Attributes:
+        code:
+            Stable machine-readable recovery category.
+        section:
+            Affected configured or unexpected heading when applicable.
+        detail:
+            Stable human-readable description without provider prose.
+    """
+
+    code: GenerationWarningCode = Field(description="Stable recovery category.")
+    section: str | None = Field(
+        default=None,
+        description="Affected Markdown heading when applicable.",
+    )
+    detail: str = Field(
+        min_length=1,
+        description="Stable recovery description without provider prose.",
+    )
 
 
 class TokenUsage(_ImmutableDomainModel):
@@ -212,6 +244,8 @@ class CachedArtifact(_ImmutableDomainModel):
             Optional original-call cost estimate.
         provider_metadata:
             Narrow non-secret provider audit metadata.
+        generation_warnings:
+            Ordered deterministic recoveries applied to the provider response.
     """
 
     cache_schema_version: str = Field(
@@ -235,6 +269,10 @@ class CachedArtifact(_ImmutableDomainModel):
     provider_metadata: ProviderAuditMetadata = Field(
         default_factory=ProviderAuditMetadata,
         description="Narrow non-secret provider audit metadata.",
+    )
+    generation_warnings: tuple[GenerationWarning, ...] = Field(
+        default=(),
+        description="Ordered deterministic provider-response recoveries.",
     )
 
 

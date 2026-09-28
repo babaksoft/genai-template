@@ -1,12 +1,14 @@
 """Structured portfolio summary generation."""
 
+from genai_template.workflow.portfolio.domain.generation import (
+    GenerationWarning,
+    GenerationWarningCode,
+)
 from genai_template.workflow.portfolio.generation.components import (
     generate_component_summaries,
 )
 from genai_template.workflow.portfolio.generation.costs import estimate_generation_cost
 from genai_template.workflow.portfolio.generation.parser import (
-    GenerationWarning,
-    GenerationWarningCode,
     ParsedSummary,
     parse_summary_markdown,
 )

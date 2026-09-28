@@ -175,7 +175,7 @@ LlamaIndex output parsing.
 
 ## Slice 3 — Component Generation and Cache Reuse
 
-**Status:** Proposed
+**Status:** Complete
 
 ### Outcome
 

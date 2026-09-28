@@ -9,6 +9,7 @@ from pydantic import Field
 
 from genai_template.workflow.portfolio.domain.generation import (
     GenerationRequest,
+    GenerationWarning,
     ProviderAuditMetadata,
     TokenUsage,
 )
@@ -17,10 +18,7 @@ from genai_template.workflow.portfolio.domain.summaries import (
     ComponentSummary,
     StructuredSummary,
 )
-from genai_template.workflow.portfolio.generation.parser import (
-    GenerationWarning,
-    parse_summary_markdown,
-)
+from genai_template.workflow.portfolio.generation.parser import parse_summary_markdown
 from genai_template.workflow.portfolio.generation.specifications import (
     SUMMARY_SPECIFICATIONS,
 )

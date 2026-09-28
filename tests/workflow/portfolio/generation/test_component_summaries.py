@@ -32,6 +32,7 @@ from genai_template.workflow.portfolio.domain import (
     TokenUsage,
 )
 from genai_template.workflow.portfolio.generation import generate_component_summaries
+from genai_template.workflow.portfolio.generation.prompts import PromptDefinition
 from genai_template.workflow.portfolio.ports import TextGenerationResponse
 
 
@@ -47,7 +48,14 @@ class _CountingGenerator:
             Provider model identity returned by the fake.
     """
 
-    def __init__(self, *, fail: bool = False, model: str = "test-model") -> None:
+    def __init__(
+        self,
+        *,
+        fail: bool = False,
+        model: str = "test-model",
+        evidence_path: str | None = None,
+        response_text: str | None = None,
+    ) -> None:
         """Initialize deterministic fake behavior.
 
         Args:
@@ -55,11 +63,17 @@ class _CountingGenerator:
                 Whether calls should raise a provider-neutral failure.
             model:
                 Provider model identity to return.
+            evidence_path:
+                Optional evidence path replacing each requested path.
+            response_text:
+                Optional complete response replacing canonical Markdown.
         """
 
         self.calls: list[tuple[str, ...]] = []
         self.fail = fail
         self.model = model
+        self.evidence_path = evidence_path
+        self.response_text = response_text
 
     def generate(self, request: GenerationRequest) -> TextGenerationResponse:
         """Return path-scoped Markdown.
@@ -91,9 +105,10 @@ class _CountingGenerator:
             "Constraints",
             "Testing Evidence",
         )
-        text = "\n\n".join(
+        evidence_path = self.evidence_path or paths[0]
+        text = self.response_text or "\n\n".join(
             f"## {heading}\n\nSummary for {paths[0]}.\n\n"
-            f"### Evidence\n\n- {paths[0]}"
+            f"### Evidence\n\n- {evidence_path}"
             for heading in headings
         )
         return TextGenerationResponse(
@@ -127,12 +142,18 @@ def _file(path: str, text: str) -> SnapshotFile:
     )
 
 
-def _plan(second_fingerprint: str = "4" * 64) -> SummaryPlan:
+def _plan(
+    second_fingerprint: str = "4" * 64,
+    *,
+    source_fingerprint: str = "b" * 64,
+) -> SummaryPlan:
     """Build a two-unit plan in explicit configuration order.
 
     Args:
         second_fingerprint:
             Input identity for the second unit.
+        source_fingerprint:
+            Identity of the complete selected source snapshot.
 
     Returns:
         Deterministic summary plan.
@@ -141,7 +162,7 @@ def _plan(second_fingerprint: str = "4" * 64) -> SummaryPlan:
     return SummaryPlan(
         project_slug="sample",
         resolved_commit_sha="a" * 40,
-        source_fingerprint="b" * 64,
+        source_fingerprint=source_fingerprint,
         units=(
             SummaryUnitPlan(
                 unit_id="api",
@@ -157,12 +178,21 @@ def _plan(second_fingerprint: str = "4" * 64) -> SummaryPlan:
     )
 
 
-def _config(*, model: str = "test-model") -> GenerationConfig:
+def _config(
+    *,
+    model: str = "test-model",
+    temperature: float = 0,
+    seed: int | None = 7,
+) -> GenerationConfig:
     """Build valid balanced generation settings.
 
     Args:
         model:
             Structured-generation model name.
+        temperature:
+            Content-affecting sampling temperature.
+        seed:
+            Optional content-affecting sampling seed.
 
     Returns:
         Valid generation configuration.
@@ -173,7 +203,7 @@ def _config(*, model: str = "test-model") -> GenerationConfig:
         structured_generation=StructuredGenerationConfig(
             provider="ollama",
             model=model,
-            inference=InferenceConfig(temperature=0, seed=7),
+            inference=InferenceConfig(temperature=temperature, seed=seed),
         ),
         prompt_version="v1",
         output_schema_version="v1",
@@ -242,6 +272,93 @@ def test_selective_unit_and_global_model_invalidation(tmp_path: Path) -> None:
 
     assert selective.calls == [("tests/test_api.py",)]
     assert global_change.calls == [("src/api.py",), ("tests/test_api.py",)]
+
+
+def test_source_prompt_and_inference_changes_invalidate_all_components(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Every global content-affecting identity change causes fresh calls."""
+
+    cache = FilesystemArtifactCache(tmp_path / "cache")
+    generate_component_summaries(_plan(), _config(), _CountingGenerator(), cache)
+
+    source_change = _CountingGenerator()
+    generate_component_summaries(
+        _plan(source_fingerprint="c" * 64),
+        _config(),
+        source_change,
+        cache,
+    )
+    inference_change = _CountingGenerator()
+    generate_component_summaries(
+        _plan(source_fingerprint="c" * 64),
+        _config(temperature=0.2, seed=11),
+        inference_change,
+        cache,
+    )
+    monkeypatch.setattr(
+        "genai_template.workflow.portfolio.generation.components.COMPONENT_PROMPT",
+        PromptDefinition(
+            prompt_id="portfolio-component-v1",
+            artifact_kind="component",
+            instructions="Changed component summary instructions.",
+        ),
+    )
+    prompt_change = _CountingGenerator()
+    generate_component_summaries(
+        _plan(source_fingerprint="c" * 64),
+        _config(temperature=0.2, seed=11),
+        prompt_change,
+        cache,
+    )
+
+    expected_calls = [("src/api.py",), ("tests/test_api.py",)]
+    assert source_change.calls == expected_calls
+    assert inference_change.calls == expected_calls
+    assert prompt_change.calls == expected_calls
+
+
+def test_invalid_evidence_warnings_and_fallback_are_reused_from_cache(
+    tmp_path: Path,
+) -> None:
+    """Filtered evidence keeps usable content and its original audit warnings."""
+
+    cache = FilesystemArtifactCache(tmp_path / "cache")
+    first_generator = _CountingGenerator(evidence_path="outside/scope.py")
+    first = generate_component_summaries(_plan(), _config(), first_generator, cache)
+    second_generator = _CountingGenerator()
+    second = generate_component_summaries(_plan(), _config(), second_generator, cache)
+
+    first_component = first[0]
+    warning_codes = tuple(
+        warning.code for warning in first_component.artifact.generation_warnings
+    )
+    assert first_component.summary.responsibilities.content == (
+        "Summary for src/api.py.",
+    )
+    assert first_component.summary.responsibilities.evidence_paths == ("src/api.py",)
+    assert warning_codes.count("invalid_evidence_path") == 5
+    assert warning_codes.count("evidence_scope_fallback") == 5
+    assert second_generator.calls == []
+    assert second[0].artifact.generation_warnings == (
+        first_component.artifact.generation_warnings
+    )
+
+
+def test_empty_response_is_not_cached(tmp_path: Path) -> None:
+    """Whitespace-only provider output cannot create a reusable entry."""
+
+    cache_root = tmp_path / "cache"
+    with pytest.raises(ValueError, match="must be non-empty"):
+        generate_component_summaries(
+            _plan(),
+            _config(),
+            _CountingGenerator(response_text="  "),
+            FilesystemArtifactCache(cache_root),
+        )
+
+    assert not cache_root.exists() or list(cache_root.iterdir()) == []
 
 
 def test_generation_failure_is_not_cached(tmp_path: Path) -> None:

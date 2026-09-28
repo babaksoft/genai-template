@@ -217,6 +217,7 @@ def _generate_component_summary(
         token_usage=response.token_usage,
         estimated_cost=estimated_cost,
         provider_metadata=response.provider_metadata,
+        generation_warnings=response.warnings,
     )
     cache.put(artifact, output_type=ComponentSummary)
     logger.info("Component summary %s generated and cached", unit.unit_id)
