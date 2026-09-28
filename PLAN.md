@@ -108,7 +108,7 @@ Exit criteria:
 
 ## Stage 1 — Local Portfolio Corpus Workflow
 
-**Status: Complete**
+**Status: Reliability remediation in progress**
 
 **Goal:** Generate and atomically publish a focused flat Markdown corpus from the
 Stage 0 snapshot.
@@ -140,9 +140,14 @@ Exit criteria:
 - volatile values such as timestamps do not alter content fingerprints; and
 - the output records enough provenance to reproduce or audit every document.
 
+The structured-output implementation has not yet completed an accepted provider-backed
+run. Reliability remediation is tracked in
+[`work/ongoing/PLAN.md`](work/ongoing/PLAN.md) and must complete before Stage 2
+begins.
+
 ## Stage 2 — Flat Ingestion, Provenance, and Index Freshness
 
-**Status: Planned**
+**Status: Postponed pending Stage 1 reliability remediation**
 
 **Goal:** Index the generated corpus with project metadata while retaining the
 existing flat-directory ingestion model.
@@ -165,8 +170,8 @@ the selected collection instead of automatically creating and deleting historica
 collections. `manifest.json` acts as the corpus-build record until scheduled and
 historical corpus management justifies a dedicated database model.
 
-Detailed execution slices are recorded in
-[`work/ongoing/PLAN.md`](work/ongoing/PLAN.md).
+Detailed execution slices are preserved in
+[`work/pending/STAGE2.md`](work/pending/STAGE2.md).
 
 Exit criteria:
 
