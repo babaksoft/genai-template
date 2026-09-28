@@ -172,6 +172,7 @@ def _generate_component_summary(
                 estimated_cost=None,
                 original_token_usage=cached.token_usage,
                 original_estimated_cost=cached.estimated_cost,
+                generation_warning_count=len(cached.generation_warnings),
                 latency_seconds=_elapsed(clock, started_at),
             ),
         )
@@ -233,6 +234,7 @@ def _generate_component_summary(
             estimated_cost=estimated_cost,
             original_token_usage=response.token_usage,
             original_estimated_cost=estimated_cost,
+            generation_warning_count=len(response.warnings),
             latency_seconds=_elapsed(clock, started_at),
         ),
     )

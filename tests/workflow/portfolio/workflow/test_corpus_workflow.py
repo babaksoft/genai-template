@@ -31,6 +31,7 @@ from genai_template.workflow.portfolio.config.models import (
 from genai_template.workflow.portfolio.domain import (
     GenerationRequest,
     ProviderAuditMetadata,
+    TextGenerationError,
     TokenUsage,
 )
 from genai_template.workflow.portfolio.generation.specifications import (
@@ -79,6 +80,41 @@ class _CountingGenerator:
             model="test-model",
             token_usage=TokenUsage(input_tokens=10, output_tokens=5),
             provider_metadata=ProviderAuditMetadata(request_id="test-request"),
+        )
+
+
+class _FailingProjectGenerator:
+    """Provider boundary that fails after regenerating the changed component.
+
+    Attributes:
+        delegate:
+            Deterministic generator used for component requests.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the successful component delegate."""
+
+        self.delegate = _CountingGenerator()
+
+    def generate(self, request: GenerationRequest) -> TextGenerationResponse:
+        """Generate components and fail the first project synthesis request.
+
+        Args:
+            request:
+                Fully identified generation request.
+
+        Raises:
+            TextGenerationError:
+                When project synthesis reaches the provider boundary.
+        """
+
+        if request.provenance.artifact_kind == "component":
+            return self.delegate.generate(request)
+        raise TextGenerationError(
+            "provider request failed",
+            provider="ollama",
+            model="test-model",
+            reason="transport-error",
         )
 
 
@@ -253,6 +289,13 @@ def test_unchanged_second_run_uses_only_validated_cache(
     assert second.published_path is not None
     assert (second.release_path / "manifest.json").read_bytes() == first_manifest
     assert second.published_path.is_symlink()
+    assert {path.name for path in second.release_path.iterdir()} == {
+        "manifest.json",
+        "sample--overview.md",
+        "sample--architecture.md",
+        "sample--testing-operations.md",
+        "sample--component--application.md",
+    }
     assert tuple(step.name for step in second.steps) == (
         "configuration",
         "snapshot",
@@ -294,3 +337,61 @@ def test_unknown_project_fails_before_repository_or_publication(
         )
 
     assert not output_root.exists()
+
+
+def test_provider_failure_leaves_previous_publication_untouched(
+    tmp_path: Path,
+) -> None:
+    """A failed replacement run cannot switch or mutate the public release."""
+
+    repository = tmp_path / "repository"
+    _create_repository(repository)
+    output_root = tmp_path / "outputs"
+    config = _config(repository, output_root)
+    successful_workflow = PortfolioCorpusWorkflow(
+        repository_reader=LocalGitSnapshotReader(),
+        generator_factory=lambda generation: _CountingGenerator(),
+        config_loader=lambda path: config,
+    )
+    first = asyncio.run(
+        run_portfolio_corpus_workflow(
+            successful_workflow,
+            config_path=Path("unused.yml"),
+            project_slug="sample",
+        )
+    )
+    assert first.published_path is not None
+    assert first.release_path is not None
+    pointer_before = os.readlink(first.published_path)
+    manifest_before = (first.release_path / "manifest.json").read_bytes()
+
+    (repository / "src" / "app.py").write_text(
+        '"""Changed sample app."""\n', encoding="utf-8"
+    )
+    _git(repository, "add", "src/app.py")
+    _git(
+        repository,
+        "-c",
+        "user.name=Portfolio Tests",
+        "-c",
+        "user.email=portfolio@example.test",
+        "commit",
+        "--message=change-source",
+    )
+    failing_workflow = PortfolioCorpusWorkflow(
+        repository_reader=LocalGitSnapshotReader(),
+        generator_factory=lambda generation: _FailingProjectGenerator(),
+        config_loader=lambda path: config,
+    )
+
+    with pytest.raises(TextGenerationError, match="provider request failed"):
+        asyncio.run(
+            run_portfolio_corpus_workflow(
+                failing_workflow,
+                config_path=Path("unused.yml"),
+                project_slug="sample",
+            )
+        )
+
+    assert os.readlink(first.published_path) == pointer_before
+    assert (first.release_path / "manifest.json").read_bytes() == manifest_before

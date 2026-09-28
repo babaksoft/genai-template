@@ -32,6 +32,8 @@ class ArtifactRunReport(_ImmutableDomainModel):
             Usage recorded by the provider call that created the artifact.
         original_estimated_cost:
             Cost recorded when the artifact was originally created.
+        generation_warning_count:
+            Number of deterministic response recoveries retained with the artifact.
         latency_seconds:
             Current-run provider or cache lookup latency.
     """
@@ -56,6 +58,11 @@ class ArtifactRunReport(_ImmutableDomainModel):
         default=None,
         ge=Decimal(0),
         description="Original estimated provider cost retained with the artifact.",
+    )
+    generation_warning_count: int = Field(
+        default=0,
+        ge=0,
+        description="Deterministic response recoveries retained with the artifact.",
     )
     latency_seconds: float = Field(
         ge=0.0,

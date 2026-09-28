@@ -33,6 +33,9 @@ def render_text_report(report: GenerationRunReport) -> str:
     output_tokens = _optional_number(report.billed_token_usage.output_tokens)
     estimated_cost = _optional_number(report.estimated_cost)
     cache_hits = sum(artifact.cache_hit for artifact in report.artifacts)
+    generation_warnings = sum(
+        artifact.generation_warning_count for artifact in report.artifacts
+    )
     generation_identity = report.generation_configuration_fingerprint
     return "\n".join(
         (
@@ -44,6 +47,7 @@ def render_text_report(report: GenerationRunReport) -> str:
             f"artifacts: {len(report.artifacts)}",
             f"cache_hits: {cache_hits}",
             f"provider_calls: {report.provider_call_count}",
+            f"generation_warnings: {generation_warnings}",
             f"billed_input_tokens: {input_tokens}",
             f"billed_output_tokens: {output_tokens}",
             f"estimated_cost: {estimated_cost}",

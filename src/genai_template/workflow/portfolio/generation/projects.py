@@ -395,6 +395,7 @@ def _generate_project_summary(
                 estimated_cost=None,
                 original_token_usage=cached.token_usage,
                 original_estimated_cost=cached.estimated_cost,
+                generation_warning_count=len(cached.generation_warnings),
                 latency_seconds=_elapsed(clock, started_at),
             ),
         )
@@ -451,6 +452,7 @@ def _generate_project_summary(
         token_usage=response.token_usage,
         estimated_cost=estimated_cost,
         provider_metadata=response.provider_metadata,
+        generation_warnings=response.warnings,
     )
     cache.put(artifact, output_type=spec.output_type)
     logger.info("Project summary %s generated and cached", spec.artifact_kind)
@@ -466,6 +468,7 @@ def _generate_project_summary(
             estimated_cost=estimated_cost,
             original_token_usage=response.token_usage,
             original_estimated_cost=estimated_cost,
+            generation_warning_count=len(response.warnings),
             latency_seconds=_elapsed(clock, started_at),
         ),
     )
@@ -576,6 +579,7 @@ def _run_report(
     estimated_cost: Decimal | None,
     original_token_usage: TokenUsage,
     original_estimated_cost: Decimal | None,
+    generation_warning_count: int,
     latency_seconds: float,
 ) -> ArtifactRunReport:
     """Build one current-run project artifact report.
@@ -595,6 +599,8 @@ def _run_report(
             Usage recorded by the original provider call.
         original_estimated_cost:
             Cost recorded by the original provider call.
+        generation_warning_count:
+            Number of deterministic recoveries retained with the artifact.
         latency_seconds:
             Current-run operation duration.
 
@@ -610,5 +616,6 @@ def _run_report(
         estimated_cost=estimated_cost,
         original_token_usage=original_token_usage,
         original_estimated_cost=original_estimated_cost,
+        generation_warning_count=generation_warning_count,
         latency_seconds=latency_seconds,
     )

@@ -9,7 +9,11 @@ from io import StringIO
 from pathlib import Path
 from typing import Any
 
-from genai_template.workflow.portfolio.domain import GenerationRunReport, TokenUsage
+from genai_template.workflow.portfolio.domain import (
+    ArtifactRunReport,
+    GenerationRunReport,
+    TokenUsage,
+)
 
 generate_cli = importlib.import_module("genai_template.workflow.portfolio.cli.generate")
 
@@ -27,7 +31,16 @@ def _report() -> GenerationRunReport:
         source_fingerprint="b" * 64,
         generation_configuration_fingerprint="c" * 64,
         corpus_fingerprint="d" * 64,
-        artifacts=(),
+        artifacts=(
+            ArtifactRunReport(
+                artifact_kind="overview",
+                generation_fingerprint="e" * 64,
+                cache_hit=False,
+                token_usage=TokenUsage(input_tokens=0, output_tokens=0),
+                generation_warning_count=2,
+                latency_seconds=0.5,
+            ),
+        ),
         provider_call_count=0,
         billed_token_usage=TokenUsage(input_tokens=0, output_tokens=0),
         estimated_cost=Decimal(0),
@@ -49,8 +62,17 @@ def test_json_report_contains_stable_metrics_without_generation_content() -> Non
         "input_tokens": 0,
         "output_tokens": 0,
     }
+    assert value["artifacts"][0]["generation_warning_count"] == 2
     assert "prompt" not in rendered
     assert "structured_output" not in rendered
+
+
+def test_text_report_summarizes_generation_warnings() -> None:
+    """Human-readable output includes the total recoverable warning count."""
+
+    rendered = generate_cli.render_text_report(_report())
+
+    assert "generation_warnings: 2" in rendered.splitlines()
 
 
 def test_cli_returns_one_and_uses_stderr_for_workflow_failure(

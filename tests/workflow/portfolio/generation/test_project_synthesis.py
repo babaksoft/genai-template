@@ -86,6 +86,39 @@ class _ProjectGenerator:
         )
 
 
+class _RecoveringProjectGenerator:
+    """Return malformed but recoverable Markdown for every project artifact."""
+
+    def generate(self, request: GenerationRequest) -> TextGenerationResponse:
+        """Return text exercising every deterministic parser warning category.
+
+        Args:
+            request:
+                Project synthesis request.
+
+        Returns:
+            Malformed non-empty Markdown with one valid evidence citation.
+        """
+
+        sections = SUMMARY_SPECIFICATIONS[request.provenance.artifact_kind].sections
+        first = sections[0].heading
+        second = sections[1].heading
+        return TextGenerationResponse(
+            text=(
+                "Provider preamble.\n\n"
+                f"## {second}\n\nSecond section.\n\n"
+                "### Evidence\n\n- outside/scope.py\n\n"
+                f"## {first}\n\nPrimary section.\n\n"
+                f"### Evidence\n\n- {request.input_paths[0]}\n\n"
+                f"## {first}\n\nDuplicate primary section.\n\n"
+                "## Unexpected\n\nUnexpected epilogue."
+            ),
+            provider="ollama",
+            model="test-model",
+            token_usage=TokenUsage(input_tokens=50, output_tokens=10),
+        )
+
+
 def _file(path: str, text: str) -> SnapshotFile:
     """Build one canonical snapshot file.
 
@@ -280,6 +313,52 @@ def test_changed_component_output_invalidates_every_project_dependency(
         "architecture",
         "testing_operations",
     ]
+
+
+def test_recoverable_project_responses_are_cached_and_reported(
+    tmp_path: Path,
+) -> None:
+    """Every project kind retains all parser recoveries across cache reuse."""
+
+    cache = FilesystemArtifactCache(tmp_path / "cache")
+    first = generate_project_summaries(
+        _snapshot(),
+        (_component(),),
+        _config(),
+        _RecoveringProjectGenerator(),
+        cache,
+    )
+    second_generator = _ProjectGenerator()
+    second = generate_project_summaries(
+        _snapshot(),
+        (_component(),),
+        _config(),
+        second_generator,
+        cache,
+    )
+
+    expected_codes = {
+        "missing_section",
+        "duplicate_section",
+        "reordered_section",
+        "unexpected_section",
+        "unassigned_content",
+        "invalid_evidence_path",
+        "evidence_scope_fallback",
+    }
+    assert {artifact.artifact_kind for artifact in first} == {
+        "overview",
+        "architecture",
+        "testing_operations",
+    }
+    for generated, cached in zip(first, second, strict=True):
+        warnings = generated.artifact.generation_warnings
+        assert {warning.code for warning in warnings} == expected_codes
+        assert generated.run_report.generation_warning_count == len(warnings)
+        assert cached.artifact.generation_warnings == warnings
+        assert cached.run_report.generation_warning_count == len(warnings)
+        assert cached.run_report.cache_hit is True
+    assert second_generator.calls == []
 
 
 def test_empty_context_pattern_fails_before_any_provider_call(tmp_path: Path) -> None:
