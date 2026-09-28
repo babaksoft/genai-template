@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from decimal import Decimal
@@ -65,6 +66,8 @@ from genai_template.workflow.portfolio.ports.structured_generator import (
 from genai_template.workflow.portfolio.snapshot.selection import (
     matches_repository_pattern,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -365,6 +368,13 @@ def _generate_project_summary(
         structured_generation=generation.structured_generation,
     )
     repository_paths = tuple(file.path for file in spec.repository_files)
+    logger.info(
+        "Processing project summary %s: files=%d bytes=%d fingerprint=%s",
+        spec.artifact_kind,
+        len(spec.repository_files),
+        sum(file.byte_size for file in spec.repository_files),
+        fingerprint,
+    )
     cached = cache.get(
         fingerprint,
         expected_kind=spec.artifact_kind,
@@ -374,6 +384,7 @@ def _generate_project_summary(
     if cached is not None:
         summary = spec.output_type.model_validate(cached.structured_output)
         validate_project_evidence(summary, repository_paths, component_evidence)
+        logger.info("Project summary %s accepted from cache", spec.artifact_kind)
         return ProjectSummaryArtifact(
             artifact_kind=spec.artifact_kind,
             summary=summary,
@@ -444,6 +455,7 @@ def _generate_project_summary(
         provider_metadata=response.provider_metadata,
     )
     cache.put(artifact, output_type=spec.output_type)
+    logger.info("Project summary %s generated and cached", spec.artifact_kind)
     return ProjectSummaryArtifact(
         artifact_kind=spec.artifact_kind,
         summary=response.value,

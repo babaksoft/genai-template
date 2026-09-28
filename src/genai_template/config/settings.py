@@ -39,7 +39,7 @@ CORPORA_DIR = REPO_ROOT / "data"
 
 # LLM settings
 LLM_MODEL = "gpt-oss:20b-cloud"
-OLLAMA_BASE_URL = "http://localhost:11434"
+OLLAMA_BASE_URL = "http://172.31.80.1:11434"
 
 # HTTP client settings
 REQUEST_TIMEOUT = 180

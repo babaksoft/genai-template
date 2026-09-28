@@ -85,10 +85,9 @@ def test_loads_documented_configuration() -> None:
     assert project.repository.path == settings.REPO_ROOT
     assert project.repository.ref == "HEAD"
     assert project.selection.max_file_bytes == 262144
-    assert {unit.id for unit in project.summary_units} >= {
+    assert {unit.id for unit in project.summary_units} == {
         "api",
         "components-splitters",
-        "portfolio-workflow",
         "rag-services",
     }
     generation = config.require_generation()

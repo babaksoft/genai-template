@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable, Sequence
 from decimal import Decimal
 from pathlib import Path
@@ -68,6 +69,8 @@ from genai_template.workflow.portfolio.workflow.events import (
     SnapshotSelectedEvent,
     SummaryPlannedEvent,
 )
+
+logger = logging.getLogger(__name__)
 
 ConfigLoader = Callable[[Path], PortfolioConfig]
 GeneratorFactory = Callable[[GenerationConfig], StructuredSummaryGenerator]
@@ -198,6 +201,7 @@ class PortfolioCorpusWorkflow(Workflow):
                 If the project is absent or generation settings are missing.
         """
 
+        logger.info("Portfolio workflow step started: configuration")
         run_started_at = self.clock()
         step_started_at = self.clock()
         with application_span(
@@ -235,6 +239,7 @@ class PortfolioCorpusWorkflow(Workflow):
             Canonical immutable repository snapshot.
         """
 
+        logger.info("Portfolio workflow step started: snapshot")
         started_at = self.clock()
         with application_span(
             "portfolio.snapshot", "RETRIEVER", {"project.id": event.project.slug}
@@ -264,6 +269,7 @@ class PortfolioCorpusWorkflow(Workflow):
             Complete logical summary plan.
         """
 
+        logger.info("Portfolio workflow step started: planning")
         started_at = self.clock()
         with application_span(
             "portfolio.planning",
@@ -295,6 +301,7 @@ class PortfolioCorpusWorkflow(Workflow):
             Validated component artifacts.
         """
 
+        logger.info("Portfolio workflow step started: components")
         started_at = self.clock()
         generator = _ObservedGenerator(self.generator_factory(event.generation))
         cache = self.cache_factory(event.generation.locations.cache)
@@ -332,6 +339,7 @@ class PortfolioCorpusWorkflow(Workflow):
             Component and project artifacts.
         """
 
+        logger.info("Portfolio workflow step started: project-synthesis")
         started_at = self.clock()
         generator = _ObservedGenerator(self.generator_factory(event.generation))
         cache = self.cache_factory(event.generation.locations.cache)
@@ -374,6 +382,7 @@ class PortfolioCorpusWorkflow(Workflow):
             Rendered documents and their source artifacts.
         """
 
+        logger.info("Portfolio workflow step started: rendering")
         started_at = self.clock()
         with application_span(
             "portfolio.rendering",
@@ -413,6 +422,7 @@ class PortfolioCorpusWorkflow(Workflow):
             Manifest-backed in-memory corpus ready for atomic publication.
         """
 
+        logger.info("Portfolio workflow step started: manifest-validation")
         started_at = self.clock()
         with application_span(
             "portfolio.manifest", "CHAIN", {"document.count": len(event.documents)}
@@ -449,6 +459,7 @@ class PortfolioCorpusWorkflow(Workflow):
             Terminal event carrying the typed successful run report.
         """
 
+        logger.info("Portfolio workflow step started: publication")
         started_at = self.clock()
         with application_span(
             "portfolio.publication",
@@ -537,10 +548,16 @@ def _step_report(
         Immutable step report.
     """
 
-    return StepRunReport(
+    report = StepRunReport(
         name=name,
         latency_seconds=max(0.0, clock() - started_at),
     )
+    logger.info(
+        "Portfolio workflow step completed: %s (%.3fs)",
+        name,
+        report.latency_seconds,
+    )
+    return report
 
 
 def _append_step(

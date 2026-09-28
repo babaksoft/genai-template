@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import subprocess
 from decimal import Decimal
@@ -209,9 +210,11 @@ def _config(repository: Path, output_root: Path) -> PortfolioConfig:
 
 def test_unchanged_second_run_uses_only_validated_cache(
     tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """A real snapshot/cache/publisher run is byte-identical without new calls."""
 
+    caplog.set_level(logging.INFO)
     repository = tmp_path / "repository"
     _create_repository(repository)
     config = _config(repository, tmp_path / "outputs")
@@ -269,6 +272,10 @@ def test_unchanged_second_run_uses_only_validated_cache(
         "manifest-validation",
         "publication",
     )
+    assert "Portfolio workflow step started: configuration" in caplog.text
+    assert "Portfolio workflow step completed: publication" in caplog.text
+    assert "Processing component summary application" in caplog.text
+    assert "Project summary overview generated and cached" in caplog.text
 
 
 def test_unknown_project_fails_before_repository_or_publication(

@@ -9,6 +9,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TextIO
 
+from genai_template.config.logging import configure_logging
 from genai_template.workflow.portfolio.adapters.generators import (
     OllamaStructuredSummaryGenerator,
     OpenAIStructuredSummaryGenerator,
@@ -140,4 +141,5 @@ def main(
 
 
 if __name__ == "__main__":
+    configure_logging()
     raise SystemExit(main())

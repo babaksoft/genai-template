@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from time import perf_counter
 
@@ -49,6 +50,8 @@ from genai_template.workflow.portfolio.ports.artifact_cache import ArtifactCache
 from genai_template.workflow.portfolio.ports.structured_generator import (
     StructuredSummaryGenerator,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def generate_component_summaries(
@@ -148,9 +151,17 @@ def _generate_component_summary(
         output_type=ComponentSummary,
     )
     paths = tuple(file.path for file in unit.files)
+    logger.info(
+        "Processing component summary %s: files=%d bytes=%d fingerprint=%s",
+        unit.unit_id,
+        len(unit.files),
+        sum(file.byte_size for file in unit.files),
+        fingerprint,
+    )
     if cached is not None:
         summary = ComponentSummary.model_validate(cached.structured_output)
         validate_component_evidence(summary, paths)
+        logger.info("Component summary %s accepted from cache", unit.unit_id)
         return ComponentSummaryArtifact(
             unit_id=unit.unit_id,
             summary=summary,
@@ -210,6 +221,7 @@ def _generate_component_summary(
         provider_metadata=response.provider_metadata,
     )
     cache.put(artifact, output_type=ComponentSummary)
+    logger.info("Component summary %s generated and cached", unit.unit_id)
     return ComponentSummaryArtifact(
         unit_id=unit.unit_id,
         summary=response.value,

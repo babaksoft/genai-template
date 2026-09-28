@@ -17,16 +17,18 @@ generation:
       - README.md
       - pyproject.toml
     architecture:
-      - src/genai_template/**/*.py
-      - docs/decisions/*.md
+      - src/genai_template/api/**/*.py
+      - src/genai_template/components/splitters/**/*.py
+      - src/genai_template/services/**/*.py
     testing_operations:
       - README.md
       - pyproject.toml
-      - scripts/*.sh
-      - tests/**/*.py
+      - tests/api/**/*.py
+      - tests/components/splitters/**/*.py
+      - tests/services/**/*.py
   input_limits:
-    max_files: 200
-    max_bytes: 1048576
+    max_files: 100
+    max_bytes: 262144
   locations:
     cache: storage/portfolio-artifacts
     publication: data/portfolio
@@ -59,10 +61,6 @@ projects:
         paths:
           - src/genai_template/components/splitters/**/*.py
           - tests/components/splitters/**/*.py
-      - id: portfolio-workflow
-        paths:
-          - src/genai_template/workflow/portfolio/**/*.py
-          - tests/workflow/portfolio/**/*.py
       - id: rag-services
         paths:
           - src/genai_template/services/**/*.py
