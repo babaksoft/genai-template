@@ -103,7 +103,7 @@ class OllamaTextGenerator(TextGeneratorBase):
                 "generation provider returned an invalid response",
                 "provider-failure",
             )
-        self._validate_response_model(response.model)
+        self._validate_ollama_response_model(response.model)
         if response.done_reason in {"content_filter", "refusal"}:
             self._raise("generation provider refused the request", "refusal")
         if response.done is not True or response.done_reason in {
@@ -128,3 +128,28 @@ class OllamaTextGenerator(TextGeneratorBase):
                 finish_reason=response.done_reason,
             ),
         )
+
+    def _validate_ollama_response_model(self, response_model: object) -> None:
+        """Accept only the configured model or Ollama's exact Cloud alias form.
+
+        Ollama's authenticated local service accepts a model ending in ``-cloud``
+        but attributes the completed response to the same model name without that
+        transport-selection suffix. Other model-name differences still fail closed.
+
+        Args:
+            response_model:
+                Model identity returned by the Ollama service.
+
+        Raises:
+            TextGenerationError:
+                If the response cannot be attributed to the configured model.
+        """
+
+        cloud_model = (
+            self._model.removesuffix("-cloud")
+            if self._model.endswith("-cloud")
+            else None
+        )
+        if response_model == cloud_model:
+            return
+        self._validate_response_model(response_model)

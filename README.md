@@ -308,6 +308,34 @@ compatibility, so an index created with the previous configuration must not be r
   it up. The provider endpoints must be reachable, and the end-to-end workflow requires
   Ollama and its configured model.
 
+The Portfolio real-provider completion gate is deliberately opt-in. It exercises one
+real component and project prompt, then runs an isolated one-project workflow from an
+empty cache and verifies that the unchanged rerun makes zero provider calls. Set the
+matching provider credential and model, enable the full gate, and optionally select a
+directory for the content-safe JSON reports:
+
+```bash
+PORTFOLIO_RUN_COMPLETION_GATE=true \
+PORTFOLIO_OPENAI_MODEL=gpt-4o-mini \
+PORTFOLIO_COMPLETION_EVIDENCE_DIR=work/ongoing/provider-evidence \
+uv run pytest \
+  tests/workflow/portfolio/generation/test_real_provider_prompts.py \
+  -m integration -k openai -v
+
+PORTFOLIO_RUN_COMPLETION_GATE=true \
+PORTFOLIO_OLLAMA_MODEL=gpt-oss:20b-cloud \
+PORTFOLIO_COMPLETION_EVIDENCE_DIR=work/ongoing/provider-evidence \
+uv run pytest \
+  tests/workflow/portfolio/generation/test_real_provider_prompts.py \
+  -m integration -k ollama_cloud -v
+```
+
+The Ollama Cloud gate uses the normal ``OLLAMA_BASE_URL`` resolution, so it supports
+either an authenticated local Ollama service or a directly configured Cloud endpoint.
+The evidence files contain run identities, usage, cache status, warning counts, and
+publication paths; they never contain credentials, source text, prompts, or raw model
+responses.
+
 ## Code Quality Checks
 ```bash
 black --check .

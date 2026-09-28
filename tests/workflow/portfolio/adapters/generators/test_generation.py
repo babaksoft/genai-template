@@ -305,6 +305,24 @@ def test_ollama_returns_plain_text_usage_and_makes_one_request() -> None:
     assert "format" not in client.calls[0]
 
 
+def test_ollama_accepts_exact_cloud_response_model_alias() -> None:
+    """Ollama may omit the Cloud routing suffix from response attribution."""
+
+    client = _OllamaClient(_ollama_response(model="test-model"))
+    generator = OllamaTextGenerator(
+        "test-model-cloud",
+        temperature=0,
+        seed=7,
+        timeout_seconds=5,
+        client=client,  # type: ignore[arg-type]
+    )
+
+    response = generator.generate(_request("ollama", "test-model-cloud"))
+
+    assert response.model == "test-model-cloud"
+    assert len(client.calls) == 1
+
+
 @pytest.mark.parametrize(
     "generator",
     [

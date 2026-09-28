@@ -285,7 +285,7 @@ entries.
 
 ## Slice 6 — Real-Provider Completion Gate
 
-**Status:** Proposed
+**Status:** Complete
 
 ### Outcome
 

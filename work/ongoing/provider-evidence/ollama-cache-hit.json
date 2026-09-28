@@ -1,0 +1,120 @@
+{
+    "artifacts": [
+        {
+            "artifact_kind": "component",
+            "cache_hit": true,
+            "estimated_cost": null,
+            "generation_fingerprint": "b19d0ae478e14177532a14bbc597fcc7ecd2749d082cfdc887d542202e40e758",
+            "generation_warning_counts": {},
+            "latency_seconds": 0.0005040859978180379,
+            "original_estimated_cost": "0",
+            "original_token_usage": {
+                "input_tokens": 484,
+                "output_tokens": 362
+            },
+            "token_usage": {
+                "input_tokens": null,
+                "output_tokens": null
+            }
+        },
+        {
+            "artifact_kind": "overview",
+            "cache_hit": true,
+            "estimated_cost": null,
+            "generation_fingerprint": "9be08f8738c201609efee566c2dfe4f16ff4d0ffb42ce6973f39759616ec963e",
+            "generation_warning_counts": {},
+            "latency_seconds": 0.000558984000235796,
+            "original_estimated_cost": "0",
+            "original_token_usage": {
+                "input_tokens": 620,
+                "output_tokens": 764
+            },
+            "token_usage": {
+                "input_tokens": null,
+                "output_tokens": null
+            }
+        },
+        {
+            "artifact_kind": "architecture",
+            "cache_hit": true,
+            "estimated_cost": null,
+            "generation_fingerprint": "b443a3fe4bfa52e4ff8d8e0d056f03117311e36026878347854f613f08f6b359",
+            "generation_warning_counts": {},
+            "latency_seconds": 0.000250664001214318,
+            "original_estimated_cost": "0",
+            "original_token_usage": {
+                "input_tokens": 620,
+                "output_tokens": 374
+            },
+            "token_usage": {
+                "input_tokens": null,
+                "output_tokens": null
+            }
+        },
+        {
+            "artifact_kind": "testing_operations",
+            "cache_hit": true,
+            "estimated_cost": null,
+            "generation_fingerprint": "3a6badf2b6630adeade29dcd02057030189679298fc71837f73b132542999222",
+            "generation_warning_counts": {},
+            "latency_seconds": 0.0002235550018667709,
+            "original_estimated_cost": "0",
+            "original_token_usage": {
+                "input_tokens": 703,
+                "output_tokens": 561
+            },
+            "token_usage": {
+                "input_tokens": null,
+                "output_tokens": null
+            }
+        }
+    ],
+    "billed_token_usage": {
+        "input_tokens": 0,
+        "output_tokens": 0
+    },
+    "corpus_fingerprint": "46b285561628b9ace370efecd6e1fce7ef9ef5b94360844d7e0659dee6660345",
+    "elapsed_seconds": 0.05217396900116,
+    "estimated_cost": "0",
+    "generation_configuration_fingerprint": "c955c4e661cf2ace1db0fe38912476c43c6bfa9a8a11e4b994d68360300dbd19",
+    "project_slug": "calculator",
+    "provider_call_count": 0,
+    "published_path": "/tmp/pytest-of-babaksoft/pytest-23/test_ollama_cloud_completes_an0/output/data/portfolio",
+    "release_path": "/tmp/pytest-of-babaksoft/pytest-23/test_ollama_cloud_completes_an0/output/data/.portfolio-releases/46b285561628b9ace370efecd6e1fce7ef9ef5b94360844d7e0659dee6660345",
+    "resolved_commit_sha": "f2165a9fad67dfda422f587ea3175172711542b4",
+    "source_fingerprint": "aa0af42d0d6fd4bf6b1f0e2747f2e00aa01b8b1e84cee3ced27e58a14f359206",
+    "steps": [
+        {
+            "latency_seconds": 4.879300104221329e-05,
+            "name": "configuration"
+        },
+        {
+            "latency_seconds": 0.011773791997256922,
+            "name": "snapshot"
+        },
+        {
+            "latency_seconds": 9.413299994776025e-05,
+            "name": "planning"
+        },
+        {
+            "latency_seconds": 0.01380000299832318,
+            "name": "components"
+        },
+        {
+            "latency_seconds": 0.01505277799878968,
+            "name": "project-synthesis"
+        },
+        {
+            "latency_seconds": 0.0003335449982841965,
+            "name": "rendering"
+        },
+        {
+            "latency_seconds": 0.00031184699764708057,
+            "name": "manifest-validation"
+        },
+        {
+            "latency_seconds": 0.0017094970025937073,
+            "name": "publication"
+        }
+    ]
+}
