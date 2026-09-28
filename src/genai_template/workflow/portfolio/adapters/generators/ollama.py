@@ -1,26 +1,27 @@
-"""Ollama structured summary adapter backed by LlamaIndex."""
+"""Ollama plain-text generator backed by the official Python SDK."""
 
 from __future__ import annotations
 
-from typing import Any
-
-from llama_index.llms.ollama import Ollama
+import httpx
+from ollama import ChatResponse, Client, RequestError, ResponseError
 
 from genai_template.config.ollama import resolve_ollama_base_url
 from genai_template.workflow.portfolio.adapters.generators.base import (
-    LlamaIndexStructuredSummaryGenerator,
+    TextGeneratorBase,
     optional_non_negative_int,
-    optional_string,
-    read_value,
 )
 from genai_template.workflow.portfolio.domain.generation import (
+    GenerationRequest,
     ProviderAuditMetadata,
     TokenUsage,
 )
+from genai_template.workflow.portfolio.ports.text_generator import (
+    TextGenerationResponse,
+)
 
 
-class OllamaStructuredSummaryGenerator(LlamaIndexStructuredSummaryGenerator[Any]):
-    """Generate validated summaries with a configured Ollama model.
+class OllamaTextGenerator(TextGeneratorBase):
+    """Generate plain Markdown with a configured Ollama model.
 
     Attributes:
         provider:
@@ -37,8 +38,11 @@ class OllamaStructuredSummaryGenerator(LlamaIndexStructuredSummaryGenerator[Any]
         seed: int | None,
         timeout_seconds: float,
         base_url: str | None = None,
+        client: Client | None = None,
     ) -> None:
-        """Initialize the Ollama structured generation adapter.
+        """Initialize an official Ollama SDK client for local or Cloud use.
+
+        The SDK reads ``OLLAMA_API_KEY`` for Cloud authorization.
 
         Args:
             model:
@@ -50,44 +54,77 @@ class OllamaStructuredSummaryGenerator(LlamaIndexStructuredSummaryGenerator[Any]
             timeout_seconds:
                 Provider request timeout.
             base_url:
-                Optional Ollama endpoint override.
+                Optional local or Cloud Ollama endpoint override.
+            client:
+                Optional injected SDK client for deterministic tests.
         """
 
-        options: dict[str, object] = {}
+        super().__init__(model=model)
+        self._options: dict[str, object] = {"temperature": temperature}
         if seed is not None:
-            options["seed"] = seed
-        llm = Ollama(
-            model=model,
-            base_url=base_url or resolve_ollama_base_url(),
-            temperature=temperature,
-            request_timeout=timeout_seconds,
-            additional_kwargs=options,
-            json_mode=True,
+            self._options["seed"] = seed
+        self._client = client or Client(
+            host=base_url or resolve_ollama_base_url(),
+            timeout=timeout_seconds,
         )
-        super().__init__(llm=llm, model=model)
 
-    def _extract_accounting(
-        self, completion: Any
-    ) -> tuple[TokenUsage, ProviderAuditMetadata]:
-        """Extract Ollama token usage and safe response metadata.
+    def generate(self, request: GenerationRequest) -> TextGenerationResponse:
+        """Make exactly one non-streaming chat request and validate plain text.
 
         Args:
-            completion:
-                LlamaIndex Ollama completion response.
+            request:
+                Fully identified prompt request.
 
         Returns:
-            Token usage and safe audit metadata.
+            Complete response text and provider accounting.
+
+        Raises:
+            TextGenerationError:
+                If identity, transport, completion, or text is invalid.
         """
 
-        raw = completion.raw
-        return (
-            TokenUsage(
-                input_tokens=optional_non_negative_int(
-                    read_value(raw, "prompt_eval_count")
-                ),
-                output_tokens=optional_non_negative_int(read_value(raw, "eval_count")),
+        self._validate_request_identity(request)
+        try:
+            response = self._client.chat(
+                model=self._model,
+                messages=({"role": "user", "content": request.prompt},),
+                stream=False,
+                options=self._options,
+            )
+        except (TimeoutError, httpx.TimeoutException):
+            self._raise("generation provider request timed out", "provider-timeout")
+        except (RequestError, ResponseError, ConnectionError):
+            self._raise("generation provider call failed", "provider-failure")
+        except Exception:  # noqa: BLE001 - normalize injected/provider transports.
+            self._raise("generation provider call failed", "provider-failure")
+
+        if not isinstance(response, ChatResponse):
+            self._raise(
+                "generation provider returned an invalid response",
+                "provider-failure",
+            )
+        self._validate_response_model(response.model)
+        if response.done_reason in {"content_filter", "refusal"}:
+            self._raise("generation provider refused the request", "refusal")
+        if response.done is not True or response.done_reason in {
+            "length",
+            "max_tokens",
+        }:
+            self._raise("generation provider returned incomplete output", "incomplete")
+
+        text = response.message.content or ""
+        if not text.strip():
+            self._raise("generation provider returned empty text", "empty-output")
+
+        return TextGenerationResponse(
+            text=text,
+            provider=self.provider,
+            model=self._model,
+            token_usage=TokenUsage(
+                input_tokens=optional_non_negative_int(response.prompt_eval_count),
+                output_tokens=optional_non_negative_int(response.eval_count),
             ),
-            ProviderAuditMetadata(
-                finish_reason=optional_string(read_value(raw, "done_reason"))
+            provider_metadata=ProviderAuditMetadata(
+                finish_reason=response.done_reason,
             ),
         )

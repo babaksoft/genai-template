@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 from decimal import Decimal
 from pathlib import Path
-from typing import cast
 
 import pytest
 
@@ -38,11 +37,13 @@ from genai_template.workflow.portfolio.domain import (
     ProviderAuditMetadata,
     RepositorySnapshot,
     SnapshotFile,
-    StructuredSummary,
     TokenUsage,
 )
 from genai_template.workflow.portfolio.generation import generate_project_summaries
-from genai_template.workflow.portfolio.ports import StructuredGenerationResponse
+from genai_template.workflow.portfolio.generation.specifications import (
+    SUMMARY_SPECIFICATIONS,
+)
+from genai_template.workflow.portfolio.ports import TextGenerationResponse
 
 
 class _ProjectGenerator:
@@ -58,36 +59,26 @@ class _ProjectGenerator:
 
         self.calls: list[str] = []
 
-    def generate[SummaryT: StructuredSummary](
-        self,
-        request: GenerationRequest,
-        output_type: type[SummaryT],
-    ) -> StructuredGenerationResponse[SummaryT]:
+    def generate(self, request: GenerationRequest) -> TextGenerationResponse:
         """Return every requested section with valid repository evidence.
 
         Args:
             request:
                 Project synthesis request.
-            output_type:
-                Concrete project summary schema.
-
         Returns:
-            Deterministic schema-valid provider response.
+            Deterministic plain-text provider response.
         """
 
         self.calls.append(request.provenance.artifact_kind)
-        section = EvidenceSection(
-            content=(f"Generated {request.provenance.artifact_kind}.",),
-            evidence_paths=(request.input_paths[0],),
+        specification = SUMMARY_SPECIFICATIONS[request.provenance.artifact_kind]
+        text = "\n\n".join(
+            f"## {section.heading}\n\n"
+            f"Generated {request.provenance.artifact_kind}.\n\n"
+            f"### Evidence\n\n- {request.input_paths[0]}"
+            for section in specification.sections
         )
-        value = cast(
-            SummaryT,
-            output_type.model_validate(
-                {field_name: section for field_name in output_type.model_fields}
-            ),
-        )
-        return StructuredGenerationResponse[SummaryT](
-            value=value,
+        return TextGenerationResponse(
+            text=text,
             provider="ollama",
             model="test-model",
             token_usage=TokenUsage(input_tokens=50, output_tokens=10),

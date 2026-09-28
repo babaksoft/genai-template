@@ -1,13 +1,13 @@
-"""LlamaIndex-backed structured generation adapters."""
+"""Official-SDK plain-text generation adapters."""
 
 from genai_template.workflow.portfolio.adapters.generators.ollama import (
-    OllamaStructuredSummaryGenerator,
+    OllamaTextGenerator,
 )
 from genai_template.workflow.portfolio.adapters.generators.openai import (
-    OpenAIStructuredSummaryGenerator,
+    OpenAITextGenerator,
 )
 
 __all__ = [
-    "OllamaStructuredSummaryGenerator",
-    "OpenAIStructuredSummaryGenerator",
+    "OllamaTextGenerator",
+    "OpenAITextGenerator",
 ]

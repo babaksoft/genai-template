@@ -5,7 +5,7 @@ from genai_template.workflow.portfolio.domain.errors import (
     ArtifactCacheError,
     ArtifactValidationError,
     RepositoryReadError,
-    StructuredGenerationError,
+    TextGenerationError,
 )
 from genai_template.workflow.portfolio.domain.generation import (
     ArtifactKind,
@@ -83,11 +83,11 @@ __all__ = [
     "RepositorySnapshot",
     "SnapshotFile",
     "StepRunReport",
-    "StructuredGenerationError",
     "StructuredSummary",
     "SummaryPlan",
     "SummaryUnitPlan",
     "TestingOperationsSummary",
+    "TextGenerationError",
     "TokenUsage",
     "summary_evidence_paths",
 ]

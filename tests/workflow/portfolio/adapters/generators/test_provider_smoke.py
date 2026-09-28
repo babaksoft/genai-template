@@ -1,4 +1,4 @@
-"""Opt-in integration smoke tests for structured generation providers."""
+"""Opt-in integration smoke tests for plain-text generation providers."""
 
 from __future__ import annotations
 
@@ -8,12 +8,11 @@ from typing import Literal
 import pytest
 
 from genai_template.workflow.portfolio.adapters.generators import (
-    OllamaStructuredSummaryGenerator,
-    OpenAIStructuredSummaryGenerator,
+    OllamaTextGenerator,
+    OpenAITextGenerator,
 )
 from genai_template.workflow.portfolio.domain import (
     ArtifactProvenance,
-    ComponentSummary,
     GenerationRequest,
 )
 
@@ -44,10 +43,7 @@ def _request(provider: Literal["ollama", "openai"], model: str) -> GenerationReq
             model=model,
             temperature=0,
         ),
-        prompt=(
-            "Summarize src/a.py. It contains a function named run. Cite src/a.py "
-            "in every section."
-        ),
+        prompt="Return one plain Markdown sentence about a function named run.",
         input_paths=("src/a.py",),
     )
 
@@ -57,19 +53,15 @@ def _request(provider: Literal["ollama", "openai"], model: str) -> GenerationReq
     not os.getenv("OPENAI_API_KEY") or not os.getenv("PORTFOLIO_OPENAI_MODEL"),
     reason="OPENAI_API_KEY and PORTFOLIO_OPENAI_MODEL are required.",
 )
-def test_openai_structured_generation_smoke() -> None:
-    """OpenAI should return a schema-valid component summary."""
+def test_openai_text_generation_smoke() -> None:
+    """OpenAI should return non-empty plain text."""
 
     model = os.environ["PORTFOLIO_OPENAI_MODEL"]
-    generator = OpenAIStructuredSummaryGenerator(
-        model,
-        temperature=0,
-        timeout_seconds=180,
-    )
+    generator = OpenAITextGenerator(model, temperature=0, timeout_seconds=180)
 
-    response = generator.generate(_request("openai", model), ComponentSummary)
+    response = generator.generate(_request("openai", model))
 
-    assert isinstance(response.value, ComponentSummary)
+    assert response.text.strip()
     assert response.provider == "openai"
 
 
@@ -78,18 +70,18 @@ def test_openai_structured_generation_smoke() -> None:
     not os.getenv("PORTFOLIO_OLLAMA_MODEL"),
     reason="PORTFOLIO_OLLAMA_MODEL is required for the Ollama smoke test.",
 )
-def test_ollama_structured_generation_smoke() -> None:
-    """Ollama should return a schema-valid component summary."""
+def test_ollama_text_generation_smoke() -> None:
+    """Ollama should return non-empty plain text."""
 
     model = os.environ["PORTFOLIO_OLLAMA_MODEL"]
-    generator = OllamaStructuredSummaryGenerator(
+    generator = OllamaTextGenerator(
         model,
         temperature=0,
         seed=7,
         timeout_seconds=180,
     )
 
-    response = generator.generate(_request("ollama", model), ComponentSummary)
+    response = generator.generate(_request("ollama", model))
 
-    assert isinstance(response.value, ComponentSummary)
+    assert response.text.strip()
     assert response.provider == "ollama"

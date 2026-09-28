@@ -134,7 +134,7 @@ project summary models without JSON extraction or a provider call.
 
 ## Slice 2 — Native Plain-Text Provider Boundary
 
-**Status:** Proposed
+**Status:** Complete
 
 ### Outcome
 

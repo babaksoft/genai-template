@@ -149,13 +149,13 @@ class ArtifactProvenance(_ImmutableDomainModel):
 
 
 class GenerationRequest(_ImmutableDomainModel):
-    """One fully identified structured-generation provider request.
+    """One fully identified text-generation provider request.
 
     Attributes:
         provenance:
             Expected stable provenance and generation identity.
         prompt:
-            Assembled prompt sent to the structured-generation provider.
+            Assembled prompt sent to the text-generation provider.
         input_paths:
             Ordered repository paths actually represented in the prompt.
     """

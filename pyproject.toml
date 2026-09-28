@@ -36,6 +36,8 @@ dependencies = [
     "llama-index-llms-openai",
     "llama-index-vector-stores-chroma",
     "openinference-instrumentation-llama-index",
+    "ollama",
+    "openai",
     "pydantic",
     "pyyaml",
     "python-dotenv",

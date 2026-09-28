@@ -42,8 +42,8 @@ class RepositoryReadError(RuntimeError):
         self.operation = operation
 
 
-class StructuredGenerationError(RuntimeError):
-    """Provider-neutral structured generation boundary failure.
+class TextGenerationError(RuntimeError):
+    """Provider-neutral text generation boundary failure.
 
     Attributes:
         provider:
@@ -62,7 +62,7 @@ class StructuredGenerationError(RuntimeError):
         model: str,
         reason: str,
     ) -> None:
-        """Initialize a structured generation failure.
+        """Initialize a text generation failure.
 
         Args:
             message:

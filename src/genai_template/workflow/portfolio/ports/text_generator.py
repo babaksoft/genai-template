@@ -1,8 +1,8 @@
-"""Port for provider-backed validated structured summary generation."""
+"""Port for provider-backed plain-text generation."""
 
 from __future__ import annotations
 
-from typing import Protocol, TypeVar
+from typing import Protocol
 
 from pydantic import Field
 
@@ -12,17 +12,14 @@ from genai_template.workflow.portfolio.domain.generation import (
     TokenUsage,
 )
 from genai_template.workflow.portfolio.domain.snapshot import _ImmutableDomainModel
-from genai_template.workflow.portfolio.domain.summaries import StructuredSummary
-
-SummaryT = TypeVar("SummaryT", bound=StructuredSummary)
 
 
-class StructuredGenerationResponse[SummaryT: StructuredSummary](_ImmutableDomainModel):
-    """Validated provider output with non-secret accounting metadata.
+class TextGenerationResponse(_ImmutableDomainModel):
+    """Plain provider output with non-secret accounting metadata.
 
     Attributes:
-        value:
-            Output validated against the requested Pydantic summary type.
+        text:
+            Complete non-empty provider response text.
         provider:
             Provider that performed the generation.
         model:
@@ -33,7 +30,7 @@ class StructuredGenerationResponse[SummaryT: StructuredSummary](_ImmutableDomain
             Narrow non-secret metadata retained for auditing.
     """
 
-    value: SummaryT = Field(description="Validated structured summary value.")
+    text: str = Field(min_length=1, description="Complete provider response text.")
     provider: str = Field(min_length=1, description="Generation provider identity.")
     model: str = Field(min_length=1, description="Generation model identity.")
     token_usage: TokenUsage = Field(description="Provider-reported token usage.")
@@ -43,28 +40,22 @@ class StructuredGenerationResponse[SummaryT: StructuredSummary](_ImmutableDomain
     )
 
 
-class StructuredSummaryGenerator(Protocol):
-    """Provider-neutral interface for validated summary generation."""
+class TextGenerator(Protocol):
+    """Provider-neutral interface for one-call plain-text generation."""
 
-    def generate(
-        self,
-        request: GenerationRequest,
-        output_type: type[SummaryT],
-    ) -> StructuredGenerationResponse[SummaryT]:
-        """Generate and validate one structured summary.
+    def generate(self, request: GenerationRequest) -> TextGenerationResponse:
+        """Generate one complete plain-text response.
 
         Args:
             request:
                 Fully identified prompt request.
-            output_type:
-                Strict Pydantic output model expected for this artifact.
 
         Returns:
-            Validated output plus provider accounting metadata.
+            Plain text plus provider identity and accounting metadata.
 
         Raises:
-            StructuredGenerationError:
-                If the provider call or output validation fails.
+            TextGenerationError:
+                If request identity, transport, or completion validation fails.
         """
 
         ...

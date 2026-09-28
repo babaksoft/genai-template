@@ -8,7 +8,6 @@ import os
 import subprocess
 from decimal import Decimal
 from pathlib import Path
-from typing import cast
 
 import pytest
 
@@ -30,13 +29,14 @@ from genai_template.workflow.portfolio.config.models import (
     TokenPricingConfig,
 )
 from genai_template.workflow.portfolio.domain import (
-    EvidenceSection,
     GenerationRequest,
     ProviderAuditMetadata,
-    StructuredSummary,
     TokenUsage,
 )
-from genai_template.workflow.portfolio.ports import StructuredGenerationResponse
+from genai_template.workflow.portfolio.generation.specifications import (
+    SUMMARY_SPECIFICATIONS,
+)
+from genai_template.workflow.portfolio.ports import TextGenerationResponse
 from genai_template.workflow.portfolio.workflow import (
     PortfolioCorpusWorkflow,
     run_portfolio_corpus_workflow,
@@ -56,34 +56,25 @@ class _CountingGenerator:
 
         self.calls: list[str] = []
 
-    def generate[SummaryT: StructuredSummary](
-        self,
-        request: GenerationRequest,
-        output_type: type[SummaryT],
-    ) -> StructuredGenerationResponse[SummaryT]:
-        """Return a valid summary for the requested concrete output schema.
+    def generate(self, request: GenerationRequest) -> TextGenerationResponse:
+        """Return valid Markdown for the requested artifact contract.
 
         Args:
             request:
                 Fully identified generation request.
-            output_type:
-                Concrete strict structured-summary schema.
-
         Returns:
-            Deterministic validated response with complete accounting.
+            Deterministic plain-text response with complete accounting.
         """
 
         self.calls.append(request.provenance.generation_fingerprint)
-        evidence_path = request.input_paths[0]
-        section = EvidenceSection(
-            content=("Deterministic test summary.",),
-            evidence_paths=(evidence_path,),
+        specification = SUMMARY_SPECIFICATIONS[request.provenance.artifact_kind]
+        text = "\n\n".join(
+            f"## {section.heading}\n\nDeterministic test summary.\n\n"
+            f"### Evidence\n\n- {request.input_paths[0]}"
+            for section in specification.sections
         )
-        value = output_type.model_validate(
-            {name: section.model_dump(mode="json") for name in output_type.model_fields}
-        )
-        return StructuredGenerationResponse[SummaryT](
-            value=cast(SummaryT, value),
+        return TextGenerationResponse(
+            text=text,
             provider="ollama",
             model="test-model",
             token_usage=TokenUsage(input_tokens=10, output_tokens=5),

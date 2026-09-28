@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 from decimal import Decimal
 from pathlib import Path
-from typing import cast
 
 import pytest
 
@@ -24,19 +23,16 @@ from genai_template.workflow.portfolio.config import (
 )
 from genai_template.workflow.portfolio.domain import (
     ArtifactValidationError,
-    ComponentSummary,
-    EvidenceSection,
     GenerationRequest,
     ProviderAuditMetadata,
     SnapshotFile,
-    StructuredGenerationError,
-    StructuredSummary,
     SummaryPlan,
     SummaryUnitPlan,
+    TextGenerationError,
     TokenUsage,
 )
 from genai_template.workflow.portfolio.generation import generate_component_summaries
-from genai_template.workflow.portfolio.ports import StructuredGenerationResponse
+from genai_template.workflow.portfolio.ports import TextGenerationResponse
 
 
 class _CountingGenerator:
@@ -65,50 +61,43 @@ class _CountingGenerator:
         self.fail = fail
         self.model = model
 
-    def generate[SummaryT: StructuredSummary](
-        self, request: GenerationRequest, output_type: type[SummaryT]
-    ) -> StructuredGenerationResponse[SummaryT]:
-        """Return a path-scoped valid summary.
+    def generate(self, request: GenerationRequest) -> TextGenerationResponse:
+        """Return path-scoped Markdown.
 
         Args:
             request:
                 Component generation request.
-            output_type:
-                Expected component output type.
-
         Returns:
-            Deterministic validated provider response.
+            Deterministic plain-text provider response.
 
         Raises:
-            StructuredGenerationError:
+            TextGenerationError:
                 When configured to simulate failure.
         """
 
         paths = request.input_paths
         self.calls.append(paths)
         if self.fail:
-            raise StructuredGenerationError(
+            raise TextGenerationError(
                 "simulated generation failure",
                 provider="ollama",
                 model="test-model",
                 reason="provider-failure",
             )
-        section = EvidenceSection(
-            content=(f"Summary for {paths[0]}.",), evidence_paths=(paths[0],)
+        headings = (
+            "Responsibilities",
+            "Important Abstractions",
+            "Behavior",
+            "Constraints",
+            "Testing Evidence",
         )
-        component = ComponentSummary(
-            responsibilities=section,
-            important_abstractions=section,
-            behavior=section,
-            constraints=section,
-            testing_evidence=section,
+        text = "\n\n".join(
+            f"## {heading}\n\nSummary for {paths[0]}.\n\n"
+            f"### Evidence\n\n- {paths[0]}"
+            for heading in headings
         )
-        value = cast(
-            SummaryT,
-            output_type.model_validate(component.model_dump(mode="json")),
-        )
-        return StructuredGenerationResponse[SummaryT](
-            value=value,
+        return TextGenerationResponse(
+            text=text,
             provider="ollama",
             model=self.model,
             token_usage=TokenUsage(input_tokens=100, output_tokens=25),
@@ -259,7 +248,7 @@ def test_generation_failure_is_not_cached(tmp_path: Path) -> None:
     """A failure before validation leaves no reusable cache entry."""
 
     cache_root = tmp_path / "cache"
-    with pytest.raises(StructuredGenerationError):
+    with pytest.raises(TextGenerationError):
         generate_component_summaries(
             _plan(),
             _config(),

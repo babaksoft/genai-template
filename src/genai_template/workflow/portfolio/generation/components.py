@@ -47,9 +47,7 @@ from genai_template.workflow.portfolio.generation.validation import (
     validate_component_evidence,
 )
 from genai_template.workflow.portfolio.ports.artifact_cache import ArtifactCache
-from genai_template.workflow.portfolio.ports.structured_generator import (
-    StructuredSummaryGenerator,
-)
+from genai_template.workflow.portfolio.ports.text_generator import TextGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +55,7 @@ logger = logging.getLogger(__name__)
 def generate_component_summaries(
     plan: SummaryPlan,
     generation: GenerationConfig,
-    generator: StructuredSummaryGenerator,
+    generator: TextGenerator,
     cache: ArtifactCache,
     *,
     clock: Callable[[], float] = perf_counter,
@@ -70,7 +68,7 @@ def generate_component_summaries(
         generation:
             Validated balanced generation configuration.
         generator:
-            Structured summary provider boundary.
+            Plain-text provider boundary.
         cache:
             Validated artifact cache boundary.
         clock:
@@ -86,7 +84,7 @@ def generate_component_summaries(
             If configuration or provider identity does not match the request.
         EvidenceValidationError:
             If generated or cached evidence falls outside a component's files.
-        StructuredGenerationError:
+        TextGenerationError:
             If the provider call or structured output validation fails.
     """
 
@@ -108,7 +106,7 @@ def _generate_component_summary(
     plan: SummaryPlan,
     unit: SummaryUnitPlan,
     generation: GenerationConfig,
-    generator: StructuredSummaryGenerator,
+    generator: TextGenerator,
     cache: ArtifactCache,
     *,
     clock: Callable[[], float],
@@ -123,7 +121,7 @@ def _generate_component_summary(
         generation:
             Validated balanced generation configuration.
         generator:
-            Structured summary provider boundary.
+            Plain-text provider boundary.
         cache:
             Validated artifact cache boundary.
         clock:

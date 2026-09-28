@@ -60,9 +60,7 @@ from genai_template.workflow.portfolio.generation.validation import (
     validate_project_evidence,
 )
 from genai_template.workflow.portfolio.ports.artifact_cache import ArtifactCache
-from genai_template.workflow.portfolio.ports.structured_generator import (
-    StructuredSummaryGenerator,
-)
+from genai_template.workflow.portfolio.ports.text_generator import TextGenerator
 from genai_template.workflow.portfolio.snapshot.selection import (
     matches_repository_pattern,
 )
@@ -98,7 +96,7 @@ def generate_project_summaries(
     snapshot: RepositorySnapshot,
     components: tuple[ComponentSummaryArtifact, ...],
     generation: GenerationConfig,
-    generator: StructuredSummaryGenerator,
+    generator: TextGenerator,
     cache: ArtifactCache,
     *,
     clock: Callable[[], float] = perf_counter,
@@ -117,7 +115,7 @@ def generate_project_summaries(
         generation:
             Validated balanced generation configuration.
         generator:
-            Structured summary provider boundary.
+            Plain-text provider boundary.
         cache:
             Validated artifact cache boundary.
         clock:
@@ -134,7 +132,7 @@ def generate_project_summaries(
             If an existing cache entry is corrupt or cannot be persisted.
         EvidenceValidationError:
             If generated or cached evidence falls outside the synthesis scope.
-        StructuredGenerationError:
+        TextGenerationError:
             If provider generation or structured-output validation fails.
     """
 
@@ -318,7 +316,7 @@ def _generate_project_summary(
     component_hashes: Mapping[str, str],
     component_evidence: tuple[str, ...],
     generation: GenerationConfig,
-    generator: StructuredSummaryGenerator,
+    generator: TextGenerator,
     cache: ArtifactCache,
     *,
     clock: Callable[[], float],
@@ -339,7 +337,7 @@ def _generate_project_summary(
         generation:
             Balanced generation configuration.
         generator:
-            Structured summary provider boundary.
+            Plain-text provider boundary.
         cache:
             Validated artifact cache boundary.
         clock:

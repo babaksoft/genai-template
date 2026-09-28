@@ -11,8 +11,8 @@ from typing import TextIO
 
 from genai_template.config.logging import configure_logging
 from genai_template.workflow.portfolio.adapters.generators import (
-    OllamaStructuredSummaryGenerator,
-    OpenAIStructuredSummaryGenerator,
+    OllamaTextGenerator,
+    OpenAITextGenerator,
 )
 from genai_template.workflow.portfolio.adapters.repositories import (
     LocalGitSnapshotReader,
@@ -22,9 +22,7 @@ from genai_template.workflow.portfolio.cli.generation import (
     render_text_report,
 )
 from genai_template.workflow.portfolio.config.models import GenerationConfig
-from genai_template.workflow.portfolio.ports.structured_generator import (
-    StructuredSummaryGenerator,
-)
+from genai_template.workflow.portfolio.ports.text_generator import TextGenerator
 from genai_template.workflow.portfolio.workflow.corpus import (
     PortfolioCorpusWorkflow,
     run_portfolio_corpus_workflow,
@@ -62,28 +60,28 @@ def _build_argument_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def create_structured_generator(
+def create_text_generator(
     generation: GenerationConfig,
-) -> StructuredSummaryGenerator:
-    """Create the configured LlamaIndex structured-generation adapter.
+) -> TextGenerator:
+    """Create the configured official-SDK plain-text adapter.
 
     Args:
         generation:
             Validated provider and inference settings.
 
     Returns:
-        Configured structured-summary generator.
+        Configured plain-text generator.
     """
 
     settings = generation.structured_generation
     if settings.provider == "openai":
-        return OpenAIStructuredSummaryGenerator(
+        return OpenAITextGenerator(
             settings.model,
             temperature=settings.inference.temperature,
             timeout_seconds=settings.timeout_seconds,
         )
 
-    return OllamaStructuredSummaryGenerator(
+    return OllamaTextGenerator(
         settings.model,
         temperature=settings.inference.temperature,
         seed=settings.inference.seed,
@@ -116,7 +114,7 @@ def main(
     arguments = _build_argument_parser().parse_args(argv)
     workflow = PortfolioCorpusWorkflow(
         repository_reader=LocalGitSnapshotReader(),
-        generator_factory=create_structured_generator,
+        generator_factory=create_text_generator,
     )
 
     try:

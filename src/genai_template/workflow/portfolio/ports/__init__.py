@@ -2,14 +2,14 @@
 
 from genai_template.workflow.portfolio.ports.artifact_cache import ArtifactCache
 from genai_template.workflow.portfolio.ports.repository import RepositoryReader
-from genai_template.workflow.portfolio.ports.structured_generator import (
-    StructuredGenerationResponse,
-    StructuredSummaryGenerator,
+from genai_template.workflow.portfolio.ports.text_generator import (
+    TextGenerationResponse,
+    TextGenerator,
 )
 
 __all__ = [
     "ArtifactCache",
     "RepositoryReader",
-    "StructuredGenerationResponse",
-    "StructuredSummaryGenerator",
+    "TextGenerationResponse",
+    "TextGenerator",
 ]

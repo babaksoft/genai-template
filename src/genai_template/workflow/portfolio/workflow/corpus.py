@@ -42,7 +42,6 @@ from genai_template.workflow.portfolio.domain.reports import (
     GenerationRunReport,
     StepRunReport,
 )
-from genai_template.workflow.portfolio.domain.summaries import StructuredSummary
 from genai_template.workflow.portfolio.generation.components import (
     generate_component_summaries,
 )
@@ -51,9 +50,9 @@ from genai_template.workflow.portfolio.generation.projects import (
 )
 from genai_template.workflow.portfolio.ports.artifact_cache import ArtifactCache
 from genai_template.workflow.portfolio.ports.repository import RepositoryReader
-from genai_template.workflow.portfolio.ports.structured_generator import (
-    StructuredGenerationResponse,
-    StructuredSummaryGenerator,
+from genai_template.workflow.portfolio.ports.text_generator import (
+    TextGenerationResponse,
+    TextGenerator,
 )
 from genai_template.workflow.portfolio.snapshot.planning import build_summary_plan
 from genai_template.workflow.portfolio.snapshot.selection import (
@@ -73,7 +72,7 @@ from genai_template.workflow.portfolio.workflow.events import (
 logger = logging.getLogger(__name__)
 
 ConfigLoader = Callable[[Path], PortfolioConfig]
-GeneratorFactory = Callable[[GenerationConfig], StructuredSummaryGenerator]
+GeneratorFactory = Callable[[GenerationConfig], TextGenerator]
 CacheFactory = Callable[[Path], ArtifactCache]
 CorpusPublisher = Callable[..., PublicationResult]
 
@@ -83,34 +82,27 @@ class _ObservedGenerator:
 
     Attributes:
         delegate:
-            Injected structured-generation implementation.
+            Injected plain-text generation implementation.
     """
 
-    def __init__(self, delegate: StructuredSummaryGenerator) -> None:
+    def __init__(self, delegate: TextGenerator) -> None:
         """Initialize the observed provider boundary.
 
         Args:
             delegate:
-                Structured-generation implementation to invoke.
+                Plain-text generation implementation to invoke.
         """
 
         self.delegate = delegate
 
-    def generate[SummaryT: StructuredSummary](
-        self,
-        request: GenerationRequest,
-        output_type: type[SummaryT],
-    ) -> StructuredGenerationResponse[SummaryT]:
+    def generate(self, request: GenerationRequest) -> TextGenerationResponse:
         """Generate one cache-miss artifact under a redacted provider span.
 
         Args:
             request:
                 Fully identified request; its prompt is never attached to the span.
-            output_type:
-                Strict structured output model.
-
         Returns:
-            Validated delegate response.
+            Validated plain-text delegate response.
         """
 
         provenance = request.provenance
@@ -124,7 +116,7 @@ class _ObservedGenerator:
             "input.path_count": len(request.input_paths),
         }
         with application_span("portfolio.provider", "LLM", attributes):
-            return self.delegate.generate(request, output_type)
+            return self.delegate.generate(request)
 
 
 class PortfolioCorpusWorkflow(Workflow):
@@ -134,7 +126,7 @@ class PortfolioCorpusWorkflow(Workflow):
         repository_reader:
             Injected immutable repository reader.
         generator_factory:
-            Injected structured-generation adapter factory.
+            Injected plain-text generation adapter factory.
         config_loader:
             Injected validated configuration loader.
         cache_factory:
@@ -162,7 +154,7 @@ class PortfolioCorpusWorkflow(Workflow):
             repository_reader:
                 Reader for the configured immutable repository revision.
             generator_factory:
-                Factory for the configured structured-generation adapter.
+                Factory for the configured plain-text generation adapter.
             config_loader:
                 Validated Portfolio configuration loader.
             cache_factory:
