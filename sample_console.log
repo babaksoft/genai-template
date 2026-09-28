@@ -1,0 +1,100 @@
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step started: configuration
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step completed: configuration (0.003s)
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step started: snapshot
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step completed: snapshot (0.462s)
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step started: planning
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step completed: planning (0.003s)
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step started: components
+[genai_template.config.ollama] [INFO] Using the WSL NAT Windows-host Ollama endpoint: http://172.31.80.1:11434
+[genai_template.workflow.portfolio.generation.components] [INFO] Processing component summary api: files=17 bytes=38942 fingerprint=ceb2e6ad0689124d4edbe4b0c431e51881eae187fd55486ac8664dce13b33a69
+[httpx] [INFO] HTTP Request: POST http://172.31.80.1:11434/api/chat "HTTP/1.1 200 OK"
+[genai_template.workflow.portfolio.generation.components] [INFO] Component summary api generated and cached
+[genai_template.workflow.portfolio.generation.components] [INFO] Processing component summary components-splitters: files=5 bytes=11513 fingerprint=03fead9a83881d21c52e8372ec93a36ee4bb69390dbc4d0b4af6d45ece44e552
+[httpx] [INFO] HTTP Request: POST http://172.31.80.1:11434/api/chat "HTTP/1.1 200 OK"
+[genai_template.workflow.portfolio.generation.components] [INFO] Component summary components-splitters generated and cached
+[genai_template.workflow.portfolio.generation.components] [INFO] Processing component summary rag-services: files=11 bytes=71959 fingerprint=2233d6b39ab896ff0b040d2cab4b7e3def19d1b8b8eee509e81114cc3b38c9d8
+[httpx] [INFO] HTTP Request: POST http://172.31.80.1:11434/api/chat "HTTP/1.1 200 OK"
+[genai_template.workflow.portfolio.generation.components] [INFO] Component summary rag-services generated and cached
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step completed: components (64.190s)
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step started: project-synthesis
+[genai_template.workflow.portfolio.generation.projects] [INFO] Processing project summary overview: files=2 bytes=18401 fingerprint=cd82e000363328f93481d2d133eff793a265e3c5f5bc33d5961b5354e2a1ec11
+[httpx] [INFO] HTTP Request: POST http://172.31.80.1:11434/api/chat "HTTP/1.1 200 OK"
+[genai_template.workflow.portfolio.generation.projects] [INFO] Project summary overview generated and cached
+[genai_template.workflow.portfolio.generation.projects] [INFO] Processing project summary architecture: files=19 bytes=56035 fingerprint=44302501598f5ffac097ddd5187801ce0e69cae393613dd9d7700ce724741e15
+[httpx] [INFO] HTTP Request: POST http://172.31.80.1:11434/api/chat "HTTP/1.1 200 OK"
+[genai_template.workflow.portfolio.generation.projects] [INFO] Project summary architecture generated and cached
+[genai_template.workflow.portfolio.generation.projects] [INFO] Processing project summary testing_operations: files=16 bytes=84780 fingerprint=6ab93098e9d9338f915145e8e169445e53d99502e721871ad14d74cca102f2ce
+[httpx] [INFO] HTTP Request: POST http://172.31.80.1:11434/api/chat "HTTP/1.1 200 OK"
+[genai_template.workflow.portfolio.generation.projects] [INFO] Project summary testing_operations generated and cached
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step completed: project-synthesis (59.427s)
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step started: rendering
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step completed: rendering (0.002s)
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step started: manifest-validation
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step completed: manifest-validation (0.001s)
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step started: publication
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step completed: publication (0.004s)
+project: genai-template
+commit: b26893df9a3ebf2dd07956070f26fa44e80bfe5a
+source_fingerprint: 7e16f34c5de189eb9437b72360e61f0cd17717f876280c4429a9c39513acee5d
+generation_configuration_fingerprint: 419d3526965da92fd4ebb0bc1fe52dbcd3802c5190638f7f9cec40c962c2a3c4
+corpus_fingerprint: bbf2b97756724a04247a09375d4be1bfc719ea27858063718d6080e6b1745488
+artifacts: 6
+cache_hits: 0
+provider_calls: 6
+generation_warnings: 3
+billed_input_tokens: 74750
+billed_output_tokens: 9233
+estimated_cost: 0
+elapsed_seconds: 124.252693
+published_path: /home/babaksoft/projects/genai-template/data/portfolio
+release_path: /home/babaksoft/projects/genai-template/data/.portfolio-releases/bbf2b97756724a04247a09375d4be1bfc719ea27858063718d6080e6b1745488
+generation_warning_counts.component.03fead9a83881d21c52e8372ec93a36ee4bb69390dbc4d0b4af6d45ece44e552.invalid_evidence_path: 3
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step started: configuration
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step completed: configuration (0.004s)
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step started: snapshot
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step completed: snapshot (0.465s)
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step started: planning
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step completed: planning (0.003s)
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step started: components
+[genai_template.workflow.portfolio.generation.components] [INFO] Processing component summary api: files=17 bytes=38942 fingerprint=b5fbd9ae93013e5bed3e3fc746afc587b63aeacde7d91d0b955a0e910865eed5
+[httpx] [INFO] HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
+[genai_template.workflow.portfolio.generation.components] [INFO] Component summary api generated and cached
+[genai_template.workflow.portfolio.generation.components] [INFO] Processing component summary components-splitters: files=5 bytes=11513 fingerprint=1a5f70a8936d636312cc842121e7e51c39359ae616cd6d706389eec0dadcda03
+[httpx] [INFO] HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
+[genai_template.workflow.portfolio.generation.components] [INFO] Component summary components-splitters generated and cached
+[genai_template.workflow.portfolio.generation.components] [INFO] Processing component summary rag-services: files=11 bytes=71959 fingerprint=3bc8649d038962b85d72b707b3bc3f190c63d3046405df291cc1c350fd0e6925
+[httpx] [INFO] HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
+[genai_template.workflow.portfolio.generation.components] [INFO] Component summary rag-services generated and cached
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step completed: components (22.748s)
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step started: project-synthesis
+[genai_template.workflow.portfolio.generation.projects] [INFO] Processing project summary overview: files=2 bytes=19682 fingerprint=1321f380fb7023701a59ffc4c7187e56aa633b8e2f4d812d3a591114245291bc
+[httpx] [INFO] HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
+[genai_template.workflow.portfolio.generation.projects] [INFO] Project summary overview generated and cached
+[genai_template.workflow.portfolio.generation.projects] [INFO] Processing project summary architecture: files=19 bytes=56035 fingerprint=4e53545912281ecfbfd61f3eb2dca44217db5db8b42b64784f668b627663b3a4
+[httpx] [INFO] HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
+[genai_template.workflow.portfolio.generation.projects] [INFO] Project summary architecture generated and cached
+[genai_template.workflow.portfolio.generation.projects] [INFO] Processing project summary testing_operations: files=16 bytes=86061 fingerprint=07cdba5e4b1ed581833a32ac6e71a252c5a8889b373f6b8842770ed6f0db6a94
+[httpx] [INFO] HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
+[genai_template.workflow.portfolio.generation.projects] [INFO] Project summary testing_operations generated and cached
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step completed: project-synthesis (26.691s)
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step started: rendering
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step completed: rendering (0.001s)
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step started: manifest-validation
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step completed: manifest-validation (0.001s)
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step started: publication
+[genai_template.workflow.portfolio.workflow.corpus] [INFO] Portfolio workflow step completed: publication (0.007s)
+project: genai-template
+commit: de3b1a7e72cee01a8048de92241ee717ad579219
+source_fingerprint: 8ef9745a21a9402982da248144f75188917e4edd35843f17b135bcb3bd2bccb5
+generation_configuration_fingerprint: 7d2bed94ce4384279636876298f433b004dc43c2ad3b8134f27586544c142a3b
+corpus_fingerprint: 2bcf88f2837794335d353c2f76d37271494588b3fad4f646438a720626ab2124
+artifacts: 6
+cache_hits: 0
+provider_calls: 6
+generation_warnings: 0
+billed_input_tokens: 71460
+billed_output_tokens: 5674
+estimated_cost: 0.0376624
+elapsed_seconds: 50.097208
+published_path: /home/babaksoft/projects/genai-template/data/portfolio
+release_path: /home/babaksoft/projects/genai-template/data/.portfolio-releases/2bcf88f2837794335d353c2f76d37271494588b3fad4f646438a720626ab2124
