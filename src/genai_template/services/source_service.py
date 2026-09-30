@@ -8,7 +8,7 @@ from collections.abc import Callable
 from hashlib import sha256
 from pathlib import Path
 from threading import Lock
-from typing import ClassVar
+from typing import ClassVar, TypedDict
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from genai_template.components.readers import PortfolioReader, TextReader
 from genai_template.config import RagConfig, index_config_fingerprint
-from genai_template.db.models import Source
+from genai_template.db.models import IndexBuild, Source
 from genai_template.factories import (
     create_embedder,
     create_splitter,
@@ -25,11 +25,30 @@ from genai_template.factories import (
 from genai_template.observability import application_span
 from genai_template.pipelines import IndexingPipeline
 from genai_template.protocols import VectorStore
-from genai_template.schemas import IndexBuildStatus, IndexingResult, LoadedDocuments
+from genai_template.schemas import (
+    IndexBuildStatus,
+    IndexingResult,
+    IndexStatus,
+    IndexStatusReason,
+    LoadedDocuments,
+)
 from genai_template.services.index_build_service import IndexBuildService
 from genai_template.services.rag_config_service import RagConfigService
+from genai_template.workflow.portfolio.corpus import CorpusValidationError, load_corpus
 
 logger = logging.getLogger(__name__)
+
+
+class _IndexStatusInputs(TypedDict):
+    """Shared typed inputs for constructing a manifest index status."""
+
+    source_id: int
+    rag_config_id: int
+    collection_name: str
+    index_fingerprint: str
+    current_corpus_fingerprint: str
+    latest: IndexBuild | None
+    successful: IndexBuild | None
 
 
 class IndexBuildInProgressError(RuntimeError):
@@ -313,6 +332,258 @@ class SourceService:
             result.indexing_time,
         )
         return result
+
+    def get_index_status(self, source_id: int, rag_config_id: int) -> IndexStatus:
+        """Inspect freshness and operational availability for one source index.
+
+        Manifest-backed sources require agreement between the current validated
+        corpus, durable build history, and external collection state. Generic
+        sources retain collection-existence compatibility and are explicitly
+        reported as untracked. The decision is a point-in-time inspection; it does
+        not lock the external collection across the subsequent retrieval.
+
+        Args:
+            source_id:
+                Identifier of the registered source.
+            rag_config_id:
+                Identifier of the selected persisted RAG configuration.
+
+        Returns:
+            Typed availability decision with build and corpus provenance.
+
+        Raises:
+            ValueError:
+                If the source or RAG configuration does not exist.
+        """
+
+        source = self.get_source(source_id)
+        record = self._rag_config_service.get_config(rag_config_id)
+        config = self._rag_config_service.parse_config(record)
+        collection_name = self.index_collection_name(source.id, config)
+        index_fingerprint = index_config_fingerprint(config)
+
+        try:
+            directory = self._resolve_registered_directory(source)
+        except (FileNotFoundError, NotADirectoryError, ValueError):
+            return self._build_index_status(
+                source_id=source.id,
+                rag_config_id=record.id,
+                collection_name=collection_name,
+                index_fingerprint=index_fingerprint,
+                reason=IndexStatusReason.CORPUS_INVALID,
+            )
+
+        if not (directory / "manifest.json").is_file():
+            return self._generic_index_status(
+                source_id=source.id,
+                rag_config_id=record.id,
+                collection_name=collection_name,
+                index_fingerprint=index_fingerprint,
+                config=config,
+            )
+
+        try:
+            current_corpus_fingerprint = load_corpus(
+                directory
+            ).manifest.corpus_fingerprint
+        except CorpusValidationError:
+            return self._build_index_status(
+                source_id=source.id,
+                rag_config_id=record.id,
+                collection_name=collection_name,
+                index_fingerprint=index_fingerprint,
+                reason=IndexStatusReason.CORPUS_INVALID,
+            )
+
+        latest = self._index_build_service.latest_attempt(
+            source_id=source.id,
+            collection_name=collection_name,
+            index_fingerprint=index_fingerprint,
+        )
+        successful = self._index_build_service.latest_successful(
+            source_id=source.id,
+            collection_name=collection_name,
+            index_fingerprint=index_fingerprint,
+        )
+        common: _IndexStatusInputs = {
+            "source_id": source.id,
+            "rag_config_id": record.id,
+            "collection_name": collection_name,
+            "index_fingerprint": index_fingerprint,
+            "current_corpus_fingerprint": current_corpus_fingerprint,
+            "latest": latest,
+            "successful": successful,
+        }
+
+        if latest is not None and (successful is None or latest.id != successful.id):
+            reason = (
+                IndexStatusReason.BUILDING
+                if latest.status == IndexBuildStatus.BUILDING.value
+                else IndexStatusReason.FAILED
+            )
+            return self._build_index_status(reason=reason, **common)
+
+        if successful is None:
+            return self._build_index_status(reason=IndexStatusReason.UNBUILT, **common)
+        if successful.corpus_fingerprint != current_corpus_fingerprint:
+            return self._build_index_status(reason=IndexStatusReason.STALE, **common)
+
+        try:
+            store = create_vector_store(config.vector_store, collection_name)
+            if not store.exists():
+                return self._build_index_status(
+                    reason=IndexStatusReason.COLLECTION_MISSING, **common
+                )
+            collection_count = store.count()
+        except Exception:  # noqa: BLE001 - backend clients expose unrelated errors
+            return self._build_index_status(
+                reason=IndexStatusReason.BACKEND_UNAVAILABLE, **common
+            )
+
+        if collection_count != successful.chunk_count:
+            return self._build_index_status(
+                reason=IndexStatusReason.COUNT_MISMATCH,
+                collection_count=collection_count,
+                **common,
+            )
+
+        return self._build_index_status(
+            reason=IndexStatusReason.CURRENT,
+            collection_count=collection_count,
+            **common,
+        )
+
+    def _generic_index_status(
+        self,
+        *,
+        source_id: int,
+        rag_config_id: int,
+        collection_name: str,
+        index_fingerprint: str,
+        config: RagConfig,
+    ) -> IndexStatus:
+        """Apply the collection-existence compatibility rule to a generic source.
+
+        Args:
+            source_id:
+                Registered source identifier.
+            rag_config_id:
+                Selected RAG configuration identifier.
+            collection_name:
+                Deterministic vector collection name.
+            index_fingerprint:
+                Index-affecting configuration fingerprint.
+            config:
+                Parsed RAG configuration.
+
+        Returns:
+            Untracked generic-source status.
+        """
+
+        latest = self._index_build_service.latest_attempt(
+            source_id=source_id,
+            collection_name=collection_name,
+            index_fingerprint=index_fingerprint,
+        )
+        successful = self._index_build_service.latest_successful(
+            source_id=source_id,
+            collection_name=collection_name,
+            index_fingerprint=index_fingerprint,
+        )
+
+        try:
+            store = create_vector_store(config.vector_store, collection_name)
+            available = store.exists()
+            collection_count = store.count() if available else None
+        except Exception:  # noqa: BLE001 - backend clients expose unrelated errors
+            return self._build_index_status(
+                source_id=source_id,
+                rag_config_id=rag_config_id,
+                collection_name=collection_name,
+                index_fingerprint=index_fingerprint,
+                latest=latest,
+                successful=successful,
+                reason=IndexStatusReason.BACKEND_UNAVAILABLE,
+            )
+
+        return self._build_index_status(
+            source_id=source_id,
+            rag_config_id=rag_config_id,
+            collection_name=collection_name,
+            index_fingerprint=index_fingerprint,
+            collection_count=collection_count,
+            latest=latest,
+            successful=successful,
+            available=available,
+            reason=IndexStatusReason.UNTRACKED,
+        )
+
+    @staticmethod
+    def _build_index_status(
+        *,
+        source_id: int,
+        rag_config_id: int,
+        collection_name: str,
+        index_fingerprint: str,
+        reason: IndexStatusReason,
+        current_corpus_fingerprint: str | None = None,
+        latest: IndexBuild | None = None,
+        successful: IndexBuild | None = None,
+        collection_count: int | None = None,
+        available: bool | None = None,
+    ) -> IndexStatus:
+        """Construct a status projection from optional build records.
+
+        Args:
+            source_id:
+                Registered source identifier.
+            rag_config_id:
+                Selected configuration identifier.
+            collection_name:
+                Deterministic collection name.
+            index_fingerprint:
+                Index-affecting configuration fingerprint.
+            reason:
+                Availability decision.
+            current_corpus_fingerprint:
+                Current validated manifest identity.
+            latest:
+                Newest build attempt, when present.
+            successful:
+                Newest successful build, when present.
+            collection_count:
+                Current collection count, when inspected.
+            available:
+                Explicit availability override for generic sources.
+
+        Returns:
+            Complete typed index status.
+        """
+
+        return IndexStatus(
+            source_id=source_id,
+            rag_config_id=rag_config_id,
+            collection_name=collection_name,
+            index_fingerprint=index_fingerprint,
+            current_corpus_fingerprint=current_corpus_fingerprint,
+            built_corpus_fingerprint=(
+                successful.corpus_fingerprint if successful else None
+            ),
+            latest_build_id=latest.id if latest else None,
+            latest_build_status=IndexBuildStatus(latest.status) if latest else None,
+            build_started_at=latest.started_at if latest else None,
+            build_finished_at=latest.finished_at if latest else None,
+            document_count=successful.document_count if successful else None,
+            chunk_count=successful.chunk_count if successful else None,
+            collection_count=collection_count,
+            indexing_duration=successful.indexing_duration if successful else None,
+            available=(
+                (reason == IndexStatusReason.CURRENT)
+                if available is None
+                else available
+            ),
+            reason=reason,
+        )
 
     @staticmethod
     def _load_source(directory: Path) -> LoadedDocuments:

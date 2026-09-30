@@ -2,6 +2,7 @@
 
 from hashlib import sha256
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -12,9 +13,10 @@ from genai_template.config import index_config_fingerprint, load_rag_config
 from genai_template.db.base import Base
 from genai_template.db.models import IndexBuild, Source
 from genai_template.pipelines import IndexingPipeline
-from genai_template.schemas import IndexingResult
+from genai_template.schemas import IndexBuildStatus, IndexingResult, IndexStatusReason
 from genai_template.services import (
     IndexBuildInProgressError,
+    IndexBuildService,
     IndexCountMismatchError,
     RagConfigService,
     SourceService,
@@ -350,3 +352,133 @@ def test_rebuild_lock_conflict_is_non_blocking_and_has_no_attempt(
 
     with session_factory() as session:
         assert session.query(IndexBuild).count() == 0
+
+
+@pytest.mark.parametrize(
+    ("state", "expected_reason", "available"),
+    [
+        ("unbuilt", IndexStatusReason.UNBUILT, False),
+        ("building", IndexStatusReason.BUILDING, False),
+        ("failed", IndexStatusReason.FAILED, False),
+        ("stale", IndexStatusReason.STALE, False),
+        ("missing", IndexStatusReason.COLLECTION_MISSING, False),
+        ("mismatch", IndexStatusReason.COUNT_MISMATCH, False),
+        ("backend", IndexStatusReason.BACKEND_UNAVAILABLE, False),
+        ("current", IndexStatusReason.CURRENT, True),
+    ],
+)
+def test_manifest_index_status_enforces_freshness_and_operational_state(
+    tmp_path: Path,
+    session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    state: str,
+    expected_reason: IndexStatusReason,
+    available: bool,
+) -> None:
+    """Manifest status should follow build, corpus, and collection precedence."""
+
+    directory = tmp_path / "portfolio"
+    directory.mkdir()
+    (directory / "manifest.json").write_text("present", encoding="utf-8")
+    config = load_rag_config()
+    registry = RagConfigService(session_factory)
+    config_record = registry.register_config(config)
+    build_service = MagicMock(spec=IndexBuildService)
+    service = SourceService(session_factory, tmp_path, registry, build_service)
+    source = service.register("portfolio")
+    current_fingerprint = "c" * 64
+    built_fingerprint = "b" * 64 if state == "stale" else current_fingerprint
+    successful: IndexBuild | None = IndexBuild(
+        id=1,
+        source_id=source.id,
+        rag_config_id=config_record.id,
+        collection_name=service.index_collection_name(source.id, config),
+        index_fingerprint=index_config_fingerprint(config),
+        corpus_fingerprint=built_fingerprint,
+        status=IndexBuildStatus.SUCCEEDED.value,
+        document_count=4,
+        chunk_count=9,
+        indexing_duration=0.4,
+    )
+    latest: IndexBuild | None = successful
+    if state == "unbuilt":
+        latest = None
+        successful = None
+    elif state in {"building", "failed"}:
+        latest = IndexBuild(
+            id=2,
+            source_id=source.id,
+            rag_config_id=config_record.id,
+            collection_name=service.index_collection_name(source.id, config),
+            index_fingerprint=index_config_fingerprint(config),
+            corpus_fingerprint=current_fingerprint,
+            status=(
+                IndexBuildStatus.BUILDING.value
+                if state == "building"
+                else IndexBuildStatus.FAILED.value
+            ),
+        )
+    build_service.latest_attempt.return_value = latest
+    build_service.latest_successful.return_value = successful
+    monkeypatch.setattr(
+        "genai_template.services.source_service.load_corpus",
+        MagicMock(
+            return_value=SimpleNamespace(
+                manifest=SimpleNamespace(corpus_fingerprint=current_fingerprint)
+            )
+        ),
+    )
+    store = MagicMock()
+    store.exists.return_value = state != "missing"
+    store.count.return_value = 8 if state == "mismatch" else 9
+    if state == "backend":
+        store.exists.side_effect = ConnectionError("offline")
+    create_store = MagicMock(return_value=store)
+    monkeypatch.setattr(
+        "genai_template.services.source_service.create_vector_store", create_store
+    )
+
+    status = service.get_index_status(source.id, config_record.id)
+
+    assert status.reason == expected_reason
+    assert status.available is available
+    assert status.current_corpus_fingerprint == current_fingerprint
+    if state in {"unbuilt", "building", "failed", "stale"}:
+        create_store.assert_not_called()
+    if state not in {"unbuilt", "building"}:
+        assert status.built_corpus_fingerprint == built_fingerprint
+
+
+def test_invalid_manifest_and_generic_source_have_explicit_statuses(
+    tmp_path: Path,
+    session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Invalid Portfolio data should fail closed while generic data stays usable."""
+
+    invalid_directory = tmp_path / "invalid"
+    invalid_directory.mkdir()
+    (invalid_directory / "manifest.json").write_text("invalid", encoding="utf-8")
+    generic_directory = tmp_path / "generic"
+    generic_directory.mkdir()
+    registry = RagConfigService(session_factory)
+    config_record = registry.register_config(load_rag_config())
+    service = SourceService(session_factory, tmp_path, registry)
+    invalid_source = service.register("invalid")
+    generic_source = service.register("generic")
+    store = MagicMock()
+    store.exists.return_value = True
+    store.count.return_value = 3
+    monkeypatch.setattr(
+        "genai_template.services.source_service.create_vector_store",
+        MagicMock(return_value=store),
+    )
+
+    invalid = service.get_index_status(invalid_source.id, config_record.id)
+    generic = service.get_index_status(generic_source.id, config_record.id)
+
+    assert invalid.reason == IndexStatusReason.CORPUS_INVALID
+    assert invalid.available is False
+    assert generic.reason == IndexStatusReason.UNTRACKED
+    assert generic.available is True
+    assert generic.collection_count == 3

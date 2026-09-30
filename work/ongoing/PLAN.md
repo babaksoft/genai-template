@@ -1,6 +1,6 @@
 # Portfolio RAG Stage 2 — Flat Ingestion, Provenance, and Index Freshness
 
-**Status:** Proposed
+**Status:** In progress
 
 ## Goal
 
@@ -427,7 +427,11 @@ uv run pytest tests/db \
 
 ## Slice 5 — Freshness Policy and Answer Gate
 
-**Status: Proposed**
+**Status: Complete**
+
+Verified on 2026-09-30 with the focused Slice 5 command (34 passed), including
+the registry workflow integration test. Black, isort, Ruff, and mypy pass for
+the affected source and test files.
 
 ### Outcome
 

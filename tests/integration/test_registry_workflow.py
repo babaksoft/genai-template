@@ -13,7 +13,7 @@ from genai_template.components.prompt import PromptBuilder
 from genai_template.config import load_rag_config
 from genai_template.db.base import Base
 from genai_template.db.models import Run
-from genai_template.schemas import IndexingResult
+from genai_template.schemas import IndexingResult, LoadedDocuments
 from genai_template.services import (
     ExperimentService,
     IndexNotBuiltError,
@@ -121,18 +121,18 @@ class EmptyIndexingPipeline:
 
         self._store = store
 
-    def run(self, data_dir: Path) -> IndexingResult:
-        """Build an empty collection for a registered source directory.
+    def run_loaded(self, loaded: LoadedDocuments) -> IndexingResult:
+        """Build an empty collection from already loaded documents.
 
         Args:
-            data_dir:
-                Existing source directory.
+            loaded:
+                Loaded empty generic corpus.
 
         Returns:
             Empty-index build metrics.
         """
 
-        assert data_dir.is_dir()
+        assert not loaded.documents
         self._store.create(1)
         return IndexingResult(
             documents_indexed=0,

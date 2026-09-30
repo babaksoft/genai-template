@@ -12,9 +12,11 @@ from genai_template.schemas import (
     CitationContext,
     CitationSource,
     DocumentChunk,
+    IndexStatus,
+    IndexStatusReason,
     RetrievedChunk,
 )
-from genai_template.services import IndexNotBuiltError, RagService, SourceService
+from genai_template.services import IndexUnavailableError, RagService
 
 
 def create_service() -> tuple[RagService, dict[str, MagicMock]]:
@@ -39,6 +41,36 @@ def create_service() -> tuple[RagService, dict[str, MagicMock]]:
         source_service=collaborators["sources"],
     )
     return service, collaborators
+
+
+def make_index_status(
+    config_fingerprint: str,
+    *,
+    available: bool = True,
+    reason: IndexStatusReason = IndexStatusReason.UNTRACKED,
+) -> IndexStatus:
+    """Create a typed status for RAG service tests.
+
+    Args:
+        config_fingerprint:
+            Selected index fingerprint.
+        available:
+            Whether the status permits execution.
+        reason:
+            Machine-readable availability reason.
+
+    Returns:
+        Consistent test status.
+    """
+
+    return IndexStatus(
+        source_id=7,
+        rag_config_id=5,
+        collection_name="idx-selected",
+        index_fingerprint=config_fingerprint,
+        available=available,
+        reason=reason,
+    )
 
 
 @patch("genai_template.services.rag_service.create_llm")
@@ -88,9 +120,11 @@ def test_answer_loads_config_and_completes_canonical_run(
     mocks["experiments"].get_experiment.return_value = experiment
     mocks["experiments"].start_run.return_value = run
     mocks["sources"].get_source.return_value = source
-    mocks["sources"].index_collection_name.return_value = "idx-selected"
     mocks["configs"].get_config.return_value = record
     mocks["configs"].parse_config.return_value = config
+    mocks["sources"].get_index_status.return_value = make_index_status(
+        config_fingerprint="a" * 64
+    )
     citation_source = CitationSource(
         label="S1",
         chunk_id="chunk-1",
@@ -135,10 +169,25 @@ def test_answer_loads_config_and_completes_canonical_run(
 
 
 @patch("genai_template.services.rag_service.create_vector_store")
+@pytest.mark.parametrize(
+    "reason",
+    [
+        IndexStatusReason.UNBUILT,
+        IndexStatusReason.STALE,
+        IndexStatusReason.BUILDING,
+        IndexStatusReason.FAILED,
+        IndexStatusReason.COLLECTION_MISSING,
+        IndexStatusReason.COUNT_MISMATCH,
+        IndexStatusReason.BACKEND_UNAVAILABLE,
+        IndexStatusReason.CORPUS_INVALID,
+        IndexStatusReason.UNTRACKED,
+    ],
+)
 def test_answer_rejects_missing_index_before_creating_run(
     mock_create_store: MagicMock,
+    reason: IndexStatusReason,
 ) -> None:
-    """A missing deterministic index must not leave an unfinished run."""
+    """Every unavailable state must reject before creating a run or store."""
 
     service, mocks = create_service()
     config = load_rag_config()
@@ -148,19 +197,21 @@ def test_answer_rejects_missing_index_before_creating_run(
     mocks["sources"].get_source.return_value = Source(
         id=7, name="docs", directory="/corpora/docs"
     )
-    mocks["sources"].index_collection_name.side_effect = (
-        SourceService.index_collection_name
-    )
     mocks["configs"].get_config.return_value = RagConfigRecord(
         id=5, config_fingerprint="a" * 64, config_json=config.model_dump_json()
     )
     mocks["configs"].parse_config.return_value = config
-    mock_create_store.return_value.exists.return_value = False
+    mocks["sources"].get_index_status.return_value = make_index_status(
+        config_fingerprint="a" * 64,
+        available=False,
+        reason=reason,
+    )
 
-    with pytest.raises(IndexNotBuiltError, match="has not been built"):
+    with pytest.raises(IndexUnavailableError, match=f"reason: {reason.value}"):
         service.answer("Question", 3, 5)
 
     mocks["experiments"].start_run.assert_not_called()
+    mock_create_store.assert_not_called()
 
 
 @patch("genai_template.services.rag_service.create_llm")
@@ -184,12 +235,13 @@ def test_execution_failure_leaves_started_run_unfinished(
     mocks["sources"].get_source.return_value = Source(
         id=7, name="docs", directory="/corpora/docs"
     )
-    mocks["sources"].index_collection_name.return_value = "idx-selected"
     mocks["configs"].get_config.return_value = RagConfigRecord(
         id=5, config_fingerprint="a" * 64, config_json=config.model_dump_json()
     )
     mocks["configs"].parse_config.return_value = config
-    mock_create_store.return_value.exists.return_value = True
+    mocks["sources"].get_index_status.return_value = make_index_status(
+        config_fingerprint="a" * 64
+    )
     mock_create_retrieval.return_value.retrieve.return_value = []
     mocks["context"].build.return_value = CitationContext(text="context", sources=[])
     mocks["prompt"].build.return_value = "prompt"

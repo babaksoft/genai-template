@@ -22,6 +22,7 @@ from genai_template.db.models import Experiment
 from genai_template.db.models import RagConfig as RagConfigRecord
 from genai_template.db.models import Source
 from genai_template.observability import trace as observability_trace
+from genai_template.schemas import IndexBuildStatus, IndexStatus, IndexStatusReason
 from genai_template.services import RagService
 
 
@@ -78,7 +79,18 @@ def test_answer_emits_nested_rag_spans(mock_client_class: MagicMock) -> None:
         name="fastapi",
         directory="/corpora/fastapi",
     )
-    source_service.index_collection_name.return_value = "source-fastapi"
+    source_service.get_index_status.return_value = IndexStatus(
+        source_id=1,
+        rag_config_id=5,
+        collection_name="source-fastapi",
+        index_fingerprint=index_config_fingerprint(config),
+        current_corpus_fingerprint="c" * 64,
+        built_corpus_fingerprint="c" * 64,
+        latest_build_id=12,
+        latest_build_status=IndexBuildStatus.SUCCEEDED,
+        available=True,
+        reason=IndexStatusReason.CURRENT,
+    )
     service = RagService(
         context_builder=ContextBuilder(),
         prompt_builder=PromptBuilder(),
@@ -165,6 +177,8 @@ def test_answer_emits_nested_rag_spans(mock_client_class: MagicMock) -> None:
         config
     )
     assert answer_attributes["rag.index.collection"] == "source-fastapi"
+    assert answer_attributes["rag.index.build.id"] == 12
+    assert answer_attributes["rag.corpus.fingerprint"] == "c" * 64
     assert answer_attributes["rag.embedding.model"] == "trace-embedder"
     assert answer_attributes["rag.vector_store.type"] == "chroma"
     assert answer_attributes["rag.llm.model"] == "trace-llm"

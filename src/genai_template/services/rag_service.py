@@ -14,7 +14,7 @@ from genai_template.factories import (
 )
 from genai_template.observability import INPUT_VALUE, OUTPUT_VALUE, application_span
 from genai_template.protocols import Retriever, VectorStore
-from genai_template.schemas import RagResult, RunMetrics
+from genai_template.schemas import IndexStatus, RagResult, RunMetrics
 from genai_template.services.experiment_service import ExperimentService
 from genai_template.services.rag_config_service import RagConfigService
 from genai_template.services.source_service import SourceService
@@ -24,7 +24,27 @@ logger = logging.getLogger(__name__)
 
 
 class IndexNotBuiltError(ValueError):
-    """Raised when execution selects an index that has not been built."""
+    """Compatibility base for an index that cannot serve an answer."""
+
+
+class IndexUnavailableError(IndexNotBuiltError):
+    """Raised when verified index state does not permit answer execution."""
+
+    def __init__(self, status: IndexStatus) -> None:
+        """Initialize an actionable unavailable-index error.
+
+        Args:
+            status:
+                Verified status that rejected answer execution.
+        """
+
+        self.status = status
+        super().__init__(
+            f"Index for source {status.source_id} and RAG config "
+            f"{status.rag_config_id} has not been built or is unavailable "
+            f"(reason: {status.reason.value}). Explicitly rebuild this index "
+            "before asking a question."
+        )
 
 
 class RagService:
@@ -79,8 +99,8 @@ class RagService:
             Generated answer, runtime metrics, sources, and citation warnings.
 
         Raises:
-            IndexNotBuiltError:
-                If the selected deterministic source index does not exist.
+            IndexUnavailableError:
+                If verified state does not permit use of the selected index.
             ValueError:
                 If the experiment, source, or configuration does not exist.
         """
@@ -89,13 +109,14 @@ class RagService:
         source = self._source_service.get_source(experiment.source_id)
         config_record = self._rag_config_service.get_config(rag_config_id)
         config = self._rag_config_service.parse_config(config_record)
-        collection_name = self._source_service.index_collection_name(source.id, config)
+        index_status = self._source_service.get_index_status(
+            source.id, config_record.id
+        )
+        if not index_status.available:
+            raise IndexUnavailableError(index_status)
+
+        collection_name = index_status.collection_name
         store = create_vector_store(config.vector_store, collection_name)
-        if not store.exists():
-            raise IndexNotBuiltError(
-                f"Index for source {source.id} and RAG config {rag_config_id} "
-                "has not been built."
-            )
 
         run = self._experiment_service.start_run(
             experiment_id=experiment.id,
@@ -122,6 +143,13 @@ class RagService:
                 "rag.llm.model": config.llm.model_name,
             },
         ) as span:
+            if index_status.latest_build_id is not None:
+                span.set_attribute("rag.index.build.id", index_status.latest_build_id)
+            if index_status.current_corpus_fingerprint is not None:
+                span.set_attribute(
+                    "rag.corpus.fingerprint",
+                    index_status.current_corpus_fingerprint,
+                )
             with Timer() as total_timer:
                 with Timer() as retrieval_timer:
                     retrieved_chunks = retrieval_pipeline.retrieve(
