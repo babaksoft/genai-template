@@ -56,7 +56,17 @@ def test_rebuild_emits_nested_indexing_spans(tmp_path: Path) -> None:
     config_service = MagicMock()
     config_service.get_config.return_value = config_record
     config_service.parse_config.return_value = config
-    service = SourceService(MagicMock(), tmp_path, config_service)
+    build_service = MagicMock()
+    build_service.start.return_value.id = 11
+    build_service.succeed.return_value.document_count = 1
+    build_service.succeed.return_value.chunk_count = 1
+    build_service.succeed.return_value.indexing_duration = 0.2
+    service = SourceService(
+        MagicMock(),
+        tmp_path,
+        config_service,
+        index_build_service=build_service,
+    )
     source = Source(id=1, name="docs", directory=str(directory.resolve()))
 
     chunk = DocumentChunk(
@@ -71,6 +81,7 @@ def test_rebuild_emits_nested_indexing_spans(tmp_path: Path) -> None:
     embedder = MagicMock()
     embedder.embed.return_value = [chunk]
     store = MagicMock()
+    store.count.return_value = 1
     provider, exporter = _trace_exporter()
 
     with (
@@ -116,12 +127,10 @@ def test_rebuild_emits_nested_indexing_spans(tmp_path: Path) -> None:
     assert build_parent is not None
     assert delete_parent.span_id == rebuild_id
     assert build_parent.span_id == rebuild_id
-    for stage_name in (
-        "rag.index.load",
-        "rag.index.split",
-        "rag.index.embed",
-        "rag.index.write",
-    ):
+    load_parent = spans["rag.index.load"].parent
+    assert load_parent is not None
+    assert load_parent.span_id == rebuild_id
+    for stage_name in ("rag.index.split", "rag.index.embed", "rag.index.write"):
         stage_parent = spans[stage_name].parent
         assert stage_parent is not None
         assert stage_parent.span_id == build_id
@@ -148,6 +157,8 @@ def test_rebuild_emits_nested_indexing_spans(tmp_path: Path) -> None:
     )
     assert rebuild_attributes["rag.document.count"] == 1
     assert rebuild_attributes["rag.chunk.count"] == 1
+    assert rebuild_attributes["rag.index.build.id"] == 11
+    assert rebuild_attributes["rag.index.build.status"] == "succeeded"
 
     load_attributes = spans["rag.index.load"].attributes
     split_attributes = spans["rag.index.split"].attributes

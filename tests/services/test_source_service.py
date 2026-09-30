@@ -10,10 +10,15 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from genai_template.config import index_config_fingerprint, load_rag_config
 from genai_template.db.base import Base
-from genai_template.db.models import Source
+from genai_template.db.models import IndexBuild, Source
 from genai_template.pipelines import IndexingPipeline
 from genai_template.schemas import IndexingResult
-from genai_template.services import RagConfigService, SourceService
+from genai_template.services import (
+    IndexBuildInProgressError,
+    IndexCountMismatchError,
+    RagConfigService,
+    SourceService,
+)
 
 
 @pytest.fixture
@@ -129,9 +134,10 @@ def test_rebuild_loads_persisted_config_and_replaces_collection(
     source = service.register("docs")
     store = MagicMock()
     pipeline = MagicMock(spec=IndexingPipeline)
-    pipeline.run.return_value = IndexingResult(
+    pipeline.run_loaded.return_value = IndexingResult(
         documents_indexed=3, chunks_indexed=12, indexing_time=0.4
     )
+    store.count.return_value = 12
     create_store = MagicMock(return_value=store)
     create_pipeline = MagicMock(return_value=pipeline)
     monkeypatch.setattr(
@@ -145,10 +151,16 @@ def test_rebuild_loads_persisted_config_and_replaces_collection(
     create_store.assert_called_once_with(config.vector_store, collection)
     store.delete.assert_called_once_with()
     create_pipeline.assert_called_once_with(config, store)
-    pipeline.run.assert_called_once_with(directory.resolve())
+    pipeline.run_loaded.assert_called_once()
     assert result.documents_indexed == 3
     assert result.chunks_indexed == 12
     assert result.indexing_time == 0.4
+    with session_factory() as session:
+        build = session.query(IndexBuild).one()
+        assert build.status == "succeeded"
+        assert build.document_count == 3
+        assert build.chunk_count == 12
+        assert build.corpus_fingerprint is None
 
 
 def test_rebuild_lock_is_shared_for_the_same_collection() -> None:
@@ -160,3 +172,181 @@ def test_rebuild_lock_is_shared_for_the_same_collection() -> None:
 
     assert first is second
     assert first is not other
+
+
+def test_rebuild_validation_failure_does_not_create_attempt(
+    tmp_path: Path,
+    session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A failure before destructive work should not create an audit attempt."""
+
+    directory = tmp_path / "docs"
+    directory.mkdir()
+    registry = RagConfigService(session_factory)
+    config_record = registry.register_config(load_rag_config())
+    service = SourceService(session_factory, tmp_path, registry)
+    source = service.register("docs")
+    create_store = MagicMock()
+    monkeypatch.setattr(
+        service, "_load_source", MagicMock(side_effect=ValueError("bad"))
+    )
+    monkeypatch.setattr(
+        "genai_template.services.source_service.create_vector_store", create_store
+    )
+
+    with pytest.raises(ValueError, match="bad"):
+        service.rebuild_index(source.id, config_record.id)
+
+    create_store.assert_not_called()
+    with session_factory() as session:
+        assert session.query(IndexBuild).count() == 0
+
+
+def test_rebuild_delete_failure_is_persisted_and_lock_is_released(
+    tmp_path: Path,
+    session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A destructive-phase error should leave a failed row and release the lock."""
+
+    directory = tmp_path / "docs"
+    directory.mkdir()
+    config = load_rag_config()
+    registry = RagConfigService(session_factory)
+    config_record = registry.register_config(config)
+    service = SourceService(session_factory, tmp_path, registry)
+    source = service.register("docs")
+    store = MagicMock()
+
+    def fail_after_asserting_durable_attempt() -> None:
+        """Prove the building row committed before destructive work."""
+
+        with session_factory() as session:
+            assert session.query(IndexBuild).one().status == "building"
+        raise RuntimeError("provider payload must not persist")
+
+    store.delete.side_effect = fail_after_asserting_durable_attempt
+    monkeypatch.setattr(
+        "genai_template.services.source_service.create_vector_store",
+        MagicMock(return_value=store),
+    )
+
+    with pytest.raises(RuntimeError, match="provider payload"):
+        service.rebuild_index(source.id, config_record.id)
+
+    collection = SourceService.index_collection_name(source.id, config)
+    assert service._get_rebuild_lock(collection).acquire(blocking=False)
+    service._get_rebuild_lock(collection).release()
+    with session_factory() as session:
+        build = session.query(IndexBuild).one()
+        assert build.status == "failed"
+        assert build.failure_code == "collection_delete"
+        assert build.failure_detail is not None
+        assert "provider payload" not in build.failure_detail
+
+
+def test_rebuild_rejects_count_mismatch(
+    tmp_path: Path,
+    session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A collection count mismatch should prevent successful completion."""
+
+    directory = tmp_path / "docs"
+    directory.mkdir()
+    registry = RagConfigService(session_factory)
+    config_record = registry.register_config(load_rag_config())
+    service = SourceService(session_factory, tmp_path, registry)
+    source = service.register("docs")
+    store = MagicMock()
+    store.count.return_value = 1
+    pipeline = MagicMock(spec=IndexingPipeline)
+    pipeline.run_loaded.return_value = IndexingResult(
+        documents_indexed=2,
+        chunks_indexed=3,
+        indexing_time=0.2,
+    )
+    monkeypatch.setattr(
+        "genai_template.services.source_service.create_vector_store",
+        MagicMock(return_value=store),
+    )
+    monkeypatch.setattr(
+        service, "_create_indexing_pipeline", MagicMock(return_value=pipeline)
+    )
+
+    with pytest.raises(IndexCountMismatchError):
+        service.rebuild_index(source.id, config_record.id)
+
+    with session_factory() as session:
+        build = session.query(IndexBuild).one()
+        assert build.status == "failed"
+        assert build.failure_code == "count_verification"
+
+
+def test_rebuild_success_persistence_failure_marks_attempt_failed(
+    tmp_path: Path,
+    session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Failure to record success should conservatively terminalize the attempt."""
+
+    directory = tmp_path / "docs"
+    directory.mkdir()
+    registry = RagConfigService(session_factory)
+    config_record = registry.register_config(load_rag_config())
+    service = SourceService(session_factory, tmp_path, registry)
+    source = service.register("docs")
+    store = MagicMock()
+    store.count.return_value = 2
+    pipeline = MagicMock(spec=IndexingPipeline)
+    pipeline.run_loaded.return_value = IndexingResult(
+        documents_indexed=1,
+        chunks_indexed=2,
+        indexing_time=0.1,
+    )
+    monkeypatch.setattr(
+        "genai_template.services.source_service.create_vector_store",
+        MagicMock(return_value=store),
+    )
+    monkeypatch.setattr(
+        service, "_create_indexing_pipeline", MagicMock(return_value=pipeline)
+    )
+    monkeypatch.setattr(
+        service._index_build_service,
+        "succeed",
+        MagicMock(side_effect=RuntimeError("database write failed")),
+    )
+
+    with pytest.raises(RuntimeError, match="database write failed"):
+        service.rebuild_index(source.id, config_record.id)
+
+    with session_factory() as session:
+        build = session.query(IndexBuild).one()
+        assert build.status == "failed"
+        assert build.failure_code == "success_persistence"
+
+
+def test_rebuild_lock_conflict_is_non_blocking_and_has_no_attempt(
+    tmp_path: Path,
+    session_factory: sessionmaker[Session],
+) -> None:
+    """A process-local owner should produce an immediate focused conflict."""
+
+    (tmp_path / "docs").mkdir()
+    config = load_rag_config()
+    registry = RagConfigService(session_factory)
+    config_record = registry.register_config(config)
+    service = SourceService(session_factory, tmp_path, registry)
+    source = service.register("docs")
+    collection = SourceService.index_collection_name(source.id, config)
+    lock = service._get_rebuild_lock(collection)
+    lock.acquire()
+    try:
+        with pytest.raises(IndexBuildInProgressError, match="already in progress"):
+            service.rebuild_index(source.id, config_record.id)
+    finally:
+        lock.release()
+
+    with session_factory() as session:
+        assert session.query(IndexBuild).count() == 0

@@ -20,6 +20,7 @@ from genai_template.schemas.citation import (
 )
 from genai_template.schemas.corpus import LoadedDocuments
 from genai_template.schemas.experiment_summary import ExperimentSummary
+from genai_template.schemas.index_build import IndexBuildStatus
 from genai_template.schemas.indexing_result import IndexingResult
 from genai_template.schemas.rag import RagResult
 from genai_template.schemas.retrieval_test import RetrievalTest
@@ -39,6 +40,7 @@ __all__ = [
     "ExperimentSummary",
     "HealthResponse",
     "IndexBuildResponse",
+    "IndexBuildStatus",
     "IndexingResult",
     "LoadedDocuments",
     "RagConfigResponse",

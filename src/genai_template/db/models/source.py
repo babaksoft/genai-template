@@ -13,6 +13,7 @@ from genai_template.utils.datetime import utc_now
 
 if TYPE_CHECKING:
     from genai_template.db.models.experiment import Experiment
+    from genai_template.db.models.index_build import IndexBuild
 
 
 class Source(Base):
@@ -34,5 +35,11 @@ class Source(Base):
 
     experiments: Mapped[list[Experiment]] = relationship(
         back_populates="source",
+        passive_deletes=True,
+    )
+
+    index_builds: Mapped[list[IndexBuild]] = relationship(
+        back_populates="source",
+        cascade="all, delete-orphan",
         passive_deletes=True,
     )

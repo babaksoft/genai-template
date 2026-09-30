@@ -341,7 +341,12 @@ uv run pytest tests/components/context \
 
 ## Slice 4 — Persistent Index-Build Attempts and Safe Lifecycle
 
-**Status: Proposed**
+**Status: Complete**
+
+Verified on 2026-09-30 with the focused Slice 4 suite covering migrations,
+index-build and source services, pipelines, and vector stores (56 passed). The
+complete non-integration quality suite also passes with Phoenix disabled (472
+passed, 15 deselected), including Black, isort, Ruff, and mypy.
 
 ### Outcome
 

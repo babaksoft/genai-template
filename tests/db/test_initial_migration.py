@@ -56,6 +56,7 @@ def test_initial_migration_creates_redesigned_schema(tmp_path: Path) -> None:
     assert set(inspector.get_table_names()) == {
         "alembic_version",
         "experiments",
+        "index_builds",
         "rag_configs",
         "runs",
         "sources",
@@ -95,6 +96,22 @@ def test_initial_migration_creates_redesigned_schema(tmp_path: Path) -> None:
         "generation_time",
         "total_time",
         "response_length",
+    }
+    assert set(columns_by_name(inspector, "index_builds")) == {
+        "id",
+        "source_id",
+        "rag_config_id",
+        "collection_name",
+        "index_fingerprint",
+        "corpus_fingerprint",
+        "status",
+        "started_at",
+        "finished_at",
+        "indexing_duration",
+        "document_count",
+        "chunk_count",
+        "failure_code",
+        "failure_detail",
     }
 
 

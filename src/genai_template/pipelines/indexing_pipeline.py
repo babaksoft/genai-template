@@ -68,12 +68,25 @@ class IndexingPipeline:
             Summary result from indexing.
         """
 
+        with application_span("rag.index.load", "CHAIN") as load_span:
+            loaded = self._load(data_dir)
+            load_span.set_attribute("rag.document.count", len(loaded.documents))
+        return self.run_loaded(loaded)
+
+    def run_loaded(self, loaded: LoadedDocuments) -> IndexingResult:
+        """Index a previously loaded and, when applicable, pinned corpus.
+
+        Args:
+            loaded:
+                Ordered documents and optional validated corpus provenance.
+
+        Returns:
+            Summary result from indexing.
+        """
+
         with application_span("rag.index.build", "CHAIN") as build_span:
             with Timer() as timer:
-                with application_span("rag.index.load", "CHAIN") as load_span:
-                    loaded = self._load(data_dir)
-                    documents = list(loaded.documents)
-                    load_span.set_attribute("rag.document.count", len(documents))
+                documents = list(loaded.documents)
 
                 with application_span(
                     "rag.index.split",

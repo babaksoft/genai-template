@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from genai_template.components.readers import PortfolioReader, TextReader
 from genai_template.config import RagConfig, index_config_fingerprint
 from genai_template.db.models import Source
 from genai_template.factories import (
@@ -24,10 +25,19 @@ from genai_template.factories import (
 from genai_template.observability import application_span
 from genai_template.pipelines import IndexingPipeline
 from genai_template.protocols import VectorStore
-from genai_template.schemas import IndexingResult
+from genai_template.schemas import IndexBuildStatus, IndexingResult, LoadedDocuments
+from genai_template.services.index_build_service import IndexBuildService
 from genai_template.services.rag_config_service import RagConfigService
 
 logger = logging.getLogger(__name__)
+
+
+class IndexBuildInProgressError(RuntimeError):
+    """Raised when this process is already rebuilding the selected index."""
+
+
+class IndexCountMismatchError(RuntimeError):
+    """Raised when a completed pipeline has not stored its reported chunks."""
 
 
 class SourceService:
@@ -41,6 +51,7 @@ class SourceService:
         session_factory: Callable[[], Session],
         corpora_dir: Path,
         rag_config_service: RagConfigService | None = None,
+        index_build_service: IndexBuildService | None = None,
     ) -> None:
         """Initialize the source service.
 
@@ -52,11 +63,17 @@ class SourceService:
             rag_config_service:
                 Registry used to load persisted RAG configurations. A registry
                 backed by ``session_factory`` is constructed when omitted.
+            index_build_service:
+                Persistence service for durable build attempts. A service backed
+                by ``session_factory`` is constructed when omitted.
         """
 
         self._session_factory = session_factory
         self._corpora_dir = corpora_dir.resolve()
         self._rag_config_service = rag_config_service or RagConfigService(
+            session_factory
+        )
+        self._index_build_service = index_build_service or IndexBuildService(
             session_factory
         )
 
@@ -182,6 +199,10 @@ class SourceService:
                 If the source directory no longer exists.
             NotADirectoryError:
                 If the source path is no longer a directory.
+            IndexBuildInProgressError:
+                If another request in this process owns the collection lock.
+            IndexCountMismatchError:
+                If the vector store count differs from the pipeline result.
         """
 
         source = self.get_source(source_id)
@@ -189,37 +210,97 @@ class SourceService:
         record = self._rag_config_service.get_config(rag_config_id)
         config = self._rag_config_service.parse_config(record)
         collection_name = self.index_collection_name(source_id, config)
+        index_fingerprint = index_config_fingerprint(config)
         rebuild_lock = self._get_rebuild_lock(collection_name)
 
-        with application_span(
-            "rag.index.rebuild",
-            "CHAIN",
-            {
-                "rag.source.id": source.id,
-                "rag.config.id": record.id,
-                "rag.config.fingerprint": record.config_fingerprint,
-                "rag.index.fingerprint": index_config_fingerprint(config),
-                "rag.index.collection": collection_name,
-                "rag.splitter.type": config.splitter.type,
-                "rag.embedding.provider": config.embedder.type,
-                "rag.embedding.model": config.embedder.model_name,
-                "rag.vector_store.type": config.vector_store.type,
-                "rag.vector_store.distance": config.vector_store.distance.value,
-            },
-        ) as span:
-            with rebuild_lock:
-                store = create_vector_store(config.vector_store, collection_name)
-                with application_span(
-                    "rag.index.delete",
-                    "CHAIN",
-                    {"rag.index.collection": collection_name},
-                ):
-                    store.delete()
-                pipeline = self._create_indexing_pipeline(config, store)
-                result = pipeline.run(directory)
+        if not rebuild_lock.acquire(blocking=False):
+            raise IndexBuildInProgressError(
+                f"Index rebuild already in progress for collection '{collection_name}'."
+            )
 
-            span.set_attribute("rag.document.count", result.documents_indexed)
-            span.set_attribute("rag.chunk.count", result.chunks_indexed)
+        try:
+            with application_span(
+                "rag.index.rebuild",
+                "CHAIN",
+                {
+                    "rag.source.id": source.id,
+                    "rag.config.id": record.id,
+                    "rag.config.fingerprint": record.config_fingerprint,
+                    "rag.index.fingerprint": index_fingerprint,
+                    "rag.index.collection": collection_name,
+                    "rag.splitter.type": config.splitter.type,
+                    "rag.embedding.provider": config.embedder.type,
+                    "rag.embedding.model": config.embedder.model_name,
+                    "rag.vector_store.type": config.vector_store.type,
+                    "rag.vector_store.distance": config.vector_store.distance.value,
+                },
+            ) as span:
+                with application_span("rag.index.load", "CHAIN") as load_span:
+                    loaded = self._load_source(directory)
+                    load_span.set_attribute("rag.document.count", len(loaded.documents))
+                corpus_fingerprint = self._corpus_fingerprint(loaded)
+                build = self._index_build_service.start(
+                    source_id=source.id,
+                    rag_config_id=record.id,
+                    collection_name=collection_name,
+                    index_fingerprint=index_fingerprint,
+                    corpus_fingerprint=corpus_fingerprint,
+                )
+                span.set_attribute("rag.index.build.id", build.id)
+                span.set_attribute(
+                    "rag.index.build.status", IndexBuildStatus.BUILDING.value
+                )
+                if corpus_fingerprint is not None:
+                    span.set_attribute("rag.corpus.fingerprint", corpus_fingerprint)
+
+                phase = "store_initialization"
+                try:
+                    store = create_vector_store(config.vector_store, collection_name)
+
+                    phase = "collection_delete"
+                    with application_span(
+                        "rag.index.delete",
+                        "CHAIN",
+                        {"rag.index.collection": collection_name},
+                    ):
+                        store.delete()
+
+                    phase = "indexing"
+                    pipeline = self._create_indexing_pipeline(config, store)
+                    result = pipeline.run_loaded(loaded)
+
+                    phase = "count_verification"
+                    stored_count = store.count()
+                    if stored_count != result.chunks_indexed:
+                        raise IndexCountMismatchError(
+                            "Vector store count does not match the indexed chunk count."
+                        )
+
+                    phase = "success_persistence"
+                    completed = self._index_build_service.succeed(
+                        build.id,
+                        document_count=result.documents_indexed,
+                        chunk_count=stored_count,
+                        indexing_duration=result.indexing_time,
+                    )
+                except Exception as exc:
+                    self._record_build_failure(build.id, phase, exc)
+                    span.set_attribute(
+                        "rag.index.build.status", IndexBuildStatus.FAILED.value
+                    )
+                    span.set_attribute("rag.index.build.failure_code", phase)
+                    raise
+
+                span.set_attribute(
+                    "rag.index.build.status", IndexBuildStatus.SUCCEEDED.value
+                )
+                span.set_attribute("rag.document.count", completed.document_count or 0)
+                span.set_attribute("rag.chunk.count", completed.chunk_count or 0)
+                span.set_attribute(
+                    "rag.index.duration", completed.indexing_duration or 0.0
+                )
+        finally:
+            rebuild_lock.release()
 
         logger.info(
             "Rebuilt source %d index '%s' with RAG config %d: documents=%d, "
@@ -232,6 +313,72 @@ class SourceService:
             result.indexing_time,
         )
         return result
+
+    @staticmethod
+    def _load_source(directory: Path) -> LoadedDocuments:
+        """Validate and load a source before a destructive attempt begins.
+
+        Args:
+            directory:
+                Registered generic directory or Portfolio publication pointer.
+
+        Returns:
+            In-memory documents with pinned provenance when manifest-backed.
+        """
+
+        reader = (
+            PortfolioReader()
+            if (directory / "manifest.json").is_file()
+            else TextReader()
+        )
+        return reader.load(directory)
+
+    @staticmethod
+    def _corpus_fingerprint(loaded: LoadedDocuments) -> str | None:
+        """Return the pinned manifest fingerprint when present.
+
+        Args:
+            loaded:
+                Validated loaded documents.
+
+        Returns:
+            Corpus fingerprint, or ``None`` for a generic source.
+        """
+
+        if loaded.provenance is None:
+            return None
+
+        return loaded.provenance.corpus_fingerprint
+
+    def _record_build_failure(
+        self,
+        build_id: int,
+        phase: str,
+        error: Exception,
+    ) -> None:
+        """Best-effort persist a safe terminal failure summary.
+
+        Args:
+            build_id:
+                Durable attempt that failed.
+            phase:
+                Stable lifecycle phase in which the failure occurred.
+            error:
+                Original error, used only for its exception class name.
+        """
+
+        detail = f"Index rebuild failed during {phase} ({type(error).__name__})."
+        try:
+            self._index_build_service.fail(
+                build_id,
+                failure_code=phase,
+                failure_detail=detail,
+            )
+        except Exception:
+            logger.exception(
+                "Could not persist failure for index build %d; it remains conservatively unavailable.",
+                build_id,
+            )
 
     @staticmethod
     def index_collection_name(source_id: int, config: RagConfig) -> str:

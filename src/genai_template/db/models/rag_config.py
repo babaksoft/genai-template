@@ -12,6 +12,7 @@ from genai_template.db.base import Base
 from genai_template.utils.datetime import utc_now
 
 if TYPE_CHECKING:
+    from genai_template.db.models.index_build import IndexBuild
     from genai_template.db.models.run import Run
 
 
@@ -39,6 +40,11 @@ class RagConfig(Base):
     )
 
     runs: Mapped[list[Run]] = relationship(
+        back_populates="rag_config",
+        passive_deletes=True,
+    )
+
+    index_builds: Mapped[list[IndexBuild]] = relationship(
         back_populates="rag_config",
         passive_deletes=True,
     )
