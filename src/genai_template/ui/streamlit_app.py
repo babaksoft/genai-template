@@ -4,9 +4,10 @@ import streamlit as st
 from httpx import HTTPError
 
 from genai_template.config import load_rag_config, settings
-from genai_template.schemas import ExperimentResponse, RagConfigResponse
+from genai_template.schemas import ExperimentResponse, IndexStatus, RagConfigResponse
 from genai_template.ui.answer_view import render_answer
 from genai_template.ui.api_client import ApiClient
+from genai_template.ui.index_view import render_build_result, render_index_status
 
 st.set_page_config(page_title="GenAI Template", page_icon="🤖", layout="wide")
 st.title("GenAI Template")
@@ -15,6 +16,7 @@ st.write("RAG experimentation playground")
 api_client = ApiClient(base_url=settings.API_BASE_URL)
 active_experiment: ExperimentResponse | None = None
 active_config: RagConfigResponse | None = None
+active_index_status: IndexStatus | None = None
 
 with st.sidebar:
     st.header("Experiment setup")
@@ -133,28 +135,39 @@ with st.sidebar:
     else:
         st.info("Register a RAG configuration before asking questions.")
 
-    if (
-        active_experiment is not None
-        and active_config is not None
-        and st.button("Rebuild selected index")
-    ):
-        with st.spinner("Rebuilding index..."):
-            try:
-                build_result = api_client.rebuild_index(
-                    active_experiment.source_id,
-                    active_config.id,
-                )
-            except HTTPError as exc:
-                st.error(f"Unable to rebuild index: {exc}")
-            else:
-                st.success(
-                    f"Indexed {build_result.documents_indexed} document(s) into "
-                    f"{build_result.chunks_indexed} chunk(s)."
-                )
+    if active_experiment is not None and active_config is not None:
+        try:
+            active_index_status = api_client.get_index_status(
+                active_experiment.source_id,
+                active_config.id,
+            )
+        except HTTPError as exc:
+            st.error(f"Unable to inspect index status: {exc}")
+        else:
+            render_index_status(active_index_status)
+
+        if st.button("Rebuild selected index"):
+            with st.spinner("Rebuilding index..."):
+                try:
+                    build_result = api_client.rebuild_index(
+                        active_experiment.source_id,
+                        active_config.id,
+                    )
+                except HTTPError as exc:
+                    st.error(f"Unable to rebuild index: {exc}")
+                else:
+                    active_index_status = build_result.status
+                    render_build_result(build_result)
+                    render_index_status(active_index_status)
 
 st.header("Ask a question")
 query = st.text_area("Question", placeholder="Enter your question...", height=100)
-can_ask = active_experiment is not None and active_config is not None
+can_ask = (
+    active_experiment is not None
+    and active_config is not None
+    and active_index_status is not None
+    and active_index_status.available
+)
 
 if st.button("Ask", type="primary", disabled=not can_ask):
     if active_experiment is None or active_config is None:

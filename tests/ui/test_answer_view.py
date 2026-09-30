@@ -62,6 +62,12 @@ def test_render_answer_displays_markdown_and_ordered_sources(st: MagicMock) -> N
             content="First exact chunk.",
             distance=0.12,
             cited=True,
+            project_slug="atlas",
+            project_display_name="Atlas",
+            document_type="component",
+            component_id="api",
+            repository_url="https://github.com/example/atlas",
+            resolved_commit_sha="a" * 40,
         ),
         CitationSource(
             label="S2",
@@ -85,6 +91,10 @@ def test_render_answer_displays_markdown_and_ordered_sources(st: MagicMock) -> N
         call("First exact chunk."),
         call("Second exact chunk."),
     ]
+    st.caption.assert_called_once_with(
+        "Atlas (atlas) · component: api · "
+        "Repository: https://github.com/example/atlas · Commit: " + "a" * 40
+    )
 
 
 @patch("genai_template.ui.answer_view.st")

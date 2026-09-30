@@ -34,6 +34,36 @@ def metrics_json() -> dict[str, object]:
     ).model_dump(mode="json")
 
 
+def index_status_json() -> dict[str, object]:
+    """Create a serialized current index status.
+
+    Returns:
+        JSON-compatible index status.
+    """
+
+    timestamp = datetime(2026, 9, 30, tzinfo=UTC).isoformat()
+    return {
+        "source_id": 4,
+        "rag_config_id": 7,
+        "collection_name": "idx-test",
+        "index_fingerprint": "a" * 64,
+        "current_corpus_fingerprint": "b" * 64,
+        "built_corpus_fingerprint": "b" * 64,
+        "latest_build_id": 11,
+        "latest_build_status": "succeeded",
+        "build_started_at": timestamp,
+        "build_finished_at": timestamp,
+        "document_count": 2,
+        "chunk_count": 8,
+        "collection_count": 8,
+        "indexing_duration": 0.4,
+        "latest_failure_code": None,
+        "latest_failure_detail": None,
+        "available": True,
+        "reason": "current",
+    }
+
+
 @patch("genai_template.ui.api_client.post")
 def test_answer_sends_experiment_and_config_ids(mock_post: MagicMock) -> None:
     """Answer requests should use canonical execution identifiers."""
@@ -156,12 +186,36 @@ def test_rebuild_index_uses_put_endpoint(mock_put: MagicMock) -> None:
         "documents_indexed": 2,
         "chunks_indexed": 8,
         "indexing_time": 0.4,
+        "build": {
+            "id": 11,
+            "status": "succeeded",
+            "corpus_fingerprint": "b" * 64,
+            "started_at": datetime(2026, 9, 30, tzinfo=UTC).isoformat(),
+            "finished_at": datetime(2026, 9, 30, tzinfo=UTC).isoformat(),
+            "document_count": 2,
+            "chunk_count": 8,
+            "indexing_duration": 0.4,
+        },
+        "status": index_status_json(),
     }
 
     result = ApiClient("http://localhost:8000").rebuild_index(4, 7)
 
     assert result.chunks_indexed == 8
     assert mock_put.call_args.args[0].endswith("/sources/4/indexes/7")
+
+
+@patch("genai_template.ui.api_client.get")
+def test_get_index_status_uses_deterministic_route(mock_get: MagicMock) -> None:
+    """Index status lookup should deserialize the typed freshness projection."""
+
+    mock_get.return_value.json.return_value = index_status_json()
+
+    result = ApiClient("http://localhost:8000").get_index_status(4, 7)
+
+    assert result.available is True
+    assert result.reason.value == "current"
+    assert mock_get.call_args.args[0].endswith("/sources/4/indexes/7")
 
 
 @patch("genai_template.ui.api_client.get")

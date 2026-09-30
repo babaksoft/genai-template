@@ -7,10 +7,16 @@ from genai_template.api.dependencies import get_rag_service
 from genai_template.schemas import (
     CitationSource,
     CitationWarning,
+    IndexStatus,
+    IndexStatusReason,
     RagResult,
     RunMetrics,
 )
-from genai_template.services import IndexNotBuiltError, RagService
+from genai_template.services import (
+    IndexNotBuiltError,
+    IndexUnavailableError,
+    RagService,
+)
 
 
 def get_test_metrics() -> RunMetrics:
@@ -195,4 +201,33 @@ def test_answer_rejects_missing_index_with_conflict(app: FastAPI) -> None:
     assert response.status_code == 409
     assert "has not been built" in response.json()["detail"]
 
+    app.dependency_overrides.clear()
+
+
+def test_answer_reports_machine_readable_unavailable_reason(app: FastAPI) -> None:
+    """A verified unavailable index should identify the reason and rebuild action."""
+
+    index_status = IndexStatus(
+        source_id=1,
+        rag_config_id=2,
+        collection_name="idx-test",
+        index_fingerprint="a" * 64,
+        current_corpus_fingerprint="b" * 64,
+        built_corpus_fingerprint="c" * 64,
+        available=False,
+        reason=IndexStatusReason.STALE,
+    )
+    mock_service = Mock(spec=RagService)
+    mock_service.answer.side_effect = IndexUnavailableError(index_status)
+    app.dependency_overrides[get_rag_service] = lambda: mock_service
+
+    response = TestClient(app).post(
+        "/api/v1/answer",
+        json={"query": "What is RAG?", "experiment_id": 1, "rag_config_id": 2},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["reason"] == "stale"
+    assert response.json()["detail"]["action"] == "rebuild_index"
+    assert response.json()["detail"]["rebuild_endpoint"] == ("/sources/1/indexes/2")
     app.dependency_overrides.clear()

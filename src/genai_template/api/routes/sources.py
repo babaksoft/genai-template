@@ -7,11 +7,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from genai_template.api.dependencies import get_source_service
 from genai_template.schemas import (
     CreateSourceRequest,
+    IndexBuildAttemptResponse,
     IndexBuildResponse,
+    IndexStatus,
+    IndexStatusReason,
     SourceCandidateResponse,
     SourceResponse,
 )
-from genai_template.services import SourceService
+from genai_template.services import IndexBuildInProgressError, SourceService
+from genai_template.workflow.portfolio.corpus import CorpusValidationError
 
 router = APIRouter(prefix="/sources", tags=["sources"])
 
@@ -91,6 +95,42 @@ async def register_source(
     return _source_response(source)
 
 
+@router.get(
+    "/{source_id}/indexes/{rag_config_id}",
+    response_model=IndexStatus,
+)
+async def get_source_index_status(
+    source_id: int,
+    rag_config_id: int,
+    source_service: Annotated[SourceService, Depends(get_source_service)],
+) -> IndexStatus:
+    """Inspect freshness and availability for a deterministic source index.
+
+    Args:
+        source_id:
+            Identifier of the registered source.
+        rag_config_id:
+            Identifier of the persisted RAG configuration.
+        source_service:
+            Configured source service.
+
+    Returns:
+        Current verified index status.
+
+    Raises:
+        HTTPException:
+            If the source or configuration does not exist.
+    """
+
+    try:
+        return source_service.get_index_status(source_id, rag_config_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
 @router.put("/{source_id}/indexes/{rag_config_id}", response_model=IndexBuildResponse)
 async def rebuild_source_index(
     source_id: int,
@@ -108,22 +148,87 @@ async def rebuild_source_index(
             Configured source service.
 
     Returns:
-        Transient indexing counts and duration.
+        Persisted build details, compatibility metrics, and resulting status.
 
     Raises:
         HTTPException:
-            If the source or its directory cannot be found.
+            If the source or config cannot be found, the corpus is invalid, or a
+            rebuild is already running.
     """
 
     try:
         result = source_service.rebuild_index(source_id, rag_config_id)
+    except IndexBuildInProgressError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": str(exc),
+                "reason": IndexStatusReason.BUILDING.value,
+                "action": "retry_status",
+                "status_endpoint": _index_endpoint(source_id, rag_config_id),
+            },
+        ) from exc
+    except CorpusValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "message": str(exc),
+                "reason": IndexStatusReason.CORPUS_INVALID.value,
+                "action": "repair_corpus",
+            },
+        ) from exc
     except (FileNotFoundError, NotADirectoryError, ValueError) as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
 
-    return IndexBuildResponse.model_validate(result, from_attributes=True)
+    index_status = source_service.get_index_status(source_id, rag_config_id)
+    if (
+        index_status.latest_build_id is None
+        or index_status.latest_build_status is None
+        or index_status.build_started_at is None
+        or index_status.build_finished_at is None
+        or index_status.document_count is None
+        or index_status.chunk_count is None
+        or index_status.indexing_duration is None
+    ):
+        raise RuntimeError("Successful rebuild did not produce complete build state.")
+
+    build = IndexBuildAttemptResponse(
+        id=index_status.latest_build_id,
+        status=index_status.latest_build_status,
+        corpus_fingerprint=index_status.built_corpus_fingerprint,
+        started_at=index_status.build_started_at,
+        finished_at=index_status.build_finished_at,
+        document_count=index_status.document_count,
+        chunk_count=index_status.chunk_count,
+        indexing_duration=index_status.indexing_duration,
+    )
+
+    return IndexBuildResponse(
+        documents_indexed=result.documents_indexed,
+        chunks_indexed=result.chunks_indexed,
+        indexing_time=result.indexing_time,
+        build=build,
+        status=index_status,
+    )
+
+
+def _index_endpoint(source_id: int, rag_config_id: int) -> str:
+    """Return the API-relative endpoint for one deterministic index.
+
+    Args:
+        source_id:
+            Registered source identifier.
+        rag_config_id:
+            Registered RAG configuration identifier.
+
+    Returns:
+        API-relative status and rebuild endpoint.
+    """
+
+    return f"/sources/{source_id}/indexes/{rag_config_id}"
 
 
 def _source_response(source: object) -> SourceResponse:

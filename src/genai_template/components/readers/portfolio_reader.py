@@ -39,7 +39,7 @@ class PortfolioReader:
                 Generic flat-file reader used after manifest validation.
         """
 
-        self._text_reader = text_reader or TextReader()
+        self._text_reader = text_reader or TextReader(exclude_hidden=False)
 
     def load(self, directory: Path) -> LoadedDocuments:
         """Load one manifest-backed Portfolio corpus in manifest order.

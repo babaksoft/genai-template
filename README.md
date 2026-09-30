@@ -189,12 +189,29 @@ curl -X POST http://localhost:8000/api/v1/experiments \
   -H 'Content-Type: application/json' \
   -d '{"source_id":1,"name":"Baseline comparison"}'
 
+curl http://localhost:8000/api/v1/sources/1/indexes/1
+
 curl -X PUT http://localhost:8000/api/v1/sources/1/indexes/1
 
 curl -X POST http://localhost:8000/api/v1/answer \
   -H 'Content-Type: application/json' \
   -d '{"query":"What is RAG?","experiment_id":1,"rag_config_id":1}'
 ```
+
+Registering a source does not build its index. The status endpoint reports one of
+`current`, `unbuilt`, `stale`, `building`, `failed`, `collection_missing`,
+`count_mismatch`, `backend_unavailable`, `corpus_invalid`, or `untracked`. Portfolio
+sources are answerable only when the published manifest fingerprint, latest
+successful build, newest attempt, and vector collection all agree. Publish a changed
+Portfolio release, inspect the resulting `stale` status, and explicitly repeat the
+`PUT` before asking questions. The rebuild response includes the persisted build ID,
+counts, duration, and refreshed status.
+
+Generic Markdown/text sources have no manifest fingerprint and are labeled
+`untracked`; they retain collection-existence compatibility. A 409 answer response
+includes a machine-readable reason and the explicit rebuild endpoint. Invalid
+Portfolio corpora must be repaired before a rebuild can start, and failed rebuilds
+expose only a sanitized operator-facing summary.
 
 The answer response associates inline labels such as `[S1]` with the exact retrieved
 chunks supplied to the model. Every context source is returned, including uncited
@@ -227,7 +244,15 @@ sources, and labels remain distinct when several chunks come from the same docum
       "section": "/Introduction/",
       "content": "Exact retrieved chunk text...",
       "distance": 0.12,
-      "cited": true
+      "cited": true,
+      "project_slug": "atlas",
+      "project_display_name": "Atlas",
+      "document_type": "component",
+      "component_id": "api",
+      "repository_url": "https://github.com/example/atlas",
+      "resolved_commit_sha": "0123456789abcdef0123456789abcdef01234567",
+      "corpus_fingerprint": "...",
+      "generation_fingerprint": "..."
     }
   ],
   "citation_warnings": [
@@ -243,6 +268,8 @@ sources, and labels remain distinct when several chunks come from the same docum
 Unsupported labels do not fail or rewrite the generated answer. They are reported in
 `citation_warnings` so callers can make them visible. Answers, structured sources, and
 citation warnings are response-only data and are not retained in the run database.
+Portfolio citation fields identify the generated document, owning project, and exact
+repository revision. Generic-source citations omit those optional fields.
 
 The application registers the resolved default configuration at startup. Post
 another fully resolved configuration to `POST /api/v1/rag-configs`; repeating

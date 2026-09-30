@@ -6,7 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from genai_template.api.dependencies import get_rag_service
 from genai_template.schemas import AnswerRequest, AnswerResponse
-from genai_template.services import IndexNotBuiltError, RagService
+from genai_template.services import (
+    IndexNotBuiltError,
+    IndexUnavailableError,
+    RagService,
+)
 
 router = APIRouter()
 
@@ -37,6 +41,19 @@ async def answer(
             request.experiment_id,
             request.rag_config_id,
         )
+    except IndexUnavailableError as exc:
+        rebuild_endpoint = (
+            f"/sources/{exc.status.source_id}/indexes/{exc.status.rag_config_id}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": str(exc),
+                "reason": exc.status.reason.value,
+                "action": "rebuild_index",
+                "rebuild_endpoint": rebuild_endpoint,
+            },
+        ) from exc
     except IndexNotBuiltError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

@@ -61,6 +61,10 @@ class IndexStatus(BaseModel):
             Current vector collection count when it could be inspected.
         indexing_duration:
             Indexing duration from the latest successful build.
+        latest_failure_code:
+            Safe machine-readable category from the newest failed attempt.
+        latest_failure_detail:
+            Sanitized operator-facing summary from the newest failed attempt.
         available:
             Whether answer execution may use the selected collection.
         reason:
@@ -120,6 +124,14 @@ class IndexStatus(BaseModel):
         default=None,
         ge=0,
         description="Duration from the latest successful build.",
+    )
+    latest_failure_code: str | None = Field(
+        default=None,
+        description="Safe category from the newest failed rebuild attempt.",
+    )
+    latest_failure_detail: str | None = Field(
+        default=None,
+        description="Sanitized summary from the newest failed rebuild attempt.",
     )
     available: bool = Field(
         ..., description="Whether answer execution may use this index."

@@ -1,6 +1,10 @@
 # Portfolio RAG Stage 2 — Flat Ingestion, Provenance, and Index Freshness
 
-**Status:** In progress
+**Status:** Complete
+
+Completed on 2026-09-30. All six slices are implemented, and the final Stage 2
+quality gate passes with Black, isort, Ruff, mypy, and 504 non-integration tests
+(15 integration tests deselected).
 
 ## Goal
 
@@ -505,7 +509,11 @@ uv run pytest tests/services/test_source_service.py \
 
 ## Slice 6 — Index API, Streamlit Workflow, and Stage Integration
 
-**Status: Proposed**
+**Status: Complete**
+
+Verified on 2026-09-30 with the end-to-end Portfolio index lifecycle test and the
+complete Phoenix-disabled quality suite (504 passed, 15 deselected). Black, isort,
+Ruff, and mypy also pass across the full repository.
 
 ### Outcome
 

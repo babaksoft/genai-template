@@ -577,6 +577,8 @@ class SourceService:
             chunk_count=successful.chunk_count if successful else None,
             collection_count=collection_count,
             indexing_duration=successful.indexing_duration if successful else None,
+            latest_failure_code=latest.failure_code if latest else None,
+            latest_failure_detail=latest.failure_detail if latest else None,
             available=(
                 (reason == IndexStatusReason.CURRENT)
                 if available is None

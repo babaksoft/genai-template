@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 from genai_template.config import RagConfig
 from genai_template.schemas.citation import CitationSource, CitationWarning
+from genai_template.schemas.index_build import IndexBuildStatus, IndexStatus
 from genai_template.schemas.run_metrics import RunMetrics
 
 
@@ -105,12 +106,37 @@ class SourceResponse(BaseModel):
     created_at: datetime = Field(..., description="Registration timestamp.")
 
 
+class IndexBuildAttemptResponse(BaseModel):
+    """Persisted successful deterministic index-build attempt."""
+
+    id: int = Field(..., ge=1, description="Persisted build-attempt identifier.")
+    status: IndexBuildStatus = Field(..., description="Terminal build status.")
+    corpus_fingerprint: str | None = Field(
+        default=None,
+        pattern=r"^[0-9a-f]{64}$",
+        description="Validated corpus identity, when manifest-backed.",
+    )
+    started_at: datetime = Field(..., description="UTC build start time.")
+    finished_at: datetime = Field(..., description="UTC build completion time.")
+    document_count: int = Field(..., ge=0, description="Indexed document count.")
+    chunk_count: int = Field(..., ge=0, description="Verified stored chunk count.")
+    indexing_duration: float = Field(
+        ..., ge=0, description="Build duration in seconds."
+    )
+
+
 class IndexBuildResponse(BaseModel):
-    """Transient result of rebuilding a deterministic source index."""
+    """Successful rebuild result with compatibility metrics and durable state."""
 
     documents_indexed: int = Field(..., ge=0, description="Count of indexed documents.")
     chunks_indexed: int = Field(..., ge=0, description="Count of indexed chunks.")
     indexing_time: float = Field(..., ge=0, description="Build duration in seconds.")
+    build: IndexBuildAttemptResponse = Field(
+        ..., description="Persisted successful build attempt."
+    )
+    status: IndexStatus = Field(
+        ..., description="Verified index status after the successful rebuild."
+    )
 
 
 class CreateExperimentRequest(BaseModel):

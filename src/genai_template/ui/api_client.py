@@ -5,6 +5,7 @@ from genai_template.schemas import (
     AnswerResponse,
     ExperimentResponse,
     IndexBuildResponse,
+    IndexStatus,
     RagConfigResponse,
     SourceCandidateResponse,
     SourceResponse,
@@ -134,7 +135,7 @@ class ApiClient:
                 Identifier of the indexing configuration.
 
         Returns:
-            Transient index build metrics.
+            Persisted build details, compatibility metrics, and resulting status.
 
         Raises:
             httpx.HTTPStatusError:
@@ -149,6 +150,31 @@ class ApiClient:
         response.raise_for_status()
 
         return IndexBuildResponse.model_validate(response.json())
+
+    def get_index_status(self, source_id: int, rag_config_id: int) -> IndexStatus:
+        """Get verified status for one deterministic source index.
+
+        Args:
+            source_id:
+                Identifier of the registered source.
+            rag_config_id:
+                Identifier of the indexing configuration.
+
+        Returns:
+            Current freshness and availability decision.
+
+        Raises:
+            httpx.HTTPStatusError:
+                If the API returns an unsuccessful HTTP status code.
+        """
+
+        response = get(
+            f"{self._base_url}{settings.API_URL_PREFIX}/sources/"
+            f"{source_id}/indexes/{rag_config_id}",
+            timeout=settings.REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+        return IndexStatus.model_validate(response.json())
 
     def list_experiments(self) -> list[ExperimentResponse]:
         """List registered experiments.

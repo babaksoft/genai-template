@@ -16,6 +16,18 @@ logger = logging.getLogger(__name__)
 class TextReader:
     """Loads text-based documents from a directory."""
 
+    def __init__(self, *, exclude_hidden: bool = True) -> None:
+        """Initialize the text reader.
+
+        Args:
+            exclude_hidden:
+                Whether the underlying reader should reject hidden paths. Portfolio
+                releases disable this after manifest validation because their
+                immutable parent directory is intentionally hidden.
+        """
+
+        self._exclude_hidden = exclude_hidden
+
     def load(self, directory: Path) -> LoadedDocuments:
         """Load documents from a directory.
 
@@ -57,6 +69,7 @@ class TextReader:
                     input_dir=str(directory),
                     required_exts=[".md", ".txt"],
                     filename_as_id=True,
+                    exclude_hidden=self._exclude_hidden,
                 ).load_data()
             )
 
