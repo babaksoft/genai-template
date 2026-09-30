@@ -123,7 +123,11 @@ presentation must remain independently testable.
 
 ## Slice 1 — Versioned Corpus Consumption Contract
 
-**Status: Proposed**
+**Status: Complete**
+
+Verified on 2026-09-30 with the focused Slice 1 command (46 passed) and the full
+Portfolio workflow suite (238 passed, 6 skipped). Black, isort, Ruff, and mypy also
+pass for the affected package.
 
 ### Outcome
 

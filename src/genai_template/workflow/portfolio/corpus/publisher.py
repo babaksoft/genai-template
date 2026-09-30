@@ -17,7 +17,7 @@ from genai_template.workflow.portfolio.corpus.validation import (
     validate_corpus_directory,
 )
 from genai_template.workflow.portfolio.domain.generation import RenderedDocument
-from genai_template.workflow.portfolio.domain.manifest import CorpusManifest
+from genai_template.workflow.portfolio.domain.manifest import CorpusManifestV2
 from genai_template.workflow.portfolio.domain.snapshot import (
     RepositorySnapshot,
     _ImmutableDomainModel,
@@ -54,7 +54,7 @@ class PublicationResult(_ImmutableDomainModel):
 def publish_corpus(
     *,
     publication_path: Path,
-    manifest: CorpusManifest,
+    manifest: CorpusManifestV2,
     documents: Sequence[RenderedDocument],
     snapshot: RepositorySnapshot,
 ) -> PublicationResult:
@@ -119,7 +119,7 @@ def publish_corpus(
 
 def _write_stage(
     stage_path: Path,
-    manifest: CorpusManifest,
+    manifest: CorpusManifestV2,
     documents: Sequence[RenderedDocument],
 ) -> None:
     """Write all proposed release files into an unpublished directory.
@@ -194,7 +194,7 @@ def _validate_existing_release(
     release_path: Path,
     stage_path: Path,
     snapshot: RepositorySnapshot,
-    manifest: CorpusManifest,
+    manifest: CorpusManifestV2,
 ) -> None:
     """Validate and byte-compare an immutable release selected for reuse.
 

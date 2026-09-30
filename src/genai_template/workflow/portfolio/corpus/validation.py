@@ -16,7 +16,11 @@ from genai_template.workflow.portfolio.corpus.manifest import (
 )
 from genai_template.workflow.portfolio.corpus.renderers import build_document_filename
 from genai_template.workflow.portfolio.domain.generation import RenderedDocument
-from genai_template.workflow.portfolio.domain.manifest import CorpusManifest
+from genai_template.workflow.portfolio.domain.manifest import (
+    CorpusManifest,
+    CorpusManifestV2,
+    VersionedCorpusManifest,
+)
 from genai_template.workflow.portfolio.domain.snapshot import RepositorySnapshot
 
 _SAFE_FILENAME = re.compile(
@@ -29,7 +33,7 @@ class CorpusValidationError(RuntimeError):
 
 
 def validate_rendered_corpus(
-    manifest: CorpusManifest,
+    manifest: CorpusManifestV2,
     documents: Sequence[RenderedDocument],
     snapshot: RepositorySnapshot,
 ) -> None:
@@ -74,7 +78,7 @@ def validate_rendered_corpus(
         raise CorpusValidationError("corpus fingerprint does not match manifest")
 
 
-def read_manifest(path: Path) -> CorpusManifest:
+def read_manifest(path: Path) -> VersionedCorpusManifest:
     """Read and strictly validate a canonical on-disk manifest.
 
     Args:
@@ -91,9 +95,25 @@ def read_manifest(path: Path) -> CorpusManifest:
 
     try:
         raw = path.read_bytes()
-        value = json.loads(raw)
-        manifest = CorpusManifest.model_validate(value)
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValidationError) as exc:
+        text = raw.decode("utf-8", errors="strict")
+        value = json.loads(text)
+        if not isinstance(value, dict):
+            raise TypeError("manifest root must be an object")
+        schema_version = value.get("manifest_schema_version")
+        if schema_version == 1:
+            manifest: VersionedCorpusManifest = CorpusManifest.model_validate(value)
+        elif schema_version == 2:
+            manifest = CorpusManifestV2.model_validate(value)
+        else:
+            raise ValueError("unknown manifest schema version")
+    except (
+        OSError,
+        UnicodeDecodeError,
+        json.JSONDecodeError,
+        ValidationError,
+        TypeError,
+        ValueError,
+    ) as exc:
         raise CorpusValidationError("manifest.json is invalid") from exc
     if raw != manifest_bytes(manifest):
         raise CorpusValidationError("manifest.json is not canonical")
@@ -104,8 +124,8 @@ def validate_corpus_directory(
     directory: Path,
     snapshot: RepositorySnapshot,
     *,
-    expected_manifest: CorpusManifest | None = None,
-) -> CorpusManifest:
+    expected_manifest: CorpusManifestV2 | None = None,
+) -> CorpusManifestV2:
     """Validate every file and stable identity in a staged or released corpus.
 
     Args:
@@ -133,6 +153,8 @@ def validate_corpus_directory(
     if not manifest_path.is_file():
         raise CorpusValidationError("corpus is missing manifest.json")
     manifest = read_manifest(manifest_path)
+    if not isinstance(manifest, CorpusManifestV2):
+        raise CorpusValidationError("producer validation requires manifest schema v2")
     if expected_manifest is not None and manifest != expected_manifest:
         raise CorpusValidationError("on-disk manifest differs from expected manifest")
 
@@ -163,7 +185,7 @@ def validate_corpus_directory(
 
 
 def _validate_source_identity(
-    manifest: CorpusManifest,
+    manifest: CorpusManifestV2,
     snapshot: RepositorySnapshot,
 ) -> None:
     """Require the manifest to identify the supplied immutable snapshot.
@@ -179,18 +201,20 @@ def _validate_source_identity(
             If stable source identities disagree.
     """
 
+    projects = {project.project_slug: project for project in manifest.projects}
+    project = projects.get(snapshot.project_slug)
     if (
-        manifest.project_slug != snapshot.project_slug
-        or manifest.repository_url != snapshot.repository_url
-        or manifest.requested_ref != snapshot.requested_ref
-        or manifest.resolved_commit_sha != snapshot.resolved_commit_sha
-        or manifest.source_fingerprint != snapshot.source_fingerprint
+        project is None
+        or project.repository_url != snapshot.repository_url
+        or project.requested_ref != snapshot.requested_ref
+        or project.resolved_commit_sha != snapshot.resolved_commit_sha
+        or project.source_fingerprint != snapshot.source_fingerprint
     ):
         raise CorpusValidationError("manifest does not identify the supplied snapshot")
 
 
 def _validate_document_records(
-    manifest: CorpusManifest,
+    manifest: CorpusManifestV2,
     snapshot: RepositorySnapshot,
 ) -> None:
     """Validate filenames, balanced types, and snapshot evidence membership.
@@ -209,10 +233,19 @@ def _validate_document_records(
     filenames = tuple(record.filename for record in manifest.documents)
     if filenames != tuple(sorted(filenames)) or len(filenames) != len(set(filenames)):
         raise CorpusValidationError("manifest filenames must be unique and sorted")
+    project_slugs = tuple(project.project_slug for project in manifest.projects)
+    if project_slugs != tuple(sorted(project_slugs)) or len(project_slugs) != len(
+        set(project_slugs)
+    ):
+        raise CorpusValidationError("manifest projects must be unique and sorted")
+    if snapshot.project_slug not in project_slugs:
+        raise CorpusValidationError("manifest does not identify the supplied snapshot")
     evidence_members = {file.path for file in snapshot.files}
     project_types: set[str] = set()
     component_ids: set[str] = set()
     for record in manifest.documents:
+        if record.project_slug != snapshot.project_slug:
+            raise CorpusValidationError("document belongs to an unexpected project")
         pure_name = PurePosixPath(record.filename)
         if pure_name.name != record.filename or not _SAFE_FILENAME.fullmatch(
             record.filename
@@ -220,7 +253,7 @@ def _validate_document_records(
             raise CorpusValidationError("manifest contains an unsafe filename")
         try:
             expected_name = build_document_filename(
-                manifest.project_slug,
+                record.project_slug,
                 record.document_type,
                 component_id=record.component_id,
             )

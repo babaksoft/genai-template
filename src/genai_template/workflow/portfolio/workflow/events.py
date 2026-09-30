@@ -12,7 +12,7 @@ from genai_template.workflow.portfolio.config.models import (
 )
 from genai_template.workflow.portfolio.domain.components import ComponentSummaryArtifact
 from genai_template.workflow.portfolio.domain.generation import RenderedDocument
-from genai_template.workflow.portfolio.domain.manifest import CorpusManifest
+from genai_template.workflow.portfolio.domain.manifest import CorpusManifestV2
 from genai_template.workflow.portfolio.domain.projects import ProjectSummaryArtifact
 from genai_template.workflow.portfolio.domain.reports import StepRunReport
 from genai_template.workflow.portfolio.domain.snapshot import RepositorySnapshot
@@ -213,6 +213,6 @@ class CorpusValidatedEvent(Event):
     snapshot: RepositorySnapshot
     artifacts: tuple[ComponentSummaryArtifact | ProjectSummaryArtifact, ...]
     documents: tuple[RenderedDocument, ...]
-    manifest: CorpusManifest
+    manifest: CorpusManifestV2
     run_started_at: float
     steps: tuple[StepRunReport, ...]

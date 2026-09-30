@@ -22,8 +22,13 @@ from genai_template.workflow.portfolio.domain.generation import (
 )
 from genai_template.workflow.portfolio.domain.manifest import (
     CorpusManifest,
+    CorpusManifestV2,
     ManifestDocument,
+    ManifestDocumentV2,
+    ManifestProject,
     ManifestPrompt,
+    NormalizedCorpusManifest,
+    VersionedCorpusManifest,
 )
 from genai_template.workflow.portfolio.domain.projects import (
     ProjectArtifactKind,
@@ -70,6 +75,7 @@ __all__ = [
     "ComponentSummaryArtifact",
     "CorpusBuild",
     "CorpusManifest",
+    "CorpusManifestV2",
     "EvidenceSection",
     "GenerationRequest",
     "GenerationResult",
@@ -77,7 +83,10 @@ __all__ = [
     "GenerationWarning",
     "GenerationWarningCode",
     "ManifestDocument",
+    "ManifestDocumentV2",
+    "ManifestProject",
     "ManifestPrompt",
+    "NormalizedCorpusManifest",
     "ProjectArtifactKind",
     "ProjectOverviewSummary",
     "ProjectSummaryArtifact",
@@ -94,6 +103,7 @@ __all__ = [
     "TestingOperationsSummary",
     "TextGenerationError",
     "TokenUsage",
+    "VersionedCorpusManifest",
     "count_generation_warnings",
     "summary_evidence_paths",
 ]
