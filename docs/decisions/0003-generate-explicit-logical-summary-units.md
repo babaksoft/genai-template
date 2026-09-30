@@ -11,9 +11,10 @@ for trivial packages and make corpus cost difficult to control.
 ## Decision
 
 Configure explicit logical summary units such as splitters, embeddings, vector
-stores, API, or evaluation. Use focused prompts and validated structured output for
-each unit, then render Markdown in application code. Begin with a balanced profile
-containing project-level documents and selected high-value units.
+stores, API, or evaluation. Use focused prompts with fixed Markdown response
+contracts, parse responses into validated typed summaries, and render published
+Markdown in application code. Begin with a balanced profile containing project-level
+documents and selected high-value units.
 
 ## Consequences
 
