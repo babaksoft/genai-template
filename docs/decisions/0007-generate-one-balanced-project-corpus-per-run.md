@@ -17,9 +17,13 @@ summary unit. Name them `<project>--overview.md`, `<project>--architecture.md`,
 `<project>--testing-operations.md`, and
 `<project>--component--<unit-id>.md`.
 
+Use one canonical generation configuration, including provider, model, prompts,
+schemas, and inference settings, for every project.
+
 ## Consequences
 
 - A run has one source identity, one corpus identity, and a bounded failure domain.
 - The expected document set can be validated before publication.
 - Several projects require separate commands and produce separate releases.
 - Minimal, deep, and multi-project profiles remain future decisions.
+- Per-project generation configurations remain a future enhancement.
