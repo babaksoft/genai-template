@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -248,3 +249,50 @@ def test_search_empty_result(
         )
         == []
     )
+
+
+@patch("genai_template.stores.vector.chroma_store.chromadb.PersistentClient")
+def test_portfolio_provenance_round_trips(mock_client_class: MagicMock) -> None:
+    """Chroma should preserve every supported Portfolio metadata value."""
+
+    provenance = {
+        "project_slug": "sample",
+        "project_display_name": "Sample",
+        "document_type": "component",
+        "component_id": "api",
+        "repository_url": "https://example.test/sample.git",
+        "resolved_commit_sha": "a" * 40,
+        "corpus_fingerprint": "b" * 64,
+        "generation_fingerprint": "c" * 64,
+        "file_name": "sample--component--api.md",
+        "header_path": "/API/",
+    }
+    chunk = DocumentChunk(
+        id="sample--component--api.md-000",
+        document_id="sample--component--api.md",
+        text="API details.",
+        metadata=provenance,
+        embedding=[0.1, 0.2, 0.3],
+    )
+    collection = mock_client_class.return_value.get_or_create_collection.return_value
+    mock_client_class.return_value.get_collection.return_value = collection
+    collection.query.return_value = {
+        "ids": [[chunk.id]],
+        "documents": [[chunk.text]],
+        "metadatas": [
+            [
+                {
+                    "document_id": chunk.document_id,
+                    "metadata": json.dumps(provenance),
+                }
+            ]
+        ],
+        "distances": [[0.1]],
+    }
+    store = ChromaStore(collection_name="documents")
+
+    store.upsert([chunk])
+    retrieved = store.search([0.1, 0.2, 0.3], top_k=1)
+
+    assert retrieved[0].chunk.id == chunk.id
+    assert retrieved[0].chunk.metadata == provenance

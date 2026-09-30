@@ -5,8 +5,9 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from llama_index.core import Document, SimpleDirectoryReader
+from llama_index.core import SimpleDirectoryReader
 
+from genai_template.schemas.corpus import LoadedDocuments
 from genai_template.utils import Timer
 
 logger = logging.getLogger(__name__)
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 class TextReader:
     """Loads text-based documents from a directory."""
 
-    def load(self, directory: Path) -> list[Document]:
+    def load(self, directory: Path) -> LoadedDocuments:
         """Load documents from a directory.
 
         Args:
@@ -49,13 +50,15 @@ class TextReader:
 
             if not supported_files:
                 logger.info("No supported documents found in '%s'.", directory)
-                return []
+                return LoadedDocuments(documents=())
 
-            documents = SimpleDirectoryReader(
-                input_dir=str(directory),
-                required_exts=[".md", ".txt"],
-                filename_as_id=True,
-            ).load_data()
+            documents = tuple(
+                SimpleDirectoryReader(
+                    input_dir=str(directory),
+                    required_exts=[".md", ".txt"],
+                    filename_as_id=True,
+                ).load_data()
+            )
 
         logger.info(
             "Loaded %d document(s) in %.3f second(s).",
@@ -63,4 +66,4 @@ class TextReader:
             timer.elapsed,
         )
 
-        return documents
+        return LoadedDocuments(documents=documents)

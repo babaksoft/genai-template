@@ -341,3 +341,54 @@ def test_provider_errors_propagate(mock_client_class: MagicMock) -> None:
 
     with pytest.raises(RuntimeError, match="unavailable"):
         store.count()
+
+
+@patch("genai_template.stores.vector.qdrant_store.QdrantClient")
+def test_portfolio_provenance_round_trips(mock_client_class: MagicMock) -> None:
+    """Qdrant should expose canonical IDs and all Portfolio provenance."""
+
+    provenance = {
+        "project_slug": "sample",
+        "project_display_name": "Sample",
+        "document_type": "component",
+        "component_id": "api",
+        "repository_url": "https://example.test/sample.git",
+        "resolved_commit_sha": "a" * 40,
+        "corpus_fingerprint": "b" * 64,
+        "generation_fingerprint": "c" * 64,
+        "file_name": "sample--component--api.md",
+        "header_path": "/API/",
+    }
+    chunk = DocumentChunk(
+        id="sample--component--api.md-000",
+        document_id="sample--component--api.md",
+        text="API details.",
+        metadata=provenance,
+        embedding=[0.1, 0.2, 0.3],
+    )
+    client = mock_client_class.return_value
+    client.collection_exists.return_value = True
+    client.query_points.return_value.points = [
+        models.ScoredPoint(
+            id=str(uuid5(NAMESPACE_URL, chunk.id)),
+            version=1,
+            score=0.9,
+            payload={
+                "chunk_id": chunk.id,
+                "document_id": chunk.document_id,
+                "text": chunk.text,
+                "metadata": provenance,
+            },
+        )
+    ]
+    store = QdrantStore(
+        collection_name="documents",
+        distance=VectorDistance.COSINE,
+        url="https://qdrant.example.com",
+    )
+
+    store.upsert([chunk])
+    retrieved = store.search([0.1, 0.2, 0.3], top_k=1)
+
+    assert retrieved[0].chunk.id == chunk.id
+    assert retrieved[0].chunk.metadata == provenance

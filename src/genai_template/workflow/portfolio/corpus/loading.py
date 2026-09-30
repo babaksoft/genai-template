@@ -138,6 +138,7 @@ def load_corpus(source_path: Path) -> LoadedCorpus:
     }
     if set(entries) != expected_names:
         raise CorpusValidationError("corpus file set does not match its manifest")
+
     for record in normalized.documents:
         try:
             raw = entries[record.filename].read_bytes()
@@ -153,6 +154,7 @@ def load_corpus(source_path: Path) -> LoadedCorpus:
             raise CorpusValidationError(
                 f"document content hash does not match manifest: {record.filename}"
             )
+
     if calculate_corpus_fingerprint(manifest) != manifest.corpus_fingerprint:
         raise CorpusValidationError("corpus fingerprint does not match manifest")
     return LoadedCorpus(

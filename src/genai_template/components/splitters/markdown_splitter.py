@@ -7,6 +7,12 @@ import logging
 from llama_index.core import Document
 from llama_index.core.node_parser import MarkdownNodeParser
 
+from genai_template.components.splitters.identity import (
+    document_identity_map,
+    node_document_id,
+    validate_chunk_metadata,
+    validate_unique_chunk_ids,
+)
 from genai_template.schemas import DocumentChunk
 from genai_template.utils import Timer
 
@@ -45,18 +51,15 @@ class MarkdownDocumentSplitter:
         logger.info("Splitting %d Markdown document(s).", len(documents))
 
         with Timer() as timer:
+            identities = document_identity_map(documents)
             nodes = self._splitter.get_nodes_from_documents(documents)
             chunk_counts: dict[str, int] = {}
             chunks: list[DocumentChunk] = []
 
             for node in nodes:
                 metadata = dict(node.metadata)
-                document_id = str(
-                    metadata.get(
-                        "file_name",
-                        metadata.get("doc_id", "document"),
-                    )
-                )
+                document_id = node_document_id(node, identities)
+                validate_chunk_metadata(metadata, document_id)
                 index = chunk_counts.get(document_id, 0)
                 chunk_counts[document_id] = index + 1
 
@@ -68,6 +71,8 @@ class MarkdownDocumentSplitter:
                         metadata=metadata,
                     )
                 )
+
+            validate_unique_chunk_ids(chunks)
 
         logger.info(
             "Generated %d Markdown chunk(s) in %.3f second(s).",

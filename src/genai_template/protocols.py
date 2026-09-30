@@ -1,10 +1,28 @@
 """Structural contracts for factory-created RAG components."""
 
+from pathlib import Path
 from typing import Protocol
 
 from llama_index.core import Document
 
-from genai_template.schemas import DocumentChunk, RetrievedChunk
+from genai_template.schemas import DocumentChunk, LoadedDocuments, RetrievedChunk
+
+
+class Reader(Protocol):
+    """Contract for loading ordered documents and optional provenance."""
+
+    def load(self, directory: Path) -> LoadedDocuments:
+        """Load documents from a source directory.
+
+        Args:
+            directory:
+                Source directory or publication pointer.
+
+        Returns:
+            Ordered loaded documents and optional corpus provenance.
+        """
+
+        ...
 
 
 class Splitter(Protocol):
@@ -166,6 +184,7 @@ class Retriever(Protocol):
 __all__ = [
     "Embedder",
     "LanguageModel",
+    "Reader",
     "Retriever",
     "Splitter",
     "VectorStore",

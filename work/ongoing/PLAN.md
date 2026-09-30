@@ -201,7 +201,11 @@ uv run pytest tests/workflow/portfolio/corpus \
 
 ## Slice 2 — Manifest-Aware Reader, Metadata, and Stable Identities
 
-**Status: Proposed**
+**Status: Complete**
+
+Verified on 2026-09-30 with the focused Slice 2 suite (55 passed). Black,
+isort, Ruff, and mypy pass across the full repository. The complete
+non-integration suite also passes (452 passed, 15 deselected).
 
 ### Outcome
 
