@@ -29,7 +29,7 @@ generation:
     max_files: 100
     max_bytes: 262144
   locations:
-    cache: storage/portfolio-artifacts-openai
+    cache: storage/portfolio-artifacts
     publication: data/portfolio
   pricing:
     input_per_million_tokens: 0.40
