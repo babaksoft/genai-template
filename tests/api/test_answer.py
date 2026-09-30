@@ -61,6 +61,14 @@ def test_answer_returns_generated_response(
                 content="Exact content.",
                 distance=0.1,
                 cited=True,
+                project_slug="alpha",
+                project_display_name="Alpha",
+                document_type="component",
+                component_id="api",
+                repository_url="https://example.com/alpha.git",
+                resolved_commit_sha="a" * 40,
+                corpus_fingerprint="b" * 64,
+                generation_fingerprint="c" * 64,
             )
         ],
         citation_warnings=[
@@ -100,6 +108,14 @@ def test_answer_returns_generated_response(
                 "content": "Exact content.",
                 "distance": 0.1,
                 "cited": True,
+                "project_slug": "alpha",
+                "project_display_name": "Alpha",
+                "document_type": "component",
+                "component_id": "api",
+                "repository_url": "https://example.com/alpha.git",
+                "resolved_commit_sha": "a" * 40,
+                "corpus_fingerprint": "b" * 64,
+                "generation_fingerprint": "c" * 64,
             }
         ],
         "citation_warnings": [

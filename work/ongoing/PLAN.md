@@ -279,7 +279,13 @@ uv run pytest tests/components/readers \
 
 ## Slice 3 — Provenance-Rich Context and Citations
 
-**Status: Proposed**
+**Status: Complete**
+
+Verified on 2026-09-30 with the focused context and citation schema suite
+(19 passed) and a broader suite including RAG service, observability, and
+answer-view compatibility tests (25 passed total). Black, isort, Ruff, and mypy
+pass for the affected files. API provenance serialization was also verified
+through the ASGI boundary.
 
 ### Outcome
 

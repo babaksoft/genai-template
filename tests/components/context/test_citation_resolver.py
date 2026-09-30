@@ -74,3 +74,33 @@ def test_resolve_citations_warns_once_in_unique_numeric_order() -> None:
             "labels": ["S4", "S20"],
         }
     ]
+
+
+def test_resolve_citations_preserves_portfolio_provenance() -> None:
+    """Citation resolution should change only the request-local cited flag."""
+
+    source = CitationSource(
+        label="S1",
+        chunk_id="alpha--component--api.md-000",
+        document_name="alpha--component--api.md",
+        section="/API/",
+        content="API content",
+        distance=0.1,
+        cited=False,
+        project_slug="alpha",
+        project_display_name="Alpha",
+        document_type="component",
+        component_id="api",
+        repository_url="https://example.com/alpha.git",
+        resolved_commit_sha="a" * 40,
+        corpus_fingerprint="b" * 64,
+        generation_fingerprint="c" * 64,
+    )
+
+    resolved, warnings = resolve_citations("Supported [S1].", [source])
+
+    assert warnings == []
+    assert resolved[0].model_dump(exclude={"cited"}) == source.model_dump(
+        exclude={"cited"}
+    )
+    assert resolved[0].cited is True
