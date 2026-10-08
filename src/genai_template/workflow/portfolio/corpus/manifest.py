@@ -12,14 +12,14 @@ from genai_template.workflow.portfolio.artifacts.fingerprints import (
 )
 from genai_template.workflow.portfolio.config.models import GenerationConfig
 from genai_template.workflow.portfolio.corpus.renderers import build_document_filename
-from genai_template.workflow.portfolio.domain.generation import RenderedDocument
-from genai_template.workflow.portfolio.domain.manifest import (
+from genai_template.workflow.portfolio.domain.corpus import (
     CorpusManifest,
     CorpusManifestV2,
     ManifestDocument,
     ManifestDocumentV2,
     ManifestProject,
     ManifestPrompt,
+    RenderedDocument,
     VersionedCorpusManifest,
 )
 from genai_template.workflow.portfolio.domain.snapshot import RepositorySnapshot

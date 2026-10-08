@@ -6,44 +6,18 @@ import hashlib
 import json
 
 from genai_template.workflow.portfolio.config.models import SummaryUnitConfig
+from genai_template.workflow.portfolio.domain.errors import SummaryPlanningError
 from genai_template.workflow.portfolio.domain.snapshot import (
     RepositorySnapshot,
     SnapshotFile,
 )
-from genai_template.workflow.portfolio.domain.summary import (
+from genai_template.workflow.portfolio.domain.summaries import (
     SummaryPlan,
     SummaryUnitPlan,
 )
 from genai_template.workflow.portfolio.snapshot.selection import (
     matches_repository_pattern,
 )
-
-
-class SummaryPlanningError(ValueError):
-    """Failure to derive configured logical units from a snapshot.
-
-    Attributes:
-        unit_id:
-            Logical unit involved in the failure, when one is available.
-        reason:
-            Stable short reason identifying the invalid plan condition.
-    """
-
-    def __init__(self, message: str, *, unit_id: str | None, reason: str) -> None:
-        """Initialize a contextual summary-planning failure.
-
-        Args:
-            message:
-                Human-readable description of the failure.
-            unit_id:
-                Logical unit involved in the failure, when available.
-            reason:
-                Stable short reason identifying the invalid condition.
-        """
-
-        super().__init__(message)
-        self.unit_id = unit_id
-        self.reason = reason
 
 
 def build_summary_plan(

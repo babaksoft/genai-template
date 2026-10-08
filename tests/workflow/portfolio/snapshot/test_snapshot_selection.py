@@ -10,9 +10,9 @@ from genai_template.workflow.portfolio import (
     CommittedRepositoryEntry,
     RepositoryReadResult,
     SelectionConfig,
-    SnapshotSelectionError,
     build_repository_snapshot,
 )
+from genai_template.workflow.portfolio.domain import SnapshotSelectionError
 from genai_template.workflow.portfolio.snapshot.selection import (
     matches_repository_pattern,
 )

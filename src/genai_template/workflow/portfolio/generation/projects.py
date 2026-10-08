@@ -16,18 +16,22 @@ from genai_template.workflow.portfolio.artifacts.fingerprints import (
     sha256_canonical_json,
 )
 from genai_template.workflow.portfolio.config.models import GenerationConfig
-from genai_template.workflow.portfolio.domain.components import ComponentSummaryArtifact
-from genai_template.workflow.portfolio.domain.errors import ArtifactValidationError
-from genai_template.workflow.portfolio.domain.generation import (
+from genai_template.workflow.portfolio.domain.artifacts import (
     ArtifactProvenance,
     CachedArtifact,
+    ComponentSummaryArtifact,
+    ProjectArtifactKind,
+    ProjectSummaryArtifact,
+)
+from genai_template.workflow.portfolio.domain.contracts import (
+    ArtifactCache,
+    TextGenerator,
+)
+from genai_template.workflow.portfolio.domain.errors import ArtifactValidationError
+from genai_template.workflow.portfolio.domain.generation import (
     GenerationRequest,
     GenerationWarning,
     TokenUsage,
-)
-from genai_template.workflow.portfolio.domain.projects import (
-    ProjectArtifactKind,
-    ProjectSummaryArtifact,
 )
 from genai_template.workflow.portfolio.domain.reports import (
     ArtifactRunReport,
@@ -63,8 +67,6 @@ from genai_template.workflow.portfolio.generation.service import (
 from genai_template.workflow.portfolio.generation.validation import (
     validate_project_evidence,
 )
-from genai_template.workflow.portfolio.ports.artifact_cache import ArtifactCache
-from genai_template.workflow.portfolio.ports.text_generator import TextGenerator
 from genai_template.workflow.portfolio.snapshot.selection import (
     matches_repository_pattern,
 )

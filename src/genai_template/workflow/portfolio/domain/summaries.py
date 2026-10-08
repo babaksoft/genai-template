@@ -6,44 +6,88 @@ from pathlib import PurePosixPath
 
 from pydantic import Field, field_validator
 
-from genai_template.workflow.portfolio.domain.snapshot import _ImmutableDomainModel
+from genai_template.workflow.portfolio.domain.base import ImmutableDomainModel
+from genai_template.workflow.portfolio.domain.generation import GenerationWarning
+from genai_template.workflow.portfolio.domain.snapshot import SnapshotFile
 
 OUTPUT_SCHEMA_VERSION = "v1"
 
 
-def _validate_evidence_paths(paths: tuple[str, ...]) -> tuple[str, ...]:
-    """Validate canonical evidence paths without silently rewriting them.
+class SummaryUnitPlan(ImmutableDomainModel):
+    """The exact snapshot files used to produce one logical summary.
 
-    Args:
-        paths:
-            Repository-relative evidence paths supplied by a provider.
-
-    Returns:
-        The validated paths.
-
-    Raises:
-        ValueError:
-            If paths are blank, unsafe, duplicated, or not sorted canonically.
+    Attributes:
+        unit_id:
+            Stable identifier of the configured logical summary unit.
+        input_fingerprint:
+            SHA-256 identity of this unit's settings and selected contents.
+        files:
+            Non-empty ordered snapshot files assigned to the unit.
     """
 
-    for path in paths:
-        if not path or path != path.strip():
-            raise ValueError("evidence paths must be non-empty and normalized")
-        if "\\" in path or path.startswith("/"):
-            raise ValueError("evidence paths must be repository-relative POSIX paths")
-        parts = path.split("/")
-        if any(part in {"", ".", ".."} for part in parts):
-            raise ValueError("evidence paths must be normalized")
-        if PurePosixPath(path).is_absolute():
-            raise ValueError("evidence paths must be repository-relative")
-    if len(paths) != len(set(paths)):
-        raise ValueError("evidence paths must be deduplicated")
-    if paths != tuple(sorted(paths)):
-        raise ValueError("evidence paths must be deterministically sorted")
-    return paths
+    unit_id: str = Field(
+        min_length=1,
+        description="Stable logical summary-unit identifier.",
+    )
+    input_fingerprint: str = Field(
+        pattern=r"^[0-9a-f]{64}$",
+        description="SHA-256 identity of the unit settings and contents.",
+    )
+    files: tuple[SnapshotFile, ...] = Field(
+        min_length=1,
+        description="Ordered snapshot files assigned to this summary unit.",
+    )
 
 
-class EvidenceSection(_ImmutableDomainModel):
+class SummaryPlan(ImmutableDomainModel):
+    """Stable logical summary work derived from a repository snapshot.
+
+    Attributes:
+        project_slug:
+            Stable project identifier shared with the source snapshot.
+        resolved_commit_sha:
+            Full object identifier of the snapshot's resolved commit.
+        source_fingerprint:
+            SHA-256 identity shared with the source snapshot.
+        units:
+            Non-empty ordered logical summary units to process.
+    """
+
+    project_slug: str = Field(
+        min_length=1,
+        description="Stable project identifier shared with the snapshot.",
+    )
+    resolved_commit_sha: str = Field(
+        pattern=r"^[0-9a-f]{40}(?:[0-9a-f]{24})?$",
+        description="Full hexadecimal identifier of the resolved commit.",
+    )
+    source_fingerprint: str = Field(
+        pattern=r"^[0-9a-f]{64}$",
+        description="SHA-256 identity shared with the source snapshot.",
+    )
+    units: tuple[SummaryUnitPlan, ...] = Field(
+        min_length=1,
+        description="Ordered logical summary units to process.",
+    )
+
+
+class ParsedSummary(ImmutableDomainModel):
+    """Validated summary and ordered parser recoveries.
+
+    Attributes:
+        summary:
+            Existing validated typed summary produced from Markdown.
+        warnings:
+            Recoveries in deterministic parser order.
+    """
+
+    summary: StructuredSummary = Field(description="Validated parsed summary.")
+    warnings: tuple[GenerationWarning, ...] = Field(
+        description="Ordered deterministic parser recoveries."
+    )
+
+
+class EvidenceSection(ImmutableDomainModel):
     """One summary section whose claims share explicit source evidence.
 
     Attributes:
@@ -99,7 +143,7 @@ class EvidenceSection(_ImmutableDomainModel):
         return _validate_evidence_paths(paths)
 
 
-class ComponentSummary(_ImmutableDomainModel):
+class ComponentSummary(ImmutableDomainModel):
     """Validated summary of one configured logical component.
 
     Attributes:
@@ -132,7 +176,7 @@ class ComponentSummary(_ImmutableDomainModel):
     )
 
 
-class ArchitectureSummary(_ImmutableDomainModel):
+class ArchitectureSummary(ImmutableDomainModel):
     """Validated project architecture summary.
 
     Attributes:
@@ -155,7 +199,7 @@ class ArchitectureSummary(_ImmutableDomainModel):
     )
 
 
-class ProjectOverviewSummary(_ImmutableDomainModel):
+class ProjectOverviewSummary(ImmutableDomainModel):
     """Validated high-level project overview.
 
     Attributes:
@@ -181,7 +225,7 @@ class ProjectOverviewSummary(_ImmutableDomainModel):
     )
 
 
-class TestingOperationsSummary(_ImmutableDomainModel):
+class TestingOperationsSummary(ImmutableDomainModel):
     """Validated project testing and operations summary.
 
     Attributes:
@@ -238,3 +282,37 @@ def summary_evidence_paths(summary: StructuredSummary) -> tuple[str, ...]:
         section = getattr(summary, field_name)
         paths.update(section.evidence_paths)
     return tuple(sorted(paths))
+
+
+def _validate_evidence_paths(paths: tuple[str, ...]) -> tuple[str, ...]:
+    """Validate canonical evidence paths.
+
+    Args:
+        paths:
+            Repository-relative evidence paths supplied by a provider.
+
+    Returns:
+        The validated paths.
+
+    Raises:
+        ValueError:
+            If paths are blank, unsafe, duplicated, or not sorted canonically.
+    """
+
+    for path in paths:
+        if not path or path != path.strip():
+            raise ValueError("evidence paths must be non-empty and normalized")
+        if "\\" in path or path.startswith("/"):
+            raise ValueError("evidence paths must be repository-relative POSIX paths")
+        parts = path.split("/")
+        if any(part in {"", ".", ".."} for part in parts):
+            raise ValueError("evidence paths must be normalized")
+        if PurePosixPath(path).is_absolute():
+            raise ValueError("evidence paths must be repository-relative")
+
+    if len(paths) != len(set(paths)):
+        raise ValueError("evidence paths must be deduplicated")
+    if paths != tuple(sorted(paths)):
+        raise ValueError("evidence paths must be deterministically sorted")
+
+    return paths

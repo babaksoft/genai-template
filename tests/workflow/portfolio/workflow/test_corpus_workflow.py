@@ -32,12 +32,12 @@ from genai_template.workflow.portfolio.domain import (
     GenerationRequest,
     ProviderAuditMetadata,
     TextGenerationError,
+    TextGenerationResponse,
     TokenUsage,
 )
 from genai_template.workflow.portfolio.generation.specifications import (
     SUMMARY_SPECIFICATIONS,
 )
-from genai_template.workflow.portfolio.ports import TextGenerationResponse
 from genai_template.workflow.portfolio.workflow import (
     PortfolioCorpusWorkflow,
     run_portfolio_corpus_workflow,

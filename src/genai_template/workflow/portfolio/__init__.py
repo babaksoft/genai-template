@@ -45,10 +45,7 @@ from genai_template.workflow.portfolio.domain import (
     SummaryUnitPlan,
     TokenUsage,
 )
-from genai_template.workflow.portfolio.ports import RepositoryReader
 from genai_template.workflow.portfolio.snapshot import (
-    SnapshotSelectionError,
-    SummaryPlanningError,
     build_repository_snapshot,
     build_summary_plan,
 )
@@ -86,11 +83,9 @@ __all__ = [
     "RepositorySnapshot",
     "SelectionConfig",
     "SnapshotFile",
-    "SnapshotSelectionError",
     "StepRunReport",
     "StructuredGenerationConfig",
     "SummaryPlan",
-    "SummaryPlanningError",
     "SummaryUnitConfig",
     "SummaryUnitPlan",
     "TokenPricingConfig",

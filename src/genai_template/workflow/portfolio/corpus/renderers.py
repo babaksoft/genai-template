@@ -10,15 +10,15 @@ from collections.abc import Sequence
 from genai_template.workflow.portfolio.artifacts.fingerprints import (
     sha256_canonical_json,
 )
-from genai_template.workflow.portfolio.domain.components import ComponentSummaryArtifact
-from genai_template.workflow.portfolio.domain.generation import (
+from genai_template.workflow.portfolio.domain.artifacts import (
     ArtifactKind,
     CachedArtifact,
-    RenderedDocument,
-)
-from genai_template.workflow.portfolio.domain.projects import (
+    ComponentSummaryArtifact,
     ProjectArtifactKind,
     ProjectSummaryArtifact,
+)
+from genai_template.workflow.portfolio.domain.corpus import (
+    RenderedDocument,
 )
 from genai_template.workflow.portfolio.domain.summaries import (
     EvidenceSection,

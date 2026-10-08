@@ -1,14 +1,40 @@
-"""Port for validated structured-artifact persistence."""
-
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
-from genai_template.workflow.portfolio.domain.generation import (
+from genai_template.workflow.portfolio.config.models import LocalGitRepositoryConfig
+from genai_template.workflow.portfolio.domain.artifacts import (
     ArtifactKind,
     CachedArtifact,
 )
+from genai_template.workflow.portfolio.domain.generation import (
+    GenerationRequest,
+    TextGenerationResponse,
+)
+from genai_template.workflow.portfolio.domain.snapshot import RepositoryReadResult
 from genai_template.workflow.portfolio.domain.summaries import StructuredSummary
+
+
+@runtime_checkable
+class RepositoryReader(Protocol):
+    """Provider-neutral interface for reading one immutable repository revision."""
+
+    def read(self, repository: LocalGitRepositoryConfig) -> RepositoryReadResult:
+        """Read committed entries and identity for a configured repository.
+
+        Args:
+            repository:
+                Validated repository source and ref settings.
+
+        Returns:
+            Immutable commit identity and committed repository entries.
+
+        Raises:
+            RepositoryReadError:
+                If the repository or configured revision cannot be read.
+        """
+
+        ...
 
 
 class ArtifactCache(Protocol):
@@ -61,6 +87,27 @@ class ArtifactCache(Protocol):
         Raises:
             ArtifactCacheError:
                 If validation or the atomic write fails.
+        """
+
+        ...
+
+
+class TextGenerator(Protocol):
+    """Provider-neutral interface for one-call plain-text generation."""
+
+    def generate(self, request: GenerationRequest) -> TextGenerationResponse:
+        """Generate one complete plain-text response.
+
+        Args:
+            request:
+                Fully identified prompt request.
+
+        Returns:
+            Plain text plus provider identity and accounting metadata.
+
+        Raises:
+            TextGenerationError:
+                If request identity, transport, or completion validation fails.
         """
 
         ...

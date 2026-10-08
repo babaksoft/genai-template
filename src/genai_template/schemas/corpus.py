@@ -8,7 +8,7 @@ from typing import overload
 
 from llama_index.core import Document
 
-from genai_template.workflow.portfolio.domain.manifest import NormalizedCorpusManifest
+from genai_template.workflow.portfolio.domain.corpus import NormalizedCorpusManifest
 
 
 @dataclass(frozen=True)

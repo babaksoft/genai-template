@@ -10,13 +10,15 @@ from genai_template.workflow.portfolio.config.models import (
     GenerationConfig,
     ProjectConfig,
 )
-from genai_template.workflow.portfolio.domain.components import ComponentSummaryArtifact
-from genai_template.workflow.portfolio.domain.generation import RenderedDocument
-from genai_template.workflow.portfolio.domain.manifest import CorpusManifestV2
-from genai_template.workflow.portfolio.domain.projects import ProjectSummaryArtifact
-from genai_template.workflow.portfolio.domain.reports import StepRunReport
-from genai_template.workflow.portfolio.domain.snapshot import RepositorySnapshot
-from genai_template.workflow.portfolio.domain.summary import SummaryPlan
+from genai_template.workflow.portfolio.domain import (
+    ComponentSummaryArtifact,
+    CorpusManifestV2,
+    ProjectSummaryArtifact,
+    RenderedDocument,
+    RepositorySnapshot,
+    StepRunReport,
+    SummaryPlan,
+)
 
 
 class GenerateCorpusStartEvent(StartEvent):

@@ -4,44 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from genai_template.workflow.portfolio.domain.summaries import (
+from genai_template.workflow.portfolio.domain import (
     ComponentSummary,
     StructuredSummary,
     summary_evidence_paths,
 )
-
-
-class EvidenceValidationError(ValueError):
-    """A generated summary cites evidence outside its exact input scope.
-
-    Attributes:
-        invalid_paths:
-            Sorted paths that were not members of the permitted scope.
-        permitted_paths:
-            Sorted exact paths permitted for this generation call.
-    """
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        invalid_paths: tuple[str, ...],
-        permitted_paths: tuple[str, ...],
-    ) -> None:
-        """Initialize an evidence validation failure.
-
-        Args:
-            message:
-                Human-readable failure description.
-            invalid_paths:
-                Paths cited outside the allowed scope.
-            permitted_paths:
-                Exact allowed evidence paths.
-        """
-
-        super().__init__(message)
-        self.invalid_paths = invalid_paths
-        self.permitted_paths = permitted_paths
+from genai_template.workflow.portfolio.domain.errors import EvidenceValidationError
 
 
 def validate_component_evidence(

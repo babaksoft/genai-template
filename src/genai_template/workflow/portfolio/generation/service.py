@@ -6,15 +6,11 @@ import hashlib
 from collections.abc import Iterable
 from typing import cast
 
-from pydantic import Field
-
+from genai_template.workflow.portfolio.domain.contracts import TextGenerator
 from genai_template.workflow.portfolio.domain.generation import (
     GenerationRequest,
-    GenerationWarning,
-    ProviderAuditMetadata,
-    TokenUsage,
+    SummaryGenerationResponse,
 )
-from genai_template.workflow.portfolio.domain.snapshot import _ImmutableDomainModel
 from genai_template.workflow.portfolio.domain.summaries import (
     ComponentSummary,
     StructuredSummary,
@@ -27,45 +23,6 @@ from genai_template.workflow.portfolio.generation.validation import (
     validate_component_evidence,
     validate_project_evidence,
 )
-from genai_template.workflow.portfolio.ports.text_generator import TextGenerator
-
-
-class SummaryGenerationResponse[SummaryT: StructuredSummary](_ImmutableDomainModel):
-    """Parsed summary plus provider accounting and recovery warnings.
-
-    Attributes:
-        value:
-            Typed summary parsed from the provider Markdown.
-        provider:
-            Provider that performed generation.
-        model:
-            Provider model that performed generation.
-        token_usage:
-            Complete, partial, or unavailable provider usage.
-        provider_metadata:
-            Narrow non-secret provider audit metadata.
-        raw_response_hash:
-            SHA-256 digest of the exact provider response text.
-        warnings:
-            Ordered deterministic Markdown-parser recoveries.
-    """
-
-    value: SummaryT = Field(description="Parsed and validated typed summary.")
-    provider: str = Field(min_length=1, description="Generation provider identity.")
-    model: str = Field(min_length=1, description="Generation model identity.")
-    token_usage: TokenUsage = Field(description="Provider-reported token usage.")
-    provider_metadata: ProviderAuditMetadata = Field(
-        default_factory=ProviderAuditMetadata,
-        description="Narrow non-secret provider audit metadata.",
-    )
-    raw_response_hash: str = Field(
-        pattern=r"^[0-9a-f]{64}$",
-        description="SHA-256 digest of the exact provider response text.",
-    )
-    warnings: tuple[GenerationWarning, ...] = Field(
-        default=(),
-        description="Ordered deterministic Markdown-parser recoveries.",
-    )
 
 
 def generate_validated_summary[SummaryT: StructuredSummary](

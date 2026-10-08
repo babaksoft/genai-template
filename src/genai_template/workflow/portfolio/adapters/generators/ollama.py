@@ -10,13 +10,11 @@ from genai_template.workflow.portfolio.adapters.generators.base import (
     TextGeneratorBase,
     optional_non_negative_int,
 )
-from genai_template.workflow.portfolio.domain.generation import (
+from genai_template.workflow.portfolio.domain import (
     GenerationRequest,
     ProviderAuditMetadata,
-    TokenUsage,
-)
-from genai_template.workflow.portfolio.ports.text_generator import (
     TextGenerationResponse,
+    TokenUsage,
 )
 
 

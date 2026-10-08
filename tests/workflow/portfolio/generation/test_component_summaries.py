@@ -29,11 +29,11 @@ from genai_template.workflow.portfolio.domain import (
     SummaryPlan,
     SummaryUnitPlan,
     TextGenerationError,
+    TextGenerationResponse,
     TokenUsage,
 )
 from genai_template.workflow.portfolio.generation import generate_component_summaries
 from genai_template.workflow.portfolio.generation.prompts import PromptDefinition
-from genai_template.workflow.portfolio.ports import TextGenerationResponse
 
 
 class _CountingGenerator:

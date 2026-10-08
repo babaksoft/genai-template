@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from genai_template.workflow.portfolio.domain.generation import ArtifactKind
+from genai_template.workflow.portfolio.domain.artifacts import ArtifactKind
 from genai_template.workflow.portfolio.domain.summaries import (
     ArchitectureSummary,
     ComponentSummary,

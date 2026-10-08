@@ -8,13 +8,32 @@ from pathlib import Path
 
 from pydantic import Field, PositiveInt
 
+from genai_template.workflow.portfolio.domain.artifacts import ArtifactKind
 from genai_template.workflow.portfolio.domain.generation import (
-    ArtifactKind,
     GenerationWarning,
     GenerationWarningCode,
     TokenUsage,
 )
 from genai_template.workflow.portfolio.domain.snapshot import _ImmutableDomainModel
+
+
+def count_generation_warnings(
+    warnings: Iterable[GenerationWarning],
+) -> dict[GenerationWarningCode, int]:
+    """Count ordered generation warnings by stable code.
+
+    Args:
+        warnings:
+            Deterministic parser warnings to aggregate.
+
+    Returns:
+        Positive counts in first-seen warning-code order.
+    """
+
+    counts: dict[GenerationWarningCode, int] = {}
+    for warning in warnings:
+        counts[warning.code] = counts.get(warning.code, 0) + 1
+    return counts
 
 
 class ArtifactRunReport(_ImmutableDomainModel):
@@ -80,25 +99,6 @@ class ArtifactRunReport(_ImmutableDomainModel):
         """
 
         return sum(self.generation_warning_counts.values())
-
-
-def count_generation_warnings(
-    warnings: Iterable[GenerationWarning],
-) -> dict[GenerationWarningCode, int]:
-    """Count ordered generation warnings by stable code.
-
-    Args:
-        warnings:
-            Deterministic parser warnings to aggregate.
-
-    Returns:
-        Positive counts in first-seen warning-code order.
-    """
-
-    counts: dict[GenerationWarningCode, int] = {}
-    for warning in warnings:
-        counts[warning.code] = counts.get(warning.code, 0) + 1
-    return counts
 
 
 class StepRunReport(_ImmutableDomainModel):

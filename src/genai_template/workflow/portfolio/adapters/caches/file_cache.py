@@ -14,11 +14,11 @@ from genai_template.workflow.portfolio.artifacts.fingerprints import (
     canonical_json_bytes,
     sha256_canonical_json,
 )
-from genai_template.workflow.portfolio.domain.errors import ArtifactCacheError
-from genai_template.workflow.portfolio.domain.generation import (
+from genai_template.workflow.portfolio.domain.artifacts import (
     ArtifactKind,
     CachedArtifact,
 )
+from genai_template.workflow.portfolio.domain.errors import ArtifactCacheError
 from genai_template.workflow.portfolio.domain.summaries import StructuredSummary
 
 CACHE_SCHEMA_VERSION = "v1"

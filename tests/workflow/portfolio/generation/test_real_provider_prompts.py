@@ -43,6 +43,7 @@ from genai_template.workflow.portfolio.domain import (
     ProjectOverviewSummary,
     SnapshotFile,
 )
+from genai_template.workflow.portfolio.domain.contracts import TextGenerator
 from genai_template.workflow.portfolio.generation import (
     COMPONENT_PROMPT,
     OVERVIEW_PROMPT,
@@ -50,7 +51,6 @@ from genai_template.workflow.portfolio.generation import (
     assemble_project_prompt,
     generate_validated_summary,
 )
-from genai_template.workflow.portfolio.ports import TextGenerator
 from genai_template.workflow.portfolio.workflow import (
     PortfolioCorpusWorkflow,
     run_portfolio_corpus_workflow,

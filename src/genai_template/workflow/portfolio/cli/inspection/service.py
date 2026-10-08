@@ -16,7 +16,7 @@ from genai_template.workflow.portfolio.config import (
     ProjectConfig,
     load_portfolio_config,
 )
-from genai_template.workflow.portfolio.ports.repository import RepositoryReader
+from genai_template.workflow.portfolio.domain.contracts import RepositoryReader
 from genai_template.workflow.portfolio.snapshot.planning import build_summary_plan
 from genai_template.workflow.portfolio.snapshot.selection import (
     build_repository_snapshot,

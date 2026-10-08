@@ -11,10 +11,10 @@ import pytest
 from genai_template.workflow.portfolio import (
     LocalGitRepositoryConfig,
     LocalGitSnapshotReader,
-    RepositoryReader,
     RepositoryReadError,
     RepositoryReadResult,
 )
+from genai_template.workflow.portfolio.domain.contracts import RepositoryReader
 
 
 def _git(

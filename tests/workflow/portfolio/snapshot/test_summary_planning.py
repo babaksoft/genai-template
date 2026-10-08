@@ -9,10 +9,10 @@ import pytest
 from genai_template.workflow.portfolio import (
     RepositorySnapshot,
     SnapshotFile,
-    SummaryPlanningError,
     SummaryUnitConfig,
     build_summary_plan,
 )
+from genai_template.workflow.portfolio.domain.errors import SummaryPlanningError
 
 
 def _file(path: str, text: str) -> SnapshotFile:

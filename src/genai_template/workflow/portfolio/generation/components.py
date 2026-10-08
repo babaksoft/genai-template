@@ -14,13 +14,17 @@ from genai_template.workflow.portfolio.artifacts.fingerprints import (
     sha256_canonical_json,
 )
 from genai_template.workflow.portfolio.config.models import GenerationConfig
-from genai_template.workflow.portfolio.domain.components import (
+from genai_template.workflow.portfolio.domain.artifacts import (
+    ArtifactProvenance,
+    CachedArtifact,
     ComponentSummaryArtifact,
+)
+from genai_template.workflow.portfolio.domain.contracts import (
+    ArtifactCache,
+    TextGenerator,
 )
 from genai_template.workflow.portfolio.domain.errors import ArtifactValidationError
 from genai_template.workflow.portfolio.domain.generation import (
-    ArtifactProvenance,
-    CachedArtifact,
     GenerationRequest,
     TokenUsage,
 )
@@ -31,8 +35,6 @@ from genai_template.workflow.portfolio.domain.reports import (
 from genai_template.workflow.portfolio.domain.summaries import (
     OUTPUT_SCHEMA_VERSION,
     ComponentSummary,
-)
-from genai_template.workflow.portfolio.domain.summary import (
     SummaryPlan,
     SummaryUnitPlan,
 )
@@ -49,8 +51,6 @@ from genai_template.workflow.portfolio.generation.service import (
 from genai_template.workflow.portfolio.generation.validation import (
     validate_component_evidence,
 )
-from genai_template.workflow.portfolio.ports.artifact_cache import ArtifactCache
-from genai_template.workflow.portfolio.ports.text_generator import TextGenerator
 
 logger = logging.getLogger(__name__)
 

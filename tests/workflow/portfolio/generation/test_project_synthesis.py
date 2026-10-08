@@ -37,13 +37,13 @@ from genai_template.workflow.portfolio.domain import (
     ProviderAuditMetadata,
     RepositorySnapshot,
     SnapshotFile,
+    TextGenerationResponse,
     TokenUsage,
 )
 from genai_template.workflow.portfolio.generation import generate_project_summaries
 from genai_template.workflow.portfolio.generation.specifications import (
     SUMMARY_SPECIFICATIONS,
 )
-from genai_template.workflow.portfolio.ports import TextGenerationResponse
 
 
 class _ProjectGenerator:

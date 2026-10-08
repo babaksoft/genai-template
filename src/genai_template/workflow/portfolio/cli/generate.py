@@ -22,7 +22,7 @@ from genai_template.workflow.portfolio.cli.generation import (
     render_text_report,
 )
 from genai_template.workflow.portfolio.config.models import GenerationConfig
-from genai_template.workflow.portfolio.ports.text_generator import TextGenerator
+from genai_template.workflow.portfolio.domain.contracts import TextGenerator
 from genai_template.workflow.portfolio.workflow.corpus import (
     PortfolioCorpusWorkflow,
     run_portfolio_corpus_workflow,

@@ -9,6 +9,7 @@ import re
 from pathlib import PurePosixPath
 
 from genai_template.workflow.portfolio.config.models import SelectionConfig
+from genai_template.workflow.portfolio.domain.errors import SnapshotSelectionError
 from genai_template.workflow.portfolio.domain.snapshot import (
     CommittedRepositoryEntry,
     RepositoryReadResult,
@@ -19,33 +20,6 @@ from genai_template.workflow.portfolio.domain.snapshot import (
 _REGULAR_FILE_MODES = {"100644", "100755"}
 _LFS_VERSION_LINE = "version https://git-lfs.github.com/spec/v1"
 _WINDOWS_ABSOLUTE_PATH = re.compile(r"^[A-Za-z]:/")
-
-
-class SnapshotSelectionError(ValueError):
-    """Failure to select or normalize a committed repository entry.
-
-    Attributes:
-        path:
-            Repository-relative path involved in the failure, when available.
-        reason:
-            Stable short reason identifying the rejected condition.
-    """
-
-    def __init__(self, message: str, *, path: str | None, reason: str) -> None:
-        """Initialize a contextual snapshot-selection failure.
-
-        Args:
-            message:
-                Human-readable description of the failure.
-            path:
-                Repository-relative path involved in the failure, when available.
-            reason:
-                Stable short reason identifying the rejected condition.
-        """
-
-        super().__init__(message)
-        self.path = path
-        self.reason = reason
 
 
 def matches_repository_pattern(path: str, pattern: str) -> bool:

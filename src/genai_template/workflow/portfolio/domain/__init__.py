@@ -1,38 +1,45 @@
 """Portfolio workflow domain models and failures."""
 
-from genai_template.workflow.portfolio.domain.components import ComponentSummaryArtifact
-from genai_template.workflow.portfolio.domain.errors import (
-    ArtifactCacheError,
-    ArtifactValidationError,
-    RepositoryReadError,
-    TextGenerationError,
-)
-from genai_template.workflow.portfolio.domain.generation import (
+from genai_template.workflow.portfolio.domain.artifacts import (
     ArtifactKind,
     ArtifactProvenance,
     CachedArtifact,
-    CorpusBuild,
-    GenerationRequest,
-    GenerationResult,
-    GenerationWarning,
-    GenerationWarningCode,
-    ProviderAuditMetadata,
-    RenderedDocument,
-    TokenUsage,
+    ComponentSummaryArtifact,
+    ProjectArtifactKind,
+    ProjectSummaryArtifact,
 )
-from genai_template.workflow.portfolio.domain.manifest import (
+from genai_template.workflow.portfolio.domain.corpus import (
+    CorpusBuild,
     CorpusManifest,
     CorpusManifestV2,
+    LoadedCorpus,
     ManifestDocument,
     ManifestDocumentV2,
     ManifestProject,
     ManifestPrompt,
     NormalizedCorpusManifest,
+    PublicationResult,
+    RenderedDocument,
     VersionedCorpusManifest,
 )
-from genai_template.workflow.portfolio.domain.projects import (
-    ProjectArtifactKind,
-    ProjectSummaryArtifact,
+from genai_template.workflow.portfolio.domain.errors import (
+    ArtifactCacheError,
+    ArtifactValidationError,
+    EvidenceValidationError,
+    RepositoryReadError,
+    SnapshotSelectionError,
+    SummaryPlanningError,
+    TextGenerationError,
+)
+from genai_template.workflow.portfolio.domain.generation import (
+    GenerationRequest,
+    GenerationResult,
+    GenerationWarning,
+    GenerationWarningCode,
+    ProviderAuditMetadata,
+    SummaryGenerationResponse,
+    TextGenerationResponse,
+    TokenUsage,
 )
 from genai_template.workflow.portfolio.domain.reports import (
     ArtifactRunReport,
@@ -53,12 +60,10 @@ from genai_template.workflow.portfolio.domain.summaries import (
     EvidenceSection,
     ProjectOverviewSummary,
     StructuredSummary,
-    TestingOperationsSummary,
-    summary_evidence_paths,
-)
-from genai_template.workflow.portfolio.domain.summary import (
     SummaryPlan,
     SummaryUnitPlan,
+    TestingOperationsSummary,
+    summary_evidence_paths,
 )
 
 __all__ = [
@@ -77,11 +82,13 @@ __all__ = [
     "CorpusManifest",
     "CorpusManifestV2",
     "EvidenceSection",
+    "EvidenceValidationError",
     "GenerationRequest",
     "GenerationResult",
     "GenerationRunReport",
     "GenerationWarning",
     "GenerationWarningCode",
+    "LoadedCorpus",
     "ManifestDocument",
     "ManifestDocumentV2",
     "ManifestProject",
@@ -91,17 +98,22 @@ __all__ = [
     "ProjectOverviewSummary",
     "ProjectSummaryArtifact",
     "ProviderAuditMetadata",
+    "PublicationResult",
     "RenderedDocument",
     "RepositoryReadError",
     "RepositoryReadResult",
     "RepositorySnapshot",
     "SnapshotFile",
+    "SnapshotSelectionError",
     "StepRunReport",
     "StructuredSummary",
+    "SummaryGenerationResponse",
     "SummaryPlan",
+    "SummaryPlanningError",
     "SummaryUnitPlan",
     "TestingOperationsSummary",
     "TextGenerationError",
+    "TextGenerationResponse",
     "TokenUsage",
     "VersionedCorpusManifest",
     "count_generation_warnings",

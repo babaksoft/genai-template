@@ -4,14 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from pydantic import Field
-
 from genai_template.workflow.portfolio.domain.generation import GenerationWarning
-from genai_template.workflow.portfolio.domain.snapshot import _ImmutableDomainModel
 from genai_template.workflow.portfolio.domain.summaries import (
     ComponentSummary,
     EvidenceSection,
-    StructuredSummary,
+    ParsedSummary,
 )
 from genai_template.workflow.portfolio.generation.specifications import (
     SummarySpecification,
@@ -22,22 +19,6 @@ from genai_template.workflow.portfolio.generation.validation import (
 )
 
 _PLACEHOLDER = "No supported information was provided."
-
-
-class ParsedSummary(_ImmutableDomainModel):
-    """Validated summary and ordered parser recoveries.
-
-    Attributes:
-        summary:
-            Existing validated typed summary produced from Markdown.
-        warnings:
-            Recoveries in deterministic parser order.
-    """
-
-    summary: StructuredSummary = Field(description="Validated parsed summary.")
-    warnings: tuple[GenerationWarning, ...] = Field(
-        description="Ordered deterministic parser recoveries."
-    )
 
 
 def parse_summary_markdown(

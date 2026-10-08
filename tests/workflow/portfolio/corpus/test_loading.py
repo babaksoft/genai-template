@@ -20,7 +20,7 @@ from genai_template.workflow.portfolio.corpus.manifest import (
     manifest_bytes,
 )
 from genai_template.workflow.portfolio.corpus.validation import CorpusValidationError
-from genai_template.workflow.portfolio.domain.manifest import (
+from genai_template.workflow.portfolio.domain.corpus import (
     CorpusManifest,
     ManifestDocumentV2,
     VersionedCorpusManifest,

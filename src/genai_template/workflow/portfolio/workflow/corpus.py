@@ -33,8 +33,14 @@ from genai_template.workflow.portfolio.corpus.renderers import (
 from genai_template.workflow.portfolio.corpus.validation import (
     validate_rendered_corpus,
 )
+from genai_template.workflow.portfolio.domain.contracts import (
+    ArtifactCache,
+    RepositoryReader,
+    TextGenerator,
+)
 from genai_template.workflow.portfolio.domain.generation import (
     GenerationRequest,
+    TextGenerationResponse,
     TokenUsage,
 )
 from genai_template.workflow.portfolio.domain.reports import (
@@ -47,12 +53,6 @@ from genai_template.workflow.portfolio.generation.components import (
 )
 from genai_template.workflow.portfolio.generation.projects import (
     generate_project_summaries,
-)
-from genai_template.workflow.portfolio.ports.artifact_cache import ArtifactCache
-from genai_template.workflow.portfolio.ports.repository import RepositoryReader
-from genai_template.workflow.portfolio.ports.text_generator import (
-    TextGenerationResponse,
-    TextGenerator,
 )
 from genai_template.workflow.portfolio.snapshot.planning import build_summary_plan
 from genai_template.workflow.portfolio.snapshot.selection import (

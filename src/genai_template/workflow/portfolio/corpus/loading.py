@@ -5,8 +5,6 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path, PurePosixPath
 
-from pydantic import Field
-
 from genai_template.workflow.portfolio.corpus.manifest import (
     calculate_corpus_fingerprint,
 )
@@ -15,40 +13,18 @@ from genai_template.workflow.portfolio.corpus.validation import (
     CorpusValidationError,
     read_manifest,
 )
-from genai_template.workflow.portfolio.domain.manifest import (
+from genai_template.workflow.portfolio.domain.corpus import (
     CorpusManifestV2,
+    LoadedCorpus,
     ManifestDocumentV2,
     ManifestProject,
     NormalizedCorpusManifest,
     VersionedCorpusManifest,
 )
-from genai_template.workflow.portfolio.domain.snapshot import _ImmutableDomainModel
-
-
-class LoadedCorpus(_ImmutableDomainModel):
-    """A validated corpus pinned to one immutable filesystem location.
-
-    Attributes:
-        release_path:
-            Resolved directory used for all reads in this load operation.
-        manifest:
-            Version-neutral stable corpus provenance.
-        documents:
-            Ordered normalized document records.
-    """
-
-    release_path: Path = Field(description="Pinned validated release directory.")
-    manifest: NormalizedCorpusManifest = Field(
-        description="Version-neutral normalized corpus manifest."
-    )
-    documents: tuple[ManifestDocumentV2, ...] = Field(
-        min_length=1,
-        description="Ordered normalized document records.",
-    )
 
 
 def normalize_manifest(manifest: VersionedCorpusManifest) -> NormalizedCorpusManifest:
-    """Normalize a v1 or v2 manifest without changing its corpus identity.
+    """Normalize a v1 or v2 manifest.
 
     Args:
         manifest:
@@ -183,8 +159,10 @@ def _read_flat_entries(directory: Path) -> dict[str, Path]:
         entries = tuple(directory.iterdir())
     except OSError as exc:
         raise CorpusValidationError("corpus directory cannot be read") from exc
+
     if any(entry.is_symlink() or not entry.is_file() for entry in entries):
         raise CorpusValidationError("corpus must contain only flat regular files")
+
     return {entry.name: entry for entry in entries}
 
 

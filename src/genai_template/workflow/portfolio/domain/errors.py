@@ -145,3 +145,90 @@ class ArtifactValidationError(RuntimeError):
         super().__init__(message)
         self.generation_fingerprint = generation_fingerprint
         self.reason = reason
+
+
+class EvidenceValidationError(ValueError):
+    """A generated summary cites evidence outside its exact input scope.
+
+    Attributes:
+        invalid_paths:
+            Sorted paths that were not members of the permitted scope.
+        permitted_paths:
+            Sorted exact paths permitted for this generation call.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        invalid_paths: tuple[str, ...],
+        permitted_paths: tuple[str, ...],
+    ) -> None:
+        """Initialize an evidence validation failure.
+
+        Args:
+            message:
+                Human-readable failure description.
+            invalid_paths:
+                Paths cited outside the allowed scope.
+            permitted_paths:
+                Exact allowed evidence paths.
+        """
+
+        super().__init__(message)
+        self.invalid_paths = invalid_paths
+        self.permitted_paths = permitted_paths
+
+
+class SnapshotSelectionError(ValueError):
+    """Failure to select or normalize a committed repository entry.
+
+    Attributes:
+        path:
+            Repository-relative path involved in the failure, when available.
+        reason:
+            Stable short reason identifying the rejected condition.
+    """
+
+    def __init__(self, message: str, *, path: str | None, reason: str) -> None:
+        """Initialize a contextual snapshot-selection failure.
+
+        Args:
+            message:
+                Human-readable description of the failure.
+            path:
+                Repository-relative path involved in the failure, when available.
+            reason:
+                Stable short reason identifying the rejected condition.
+        """
+
+        super().__init__(message)
+        self.path = path
+        self.reason = reason
+
+
+class SummaryPlanningError(ValueError):
+    """Failure to derive configured logical units from a snapshot.
+
+    Attributes:
+        unit_id:
+            Logical unit involved in the failure, when one is available.
+        reason:
+            Stable short reason identifying the invalid plan condition.
+    """
+
+    def __init__(self, message: str, *, unit_id: str | None, reason: str) -> None:
+        """Initialize a contextual summary-planning failure.
+
+        Args:
+            message:
+                Human-readable description of the failure.
+            unit_id:
+                Logical unit involved in the failure, when available.
+            reason:
+                Stable short reason identifying the invalid condition.
+        """
+
+        super().__init__(message)
+        self.unit_id = unit_id
+        self.reason = reason

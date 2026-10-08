@@ -16,8 +16,10 @@ from genai_template.workflow.portfolio.corpus.validation import (
     CorpusValidationError,
     validate_corpus_directory,
 )
-from genai_template.workflow.portfolio.domain.generation import RenderedDocument
-from genai_template.workflow.portfolio.domain.manifest import CorpusManifestV2
+from genai_template.workflow.portfolio.domain.corpus import (
+    CorpusManifestV2,
+    RenderedDocument,
+)
 from genai_template.workflow.portfolio.domain.snapshot import (
     RepositorySnapshot,
     _ImmutableDomainModel,
