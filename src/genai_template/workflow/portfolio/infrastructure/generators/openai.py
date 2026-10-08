@@ -5,15 +5,15 @@ from __future__ import annotations
 from openai import APIError, APITimeoutError, OpenAI
 from openai.types.responses import Response
 
-from genai_template.workflow.portfolio.adapters.generators.base import (
-    TextGeneratorBase,
-    optional_non_negative_int,
-)
 from genai_template.workflow.portfolio.domain import (
     GenerationRequest,
     ProviderAuditMetadata,
     TextGenerationResponse,
     TokenUsage,
+)
+from genai_template.workflow.portfolio.infrastructure.generators.base import (
+    TextGeneratorBase,
+    optional_non_negative_int,
 )
 
 

@@ -1,8 +1,5 @@
 """Public configuration and domain types for portfolio snapshot workflows."""
 
-from genai_template.workflow.portfolio.adapters.repositories import (
-    LocalGitSnapshotReader,
-)
 from genai_template.workflow.portfolio.config import (
     GenerationConfig,
     GenerationInputLimits,
@@ -44,6 +41,9 @@ from genai_template.workflow.portfolio.domain import (
     SummaryPlan,
     SummaryUnitPlan,
     TokenUsage,
+)
+from genai_template.workflow.portfolio.infrastructure.repositories import (
+    LocalGitSnapshotReader,
 )
 from genai_template.workflow.portfolio.snapshot import (
     build_repository_snapshot,

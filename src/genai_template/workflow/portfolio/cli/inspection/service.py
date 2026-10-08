@@ -4,9 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from genai_template.workflow.portfolio.adapters.repositories.local_git import (
-    LocalGitSnapshotReader,
-)
 from genai_template.workflow.portfolio.cli.inspection.reports import (
     PortfolioInspection,
     ProjectInspection,
@@ -17,6 +14,9 @@ from genai_template.workflow.portfolio.config import (
     load_portfolio_config,
 )
 from genai_template.workflow.portfolio.domain.contracts import RepositoryReader
+from genai_template.workflow.portfolio.infrastructure.repositories.local_git import (
+    LocalGitSnapshotReader,
+)
 from genai_template.workflow.portfolio.snapshot.planning import build_summary_plan
 from genai_template.workflow.portfolio.snapshot.selection import (
     build_repository_snapshot,

@@ -12,10 +12,6 @@ import pytest
 from ollama import ChatResponse, Message
 from openai import APITimeoutError
 
-from genai_template.workflow.portfolio.adapters.generators import (
-    OllamaTextGenerator,
-    OpenAITextGenerator,
-)
 from genai_template.workflow.portfolio.config.models import TokenPricingConfig
 from genai_template.workflow.portfolio.domain import (
     ArtifactProvenance,
@@ -24,6 +20,10 @@ from genai_template.workflow.portfolio.domain import (
     TokenUsage,
 )
 from genai_template.workflow.portfolio.generation import estimate_generation_cost
+from genai_template.workflow.portfolio.infrastructure.generators import (
+    OllamaTextGenerator,
+    OpenAITextGenerator,
+)
 
 _TEXT = "## Responsibilities\n\nFact.\n\n### Evidence\n\n- src/a.py"
 

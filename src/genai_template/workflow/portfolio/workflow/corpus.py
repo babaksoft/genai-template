@@ -11,9 +11,6 @@ from time import perf_counter
 from llama_index.core.workflow import StopEvent, Workflow, step
 
 from genai_template.observability import application_span
-from genai_template.workflow.portfolio.adapters.caches.file_cache import (
-    FilesystemArtifactCache,
-)
 from genai_template.workflow.portfolio.config.loader import load_portfolio_config
 from genai_template.workflow.portfolio.config.models import (
     GenerationConfig,
@@ -53,6 +50,9 @@ from genai_template.workflow.portfolio.generation.components import (
 )
 from genai_template.workflow.portfolio.generation.projects import (
     generate_project_summaries,
+)
+from genai_template.workflow.portfolio.infrastructure.caches import (
+    FilesystemArtifactCache,
 )
 from genai_template.workflow.portfolio.snapshot.planning import build_summary_plan
 from genai_template.workflow.portfolio.snapshot.selection import (

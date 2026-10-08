@@ -7,13 +7,13 @@ from typing import Literal
 
 import pytest
 
-from genai_template.workflow.portfolio.adapters.generators import (
-    OllamaTextGenerator,
-    OpenAITextGenerator,
-)
 from genai_template.workflow.portfolio.domain import (
     ArtifactProvenance,
     GenerationRequest,
+)
+from genai_template.workflow.portfolio.infrastructure.generators import (
+    OllamaTextGenerator,
+    OpenAITextGenerator,
 )
 
 

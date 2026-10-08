@@ -1,9 +1,9 @@
 """Official-SDK plain-text generation adapters."""
 
-from genai_template.workflow.portfolio.adapters.generators.ollama import (
+from genai_template.workflow.portfolio.infrastructure.generators.ollama import (
     OllamaTextGenerator,
 )
-from genai_template.workflow.portfolio.adapters.generators.openai import (
+from genai_template.workflow.portfolio.infrastructure.generators.openai import (
     OpenAITextGenerator,
 )
 

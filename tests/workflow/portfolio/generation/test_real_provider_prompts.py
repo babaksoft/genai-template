@@ -13,13 +13,6 @@ from typing import Literal
 
 import pytest
 
-from genai_template.workflow.portfolio.adapters.generators import (
-    OllamaTextGenerator,
-    OpenAITextGenerator,
-)
-from genai_template.workflow.portfolio.adapters.repositories import (
-    LocalGitSnapshotReader,
-)
 from genai_template.workflow.portfolio.cli.generation import render_json_report
 from genai_template.workflow.portfolio.config import (
     GenerationConfig,
@@ -50,6 +43,13 @@ from genai_template.workflow.portfolio.generation import (
     assemble_component_prompt,
     assemble_project_prompt,
     generate_validated_summary,
+)
+from genai_template.workflow.portfolio.infrastructure.generators import (
+    OllamaTextGenerator,
+    OpenAITextGenerator,
+)
+from genai_template.workflow.portfolio.infrastructure.repositories import (
+    LocalGitSnapshotReader,
 )
 from genai_template.workflow.portfolio.workflow import (
     PortfolioCorpusWorkflow,

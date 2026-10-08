@@ -6,15 +6,15 @@ import httpx
 from ollama import ChatResponse, Client, RequestError, ResponseError
 
 from genai_template.config.ollama import resolve_ollama_base_url
-from genai_template.workflow.portfolio.adapters.generators.base import (
-    TextGeneratorBase,
-    optional_non_negative_int,
-)
 from genai_template.workflow.portfolio.domain import (
     GenerationRequest,
     ProviderAuditMetadata,
     TextGenerationResponse,
     TokenUsage,
+)
+from genai_template.workflow.portfolio.infrastructure.generators.base import (
+    TextGeneratorBase,
+    optional_non_negative_int,
 )
 
 

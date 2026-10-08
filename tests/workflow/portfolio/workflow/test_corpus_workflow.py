@@ -11,9 +11,6 @@ from pathlib import Path
 
 import pytest
 
-from genai_template.workflow.portfolio.adapters.repositories import (
-    LocalGitSnapshotReader,
-)
 from genai_template.workflow.portfolio.config.models import (
     GenerationConfig,
     GenerationInputLimits,
@@ -37,6 +34,9 @@ from genai_template.workflow.portfolio.domain import (
 )
 from genai_template.workflow.portfolio.generation.specifications import (
     SUMMARY_SPECIFICATIONS,
+)
+from genai_template.workflow.portfolio.infrastructure.repositories import (
+    LocalGitSnapshotReader,
 )
 from genai_template.workflow.portfolio.workflow import (
     PortfolioCorpusWorkflow,

@@ -10,19 +10,19 @@ from pathlib import Path
 from typing import TextIO
 
 from genai_template.config.logging import configure_logging
-from genai_template.workflow.portfolio.adapters.generators import (
-    OllamaTextGenerator,
-    OpenAITextGenerator,
-)
-from genai_template.workflow.portfolio.adapters.repositories import (
-    LocalGitSnapshotReader,
-)
 from genai_template.workflow.portfolio.cli.generation import (
     render_json_report,
     render_text_report,
 )
 from genai_template.workflow.portfolio.config.models import GenerationConfig
 from genai_template.workflow.portfolio.domain.contracts import TextGenerator
+from genai_template.workflow.portfolio.infrastructure.generators import (
+    OllamaTextGenerator,
+    OpenAITextGenerator,
+)
+from genai_template.workflow.portfolio.infrastructure.repositories import (
+    LocalGitSnapshotReader,
+)
 from genai_template.workflow.portfolio.workflow.corpus import (
     PortfolioCorpusWorkflow,
     run_portfolio_corpus_workflow,

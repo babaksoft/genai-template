@@ -1,4 +1,4 @@
-from genai_template.workflow.portfolio.adapters.caches.file_cache import (
+from genai_template.workflow.portfolio.infrastructure.caches.file_cache import (
     CACHE_SCHEMA_VERSION,
     FilesystemArtifactCache,
 )

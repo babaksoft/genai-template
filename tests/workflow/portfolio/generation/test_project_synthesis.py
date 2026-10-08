@@ -9,10 +9,6 @@ from pathlib import Path
 import pytest
 
 from genai_template.config import settings
-from genai_template.workflow.portfolio.adapters.caches import (
-    CACHE_SCHEMA_VERSION,
-    FilesystemArtifactCache,
-)
 from genai_template.workflow.portfolio.artifacts import (
     sha256_canonical_json,
 )
@@ -43,6 +39,10 @@ from genai_template.workflow.portfolio.domain import (
 from genai_template.workflow.portfolio.generation import generate_project_summaries
 from genai_template.workflow.portfolio.generation.specifications import (
     SUMMARY_SPECIFICATIONS,
+)
+from genai_template.workflow.portfolio.infrastructure.caches import (
+    CACHE_SCHEMA_VERSION,
+    FilesystemArtifactCache,
 )
 
 

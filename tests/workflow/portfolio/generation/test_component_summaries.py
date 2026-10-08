@@ -9,9 +9,6 @@ from pathlib import Path
 import pytest
 
 from genai_template.config import settings
-from genai_template.workflow.portfolio.adapters.caches import (
-    FilesystemArtifactCache,
-)
 from genai_template.workflow.portfolio.config import (
     GenerationConfig,
     GenerationInputLimits,
@@ -34,6 +31,9 @@ from genai_template.workflow.portfolio.domain import (
 )
 from genai_template.workflow.portfolio.generation import generate_component_summaries
 from genai_template.workflow.portfolio.generation.prompts import PromptDefinition
+from genai_template.workflow.portfolio.infrastructure.caches import (
+    FilesystemArtifactCache,
+)
 
 
 class _CountingGenerator:
