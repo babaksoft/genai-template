@@ -29,7 +29,7 @@ from genai_template.services import (
     RagService,
     SourceService,
 )
-from genai_template.workflow.portfolio.config import load_portfolio_config
+from genai_template.workflow.portfolio.application.config import load_portfolio_config
 from genai_template.workflow.portfolio.domain import (
     ArtifactKind,
     CorpusManifestV2,

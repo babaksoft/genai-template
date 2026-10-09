@@ -8,7 +8,9 @@ from dataclasses import dataclass
 from decimal import Decimal
 from time import perf_counter
 
-from genai_template.workflow.portfolio.config.models import GenerationConfig
+from genai_template.workflow.portfolio.application.snapshot.selection import (
+    matches_repository_pattern,
+)
 from genai_template.workflow.portfolio.domain.artifacts import (
     ArtifactProvenance,
     CachedArtifact,
@@ -16,6 +18,7 @@ from genai_template.workflow.portfolio.domain.artifacts import (
     ProjectArtifactKind,
     ProjectSummaryArtifact,
 )
+from genai_template.workflow.portfolio.domain.config import GenerationConfig
 from genai_template.workflow.portfolio.domain.contracts import (
     ArtifactCache,
     TextGenerator,
@@ -68,9 +71,6 @@ from genai_template.workflow.portfolio.infrastructure.generation.service import 
 )
 from genai_template.workflow.portfolio.infrastructure.generation.validation import (
     validate_project_evidence,
-)
-from genai_template.workflow.portfolio.snapshot.selection import (
-    matches_repository_pattern,
 )
 
 logger = logging.getLogger(__name__)

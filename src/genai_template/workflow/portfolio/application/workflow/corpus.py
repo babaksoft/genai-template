@@ -11,10 +11,22 @@ from time import perf_counter
 from llama_index.core.workflow import StopEvent, Workflow, step
 
 from genai_template.observability import application_span
-from genai_template.workflow.portfolio.config.loader import load_portfolio_config
-from genai_template.workflow.portfolio.config.models import (
-    GenerationConfig,
-    PortfolioConfig,
+from genai_template.workflow.portfolio.application.config import (
+    load_portfolio_config,
+)
+from genai_template.workflow.portfolio.application.snapshot import (
+    build_repository_snapshot,
+    build_summary_plan,
+)
+from genai_template.workflow.portfolio.application.workflow.events import (
+    ComponentsGeneratedEvent,
+    ConfigurationSelectedEvent,
+    CorpusValidatedEvent,
+    DocumentsRenderedEvent,
+    GenerateCorpusStartEvent,
+    ProjectsGeneratedEvent,
+    SnapshotSelectedEvent,
+    SummaryPlannedEvent,
 )
 from genai_template.workflow.portfolio.domain import (
     ArtifactRunReport,
@@ -24,6 +36,10 @@ from genai_template.workflow.portfolio.domain import (
     StepRunReport,
     TextGenerationResponse,
     TokenUsage,
+)
+from genai_template.workflow.portfolio.domain.config import (
+    GenerationConfig,
+    PortfolioConfig,
 )
 from genai_template.workflow.portfolio.domain.contracts import (
     ArtifactCache,
@@ -45,20 +61,6 @@ from genai_template.workflow.portfolio.infrastructure.fingerprints import (
 from genai_template.workflow.portfolio.infrastructure.generation import (
     generate_component_summaries,
     generate_project_summaries,
-)
-from genai_template.workflow.portfolio.snapshot.planning import build_summary_plan
-from genai_template.workflow.portfolio.snapshot.selection import (
-    build_repository_snapshot,
-)
-from genai_template.workflow.portfolio.workflow.events import (
-    ComponentsGeneratedEvent,
-    ConfigurationSelectedEvent,
-    CorpusValidatedEvent,
-    DocumentsRenderedEvent,
-    GenerateCorpusStartEvent,
-    ProjectsGeneratedEvent,
-    SnapshotSelectedEvent,
-    SummaryPlannedEvent,
 )
 
 logger = logging.getLogger(__name__)

@@ -10,11 +10,15 @@ from pathlib import Path
 from typing import TextIO
 
 from genai_template.config.logging import configure_logging
-from genai_template.workflow.portfolio.cli.generation import (
+from genai_template.workflow.portfolio.application.cli.generation import (
     render_json_report,
     render_text_report,
 )
-from genai_template.workflow.portfolio.config.models import GenerationConfig
+from genai_template.workflow.portfolio.application.workflow import (
+    PortfolioCorpusWorkflow,
+    run_portfolio_corpus_workflow,
+)
+from genai_template.workflow.portfolio.domain.config import GenerationConfig
 from genai_template.workflow.portfolio.domain.contracts import TextGenerator
 from genai_template.workflow.portfolio.infrastructure.generators import (
     OllamaTextGenerator,
@@ -22,10 +26,6 @@ from genai_template.workflow.portfolio.infrastructure.generators import (
 )
 from genai_template.workflow.portfolio.infrastructure.repositories import (
     LocalGitSnapshotReader,
-)
-from genai_template.workflow.portfolio.workflow.corpus import (
-    PortfolioCorpusWorkflow,
-    run_portfolio_corpus_workflow,
 )
 
 

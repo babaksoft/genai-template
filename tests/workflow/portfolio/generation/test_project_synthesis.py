@@ -9,15 +9,6 @@ from pathlib import Path
 import pytest
 
 from genai_template.config import settings
-from genai_template.workflow.portfolio.config import (
-    GenerationConfig,
-    GenerationInputLimits,
-    GenerationLocations,
-    InferenceConfig,
-    ProjectDocumentContextConfig,
-    StructuredGenerationConfig,
-    TokenPricingConfig,
-)
 from genai_template.workflow.portfolio.domain import (
     ArtifactProvenance,
     ArtifactRunReport,
@@ -32,6 +23,15 @@ from genai_template.workflow.portfolio.domain import (
     SnapshotFile,
     TextGenerationResponse,
     TokenUsage,
+)
+from genai_template.workflow.portfolio.domain.config import (
+    GenerationConfig,
+    GenerationInputLimits,
+    GenerationLocations,
+    InferenceConfig,
+    ProjectDocumentContextConfig,
+    StructuredGenerationConfig,
+    TokenPricingConfig,
 )
 from genai_template.workflow.portfolio.infrastructure.caches import (
     CACHE_SCHEMA_VERSION,

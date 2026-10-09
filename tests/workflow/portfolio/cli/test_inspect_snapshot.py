@@ -10,8 +10,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from genai_template.workflow.portfolio.cli.inspect import main
-from genai_template.workflow.portfolio.cli.inspection import (
+from genai_template.workflow.portfolio.application.cli.inspect import main
+from genai_template.workflow.portfolio.application.cli.inspection import (
     SnapshotInspectionError,
     inspect_portfolio,
     render_json_report,

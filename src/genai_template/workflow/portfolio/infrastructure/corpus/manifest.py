@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from genai_template.workflow.portfolio.config.models import GenerationConfig
+from genai_template.workflow.portfolio.domain.config import GenerationConfig
 from genai_template.workflow.portfolio.domain.corpus import (
     CorpusManifestV2,
     ManifestDocumentV2,

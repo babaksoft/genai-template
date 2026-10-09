@@ -13,8 +13,22 @@ from typing import Literal
 
 import pytest
 
-from genai_template.workflow.portfolio.cli.generation import render_json_report
-from genai_template.workflow.portfolio.config import (
+from genai_template.workflow.portfolio.application.cli.generation import (
+    render_json_report,
+)
+from genai_template.workflow.portfolio.application.workflow import (
+    PortfolioCorpusWorkflow,
+    run_portfolio_corpus_workflow,
+)
+from genai_template.workflow.portfolio.domain import (
+    ArtifactProvenance,
+    ComponentSummary,
+    GenerationRequest,
+    GenerationRunReport,
+    ProjectOverviewSummary,
+    SnapshotFile,
+)
+from genai_template.workflow.portfolio.domain.config import (
     GenerationConfig,
     GenerationInputLimits,
     GenerationLocations,
@@ -27,14 +41,6 @@ from genai_template.workflow.portfolio.config import (
     StructuredGenerationConfig,
     SummaryUnitConfig,
     TokenPricingConfig,
-)
-from genai_template.workflow.portfolio.domain import (
-    ArtifactProvenance,
-    ComponentSummary,
-    GenerationRequest,
-    GenerationRunReport,
-    ProjectOverviewSummary,
-    SnapshotFile,
 )
 from genai_template.workflow.portfolio.domain.contracts import TextGenerator
 from genai_template.workflow.portfolio.infrastructure.generation import (
@@ -50,10 +56,6 @@ from genai_template.workflow.portfolio.infrastructure.generators import (
 )
 from genai_template.workflow.portfolio.infrastructure.repositories import (
     LocalGitSnapshotReader,
-)
-from genai_template.workflow.portfolio.workflow import (
-    PortfolioCorpusWorkflow,
-    run_portfolio_corpus_workflow,
 )
 
 _COMPLETION_GATE_ENABLED = os.getenv("PORTFOLIO_RUN_COMPLETION_GATE") == "true"

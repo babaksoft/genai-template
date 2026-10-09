@@ -12,12 +12,14 @@ import pytest
 from ollama import ChatResponse, Message
 from openai import APITimeoutError
 
-from genai_template.workflow.portfolio.config.models import TokenPricingConfig
 from genai_template.workflow.portfolio.domain import (
     ArtifactProvenance,
     GenerationRequest,
     TextGenerationError,
     TokenUsage,
+)
+from genai_template.workflow.portfolio.domain.config import (
+    TokenPricingConfig,
 )
 from genai_template.workflow.portfolio.infrastructure.generation import (
     estimate_generation_cost,

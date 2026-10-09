@@ -6,10 +6,6 @@ from pathlib import Path
 
 from llama_index.core.workflow import Event, StartEvent
 
-from genai_template.workflow.portfolio.config.models import (
-    GenerationConfig,
-    ProjectConfig,
-)
 from genai_template.workflow.portfolio.domain import (
     ComponentSummaryArtifact,
     CorpusManifestV2,
@@ -18,6 +14,10 @@ from genai_template.workflow.portfolio.domain import (
     RepositorySnapshot,
     StepRunReport,
     SummaryPlan,
+)
+from genai_template.workflow.portfolio.domain.config import (
+    GenerationConfig,
+    ProjectConfig,
 )
 
 

@@ -9,16 +9,16 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
-from genai_template.workflow.portfolio.config.models import (
-    GenerationConfig,
-    StructuredGenerationConfig,
-)
 from genai_template.workflow.portfolio.domain import (
     CorpusManifest,
     CorpusManifestV2,
     ManifestDocument,
     ManifestDocumentV2,
     VersionedCorpusManifest,
+)
+from genai_template.workflow.portfolio.domain.config import (
+    GenerationConfig,
+    StructuredGenerationConfig,
 )
 
 

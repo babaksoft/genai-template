@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TextIO
 
-from genai_template.workflow.portfolio.cli.inspection import (
+from genai_template.workflow.portfolio.application.cli.inspection import (
     inspect_portfolio,
     render_json_report,
     render_text_report,

@@ -1,4 +1,4 @@
-from genai_template.workflow.portfolio.domain.reports import GenerationRunReport
+from genai_template.workflow.portfolio.domain import GenerationRunReport
 from genai_template.workflow.portfolio.infrastructure.fingerprints import (
     canonical_json_bytes,
 )

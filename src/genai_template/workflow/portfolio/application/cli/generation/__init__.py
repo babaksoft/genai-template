@@ -1,4 +1,4 @@
-from genai_template.workflow.portfolio.cli.generation.reports import (
+from genai_template.workflow.portfolio.application.cli.generation.reports import (
     render_json_report,
     render_text_report,
 )

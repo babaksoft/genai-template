@@ -11,7 +11,18 @@ from pathlib import Path
 
 import pytest
 
-from genai_template.workflow.portfolio.config.models import (
+from genai_template.workflow.portfolio.application.workflow import (
+    PortfolioCorpusWorkflow,
+    run_portfolio_corpus_workflow,
+)
+from genai_template.workflow.portfolio.domain import (
+    GenerationRequest,
+    ProviderAuditMetadata,
+    TextGenerationError,
+    TextGenerationResponse,
+    TokenUsage,
+)
+from genai_template.workflow.portfolio.domain.config import (
     GenerationConfig,
     GenerationInputLimits,
     GenerationLocations,
@@ -25,22 +36,11 @@ from genai_template.workflow.portfolio.config.models import (
     SummaryUnitConfig,
     TokenPricingConfig,
 )
-from genai_template.workflow.portfolio.domain import (
-    GenerationRequest,
-    ProviderAuditMetadata,
-    TextGenerationError,
-    TextGenerationResponse,
-    TokenUsage,
-)
 from genai_template.workflow.portfolio.infrastructure.generation import (
     SUMMARY_SPECIFICATIONS,
 )
 from genai_template.workflow.portfolio.infrastructure.repositories import (
     LocalGitSnapshotReader,
-)
-from genai_template.workflow.portfolio.workflow import (
-    PortfolioCorpusWorkflow,
-    run_portfolio_corpus_workflow,
 )
 
 

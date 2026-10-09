@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from genai_template.workflow.portfolio.config.models import LocalGitRepositoryConfig
 from genai_template.workflow.portfolio.domain.artifacts import (
     ArtifactKind,
     CachedArtifact,
+)
+from genai_template.workflow.portfolio.domain.config import (
+    LocalGitRepositoryConfig,
 )
 from genai_template.workflow.portfolio.domain.generation import (
     GenerationRequest,

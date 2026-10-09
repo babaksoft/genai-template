@@ -1,19 +1,8 @@
 """Public configuration and domain types for portfolio snapshot workflows."""
 
-from genai_template.workflow.portfolio.config import (
-    GenerationConfig,
-    GenerationInputLimits,
-    GenerationLocations,
-    InferenceConfig,
-    LocalGitRepositoryConfig,
-    PortfolioConfig,
-    ProjectConfig,
-    ProjectDocumentContextConfig,
-    SelectionConfig,
-    StructuredGenerationConfig,
-    SummaryUnitConfig,
-    TokenPricingConfig,
-    load_portfolio_config,
+from genai_template.workflow.portfolio.application.snapshot import (
+    build_repository_snapshot,
+    build_summary_plan,
 )
 from genai_template.workflow.portfolio.domain import (
     ArtifactProvenance,
@@ -42,12 +31,22 @@ from genai_template.workflow.portfolio.domain import (
     SummaryUnitPlan,
     TokenUsage,
 )
+from genai_template.workflow.portfolio.domain.config import (
+    GenerationConfig,
+    GenerationInputLimits,
+    GenerationLocations,
+    InferenceConfig,
+    LocalGitRepositoryConfig,
+    PortfolioConfig,
+    ProjectConfig,
+    ProjectDocumentContextConfig,
+    SelectionConfig,
+    StructuredGenerationConfig,
+    SummaryUnitConfig,
+    TokenPricingConfig,
+)
 from genai_template.workflow.portfolio.infrastructure.repositories import (
     LocalGitSnapshotReader,
-)
-from genai_template.workflow.portfolio.snapshot import (
-    build_repository_snapshot,
-    build_summary_plan,
 )
 
 __all__ = [

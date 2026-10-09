@@ -11,7 +11,10 @@ import yaml
 from pydantic import BaseModel, ValidationError
 
 from genai_template.config import settings
-from genai_template.workflow.portfolio.config import (
+from genai_template.workflow.portfolio.application.config import (
+    load_portfolio_config,
+)
+from genai_template.workflow.portfolio.domain.config import (
     GenerationConfig,
     GenerationInputLimits,
     GenerationLocations,
@@ -19,7 +22,6 @@ from genai_template.workflow.portfolio.config import (
     ProjectDocumentContextConfig,
     StructuredGenerationConfig,
     TokenPricingConfig,
-    load_portfolio_config,
 )
 
 

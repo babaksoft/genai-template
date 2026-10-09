@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from genai_template.workflow.portfolio.config import (
+from genai_template.workflow.portfolio.domain.config import (
     InferenceConfig,
     StructuredGenerationConfig,
 )

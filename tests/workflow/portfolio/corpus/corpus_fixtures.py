@@ -8,8 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from genai_template.workflow.portfolio.config import load_portfolio_config
-from genai_template.workflow.portfolio.config.models import GenerationConfig
+from genai_template.workflow.portfolio.application.config import load_portfolio_config
 from genai_template.workflow.portfolio.domain import (
     ArtifactKind,
     CorpusManifestV2,
@@ -17,6 +16,7 @@ from genai_template.workflow.portfolio.domain import (
     RepositorySnapshot,
     SnapshotFile,
 )
+from genai_template.workflow.portfolio.domain.config import GenerationConfig
 from genai_template.workflow.portfolio.infrastructure.corpus import (
     build_corpus_manifest,
 )

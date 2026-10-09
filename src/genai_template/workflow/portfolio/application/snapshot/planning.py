@@ -5,18 +5,18 @@ from __future__ import annotations
 import hashlib
 import json
 
-from genai_template.workflow.portfolio.config.models import SummaryUnitConfig
-from genai_template.workflow.portfolio.domain.errors import SummaryPlanningError
-from genai_template.workflow.portfolio.domain.snapshot import (
+from genai_template.workflow.portfolio.application.snapshot.selection import (
+    matches_repository_pattern,
+)
+from genai_template.workflow.portfolio.domain import (
     RepositorySnapshot,
     SnapshotFile,
-)
-from genai_template.workflow.portfolio.domain.summaries import (
     SummaryPlan,
+    SummaryPlanningError,
     SummaryUnitPlan,
 )
-from genai_template.workflow.portfolio.snapshot.selection import (
-    matches_repository_pattern,
+from genai_template.workflow.portfolio.domain.config import (
+    SummaryUnitConfig,
 )
 
 

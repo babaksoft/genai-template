@@ -8,7 +8,9 @@ import subprocess
 from pathlib import Path
 from typing import Literal
 
-from genai_template.workflow.portfolio.config.models import LocalGitRepositoryConfig
+from genai_template.workflow.portfolio.domain.config import (
+    LocalGitRepositoryConfig,
+)
 from genai_template.workflow.portfolio.domain.errors import RepositoryReadError
 from genai_template.workflow.portfolio.domain.snapshot import (
     CommittedRepositoryEntry,

@@ -12,10 +12,10 @@ from genai_template.workflow.portfolio import (
     SelectionConfig,
     build_repository_snapshot,
 )
-from genai_template.workflow.portfolio.domain import SnapshotSelectionError
-from genai_template.workflow.portfolio.snapshot.selection import (
+from genai_template.workflow.portfolio.application.snapshot.selection import (
     matches_repository_pattern,
 )
+from genai_template.workflow.portfolio.domain import SnapshotSelectionError
 
 _COMMIT_SHA = "a" * 40
 _OBJECT_ID = "b" * 40

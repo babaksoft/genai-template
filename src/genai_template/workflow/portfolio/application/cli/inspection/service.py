@@ -4,22 +4,22 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from genai_template.workflow.portfolio.cli.inspection.reports import (
+from genai_template.workflow.portfolio.application.cli.inspection.reports import (
     PortfolioInspection,
     ProjectInspection,
     SummaryUnitInspection,
 )
-from genai_template.workflow.portfolio.config import (
-    ProjectConfig,
+from genai_template.workflow.portfolio.application.config import (
     load_portfolio_config,
 )
-from genai_template.workflow.portfolio.domain.contracts import RepositoryReader
-from genai_template.workflow.portfolio.infrastructure.repositories.local_git import (
-    LocalGitSnapshotReader,
-)
-from genai_template.workflow.portfolio.snapshot.planning import build_summary_plan
-from genai_template.workflow.portfolio.snapshot.selection import (
+from genai_template.workflow.portfolio.application.snapshot import (
     build_repository_snapshot,
+    build_summary_plan,
+)
+from genai_template.workflow.portfolio.domain.config import ProjectConfig
+from genai_template.workflow.portfolio.domain.contracts import RepositoryReader
+from genai_template.workflow.portfolio.infrastructure.repositories import (
+    LocalGitSnapshotReader,
 )
 
 

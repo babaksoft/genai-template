@@ -9,15 +9,6 @@ from pathlib import Path
 import pytest
 
 from genai_template.config import settings
-from genai_template.workflow.portfolio.config import (
-    GenerationConfig,
-    GenerationInputLimits,
-    GenerationLocations,
-    InferenceConfig,
-    ProjectDocumentContextConfig,
-    StructuredGenerationConfig,
-    TokenPricingConfig,
-)
 from genai_template.workflow.portfolio.domain import (
     ArtifactValidationError,
     GenerationRequest,
@@ -28,6 +19,15 @@ from genai_template.workflow.portfolio.domain import (
     TextGenerationError,
     TextGenerationResponse,
     TokenUsage,
+)
+from genai_template.workflow.portfolio.domain.config import (
+    GenerationConfig,
+    GenerationInputLimits,
+    GenerationLocations,
+    InferenceConfig,
+    ProjectDocumentContextConfig,
+    StructuredGenerationConfig,
+    TokenPricingConfig,
 )
 from genai_template.workflow.portfolio.infrastructure.caches import (
     FilesystemArtifactCache,

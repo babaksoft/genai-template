@@ -7,14 +7,14 @@ import json
 import re
 from pathlib import PurePosixPath
 
-from genai_template.workflow.portfolio.config.models import SelectionConfig
-from genai_template.workflow.portfolio.domain.errors import SnapshotSelectionError
-from genai_template.workflow.portfolio.domain.snapshot import (
+from genai_template.workflow.portfolio.domain import (
     CommittedRepositoryEntry,
     RepositoryReadResult,
     RepositorySnapshot,
     SnapshotFile,
+    SnapshotSelectionError,
 )
+from genai_template.workflow.portfolio.domain.config import SelectionConfig
 from genai_template.workflow.portfolio.infrastructure.repositories import (
     matches_repository_pattern,
 )

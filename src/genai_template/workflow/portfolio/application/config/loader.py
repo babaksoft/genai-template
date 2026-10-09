@@ -8,7 +8,7 @@ from typing import Any
 import yaml
 
 from genai_template.config import settings
-from genai_template.workflow.portfolio.config.models import PortfolioConfig
+from genai_template.workflow.portfolio.domain.config import PortfolioConfig
 
 
 def load_portfolio_config(path: Path) -> PortfolioConfig:

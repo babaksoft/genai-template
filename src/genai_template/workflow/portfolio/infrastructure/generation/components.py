@@ -6,12 +6,12 @@ import logging
 from collections.abc import Callable
 from time import perf_counter
 
-from genai_template.workflow.portfolio.config.models import GenerationConfig
 from genai_template.workflow.portfolio.domain.artifacts import (
     ArtifactProvenance,
     CachedArtifact,
     ComponentSummaryArtifact,
 )
+from genai_template.workflow.portfolio.domain.config import GenerationConfig
 from genai_template.workflow.portfolio.domain.contracts import (
     ArtifactCache,
     TextGenerator,
