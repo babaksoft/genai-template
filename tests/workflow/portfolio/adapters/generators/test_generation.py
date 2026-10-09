@@ -273,7 +273,7 @@ def test_openai_sdk_automatic_retries_are_disabled() -> None:
     """The production OpenAI client is constructed with zero SDK retries."""
 
     with patch(
-        "genai_template.workflow.portfolio.adapters.generators.openai.OpenAI"
+        "genai_template.workflow.portfolio.infrastructure.generators.openai.OpenAI"
     ) as client_class:
         OpenAITextGenerator("test-model", temperature=0, timeout_seconds=12)
 

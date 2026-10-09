@@ -376,7 +376,9 @@ def _corpus(
         for filename, document_type, component_id in specifications
     )
     generation = load_portfolio_config(
-        Path("src/genai_template/workflow/portfolio/config/profiles/local.yml")
+        Path(
+            "src/genai_template/workflow/portfolio/application/config/profiles/local.yml"
+        )
     ).require_generation()
     manifest = build_corpus_manifest(
         project_display_name="Sample",

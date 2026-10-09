@@ -68,7 +68,9 @@ def make_corpus_fixture() -> CorpusFixture:
         ),
     )
     config = load_portfolio_config(
-        Path("src/genai_template/workflow/portfolio/config/profiles/local.yml")
+        Path(
+            "src/genai_template/workflow/portfolio/application/config/profiles/local.yml"
+        )
     ).require_generation()
     specifications: tuple[tuple[str, ArtifactKind, str | None, str], ...] = (
         ("sample--overview.md", "overview", None, "1"),

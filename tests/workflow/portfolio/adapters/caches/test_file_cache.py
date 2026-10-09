@@ -236,7 +236,7 @@ def test_failed_atomic_replace_leaves_no_entry_or_temporary_file(
         raise OSError("simulated")
 
     monkeypatch.setattr(
-        "genai_template.workflow.portfolio.adapters.caches.file_cache.os.replace",
+        "genai_template.workflow.portfolio.infrastructure.caches.file_cache.os.replace",
         fail_replace,
     )
     with pytest.raises(ArtifactCacheError) as caught:

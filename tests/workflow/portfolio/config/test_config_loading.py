@@ -72,6 +72,7 @@ def test_loads_documented_configuration() -> None:
         settings.PKG_ROOT
         / "workflow"
         / "portfolio"
+        / "application"
         / "config"
         / "profiles"
         / "local.yml"
@@ -106,7 +107,7 @@ def test_relative_config_and_repository_paths_use_repository_root(
     """Neither relative path depends on the process working directory."""
 
     relative_config_path = Path(
-        "src/genai_template/workflow/portfolio/config/profiles/local.yml"
+        "src/genai_template/workflow/portfolio/application/config/profiles/local.yml"
     )
     monkeypatch.chdir(tmp_path)
 
