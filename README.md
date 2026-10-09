@@ -346,14 +346,14 @@ PORTFOLIO_RUN_COMPLETION_GATE=true \
 PORTFOLIO_OPENAI_MODEL=gpt-4o-mini \
 PORTFOLIO_COMPLETION_EVIDENCE_DIR=work/ongoing/provider-evidence \
 uv run pytest \
-  tests/workflow/portfolio/generation/test_real_provider_prompts.py \
+  tests/workflow/portfolio/infrastructure/generation/test_real_provider_prompts.py \
   -m integration -k openai -v
 
 PORTFOLIO_RUN_COMPLETION_GATE=true \
 PORTFOLIO_OLLAMA_MODEL=gpt-oss:20b-cloud \
 PORTFOLIO_COMPLETION_EVIDENCE_DIR=work/ongoing/provider-evidence \
 uv run pytest \
-  tests/workflow/portfolio/generation/test_real_provider_prompts.py \
+  tests/workflow/portfolio/infrastructure/generation/test_real_provider_prompts.py \
   -m integration -k ollama_cloud -v
 ```
 
