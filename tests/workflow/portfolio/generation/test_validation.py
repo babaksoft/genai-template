@@ -10,7 +10,7 @@ from genai_template.workflow.portfolio.domain import (
     EvidenceSection,
 )
 from genai_template.workflow.portfolio.domain.errors import EvidenceValidationError
-from genai_template.workflow.portfolio.generation.validation import (
+from genai_template.workflow.portfolio.infrastructure.generation import (
     validate_component_evidence,
     validate_project_evidence,
 )

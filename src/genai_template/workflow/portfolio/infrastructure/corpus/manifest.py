@@ -2,20 +2,12 @@
 
 from __future__ import annotations
 
-import hashlib
 from collections.abc import Sequence
 from typing import Any
 
-from genai_template.workflow.portfolio.artifacts.fingerprints import (
-    canonical_json_bytes,
-    sha256_canonical_json,
-)
 from genai_template.workflow.portfolio.config.models import GenerationConfig
-from genai_template.workflow.portfolio.corpus.renderers import build_document_filename
 from genai_template.workflow.portfolio.domain.corpus import (
-    CorpusManifest,
     CorpusManifestV2,
-    ManifestDocument,
     ManifestDocumentV2,
     ManifestProject,
     ManifestPrompt,
@@ -23,7 +15,15 @@ from genai_template.workflow.portfolio.domain.corpus import (
     VersionedCorpusManifest,
 )
 from genai_template.workflow.portfolio.domain.snapshot import RepositorySnapshot
-from genai_template.workflow.portfolio.generation.prompts import (
+from genai_template.workflow.portfolio.infrastructure.corpus.renderers import (
+    build_document_filename,
+)
+from genai_template.workflow.portfolio.infrastructure.fingerprints import (
+    calculate_corpus_fingerprint,
+    canonical_json_bytes,
+    generation_configuration_fingerprint,
+)
+from genai_template.workflow.portfolio.infrastructure.generation.prompts import (
     ARCHITECTURE_PROMPT,
     COMPONENT_PROMPT,
     OVERVIEW_PROMPT,
@@ -36,37 +36,6 @@ _PROMPTS = (
     ARCHITECTURE_PROMPT,
     TESTING_OPERATIONS_PROMPT,
 )
-
-
-def generation_configuration_fingerprint(config: GenerationConfig) -> str:
-    """Calculate a stable identity for content-affecting generation settings.
-
-    Transport timeouts, storage locations, and pricing are excluded because they
-    cannot change generated content. Prompt templates and source identities have
-    their own explicit manifest fields.
-
-    Args:
-        config:
-            Validated corpus-generation configuration.
-
-    Returns:
-        Lowercase hexadecimal SHA-256 configuration identity.
-    """
-
-    projection = {
-        "configuration_schema": "portfolio-generation-configuration-v1",
-        "profile": config.profile,
-        "structured_generation": {
-            "provider": config.structured_generation.provider,
-            "model": config.structured_generation.model,
-            "inference": config.structured_generation.inference.model_dump(mode="json"),
-        },
-        "prompt_version": config.prompt_version,
-        "output_schema_version": config.output_schema_version,
-        "project_context": config.project_context.model_dump(mode="json"),
-        "input_limits": config.input_limits.model_dump(mode="json"),
-    }
-    return sha256_canonical_json(projection)
 
 
 def build_corpus_manifest(
@@ -193,55 +162,6 @@ def build_corpus_manifest_v2(
     }
     data["corpus_fingerprint"] = calculate_corpus_fingerprint(data, ordered_documents)
     return CorpusManifestV2.model_validate(data)
-
-
-def calculate_corpus_fingerprint(
-    manifest: VersionedCorpusManifest | dict[str, Any],
-    documents: Sequence[ManifestDocument | ManifestDocumentV2] | None = None,
-) -> str:
-    """Calculate the non-circular stable identity of a complete corpus.
-
-    The hash input contains the canonical manifest with ``corpus_fingerprint``
-    omitted and an explicit ordered filename/content-hash list. The latter makes
-    the byte identity boundary obvious even though hashes also occur in records.
-
-    Args:
-        manifest:
-            Complete manifest or pre-validation manifest data.
-        documents:
-            Document records when ``manifest`` does not yet include them.
-
-    Returns:
-        Lowercase hexadecimal SHA-256 corpus identity.
-    """
-
-    projection = (
-        manifest.model_dump(mode="json")
-        if isinstance(manifest, (CorpusManifest, CorpusManifestV2))
-        else dict(manifest)
-    )
-    projection.pop("corpus_fingerprint", None)
-    records_value = documents if documents is not None else projection["documents"]
-    records = [
-        (
-            record.model_dump(mode="json")
-            if isinstance(record, (ManifestDocument, ManifestDocumentV2))
-            else record
-        )
-        for record in records_value
-    ]
-    projection["documents"] = records
-    ordered_hashes = [
-        {"filename": record["filename"], "content_hash": record["content_hash"]}
-        for record in sorted(records, key=lambda value: value["filename"])
-    ]
-    schema_version = projection.get("manifest_schema_version")
-    envelope = {
-        "fingerprint_schema": f"portfolio-corpus-v{schema_version}",
-        "manifest": projection,
-        "markdown": ordered_hashes,
-    }
-    return hashlib.sha256(canonical_json_bytes(envelope)).hexdigest()
 
 
 def manifest_bytes(manifest: VersionedCorpusManifest) -> bytes:

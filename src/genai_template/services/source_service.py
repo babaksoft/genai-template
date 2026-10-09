@@ -34,7 +34,10 @@ from genai_template.schemas import (
 )
 from genai_template.services.index_build_service import IndexBuildService
 from genai_template.services.rag_config_service import RagConfigService
-from genai_template.workflow.portfolio.corpus import CorpusValidationError, load_corpus
+from genai_template.workflow.portfolio.domain import CorpusValidationError
+from genai_template.workflow.portfolio.infrastructure.corpus import (
+    load_corpus,
+)
 
 logger = logging.getLogger(__name__)
 

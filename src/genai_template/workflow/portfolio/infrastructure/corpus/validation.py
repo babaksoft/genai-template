@@ -10,26 +10,27 @@ from pathlib import Path, PurePosixPath
 
 from pydantic import ValidationError
 
-from genai_template.workflow.portfolio.corpus.manifest import (
-    calculate_corpus_fingerprint,
-    manifest_bytes,
-)
-from genai_template.workflow.portfolio.corpus.renderers import build_document_filename
-from genai_template.workflow.portfolio.domain.corpus import (
+from genai_template.workflow.portfolio.domain import (
     CorpusManifest,
     CorpusManifestV2,
+    CorpusValidationError,
     RenderedDocument,
+    RepositorySnapshot,
     VersionedCorpusManifest,
 )
-from genai_template.workflow.portfolio.domain.snapshot import RepositorySnapshot
+from genai_template.workflow.portfolio.infrastructure.corpus.manifest import (
+    manifest_bytes,
+)
+from genai_template.workflow.portfolio.infrastructure.corpus.renderers import (
+    build_document_filename,
+)
+from genai_template.workflow.portfolio.infrastructure.fingerprints import (
+    calculate_corpus_fingerprint,
+)
 
 _SAFE_FILENAME = re.compile(
     r"^[a-z0-9]+(?:-[a-z0-9]+)*(?:--[a-z0-9]+(?:-[a-z0-9]+)*)+\.md$"
 )
-
-
-class CorpusValidationError(RuntimeError):
-    """Failure to validate a complete corpus as one publication unit."""
 
 
 def validate_rendered_corpus(

@@ -11,9 +11,9 @@ from corpus_fixtures import (
     CorpusFixture,
 )
 
-from genai_template.workflow.portfolio.corpus.manifest import manifest_bytes
-from genai_template.workflow.portfolio.corpus.validation import (
-    CorpusValidationError,
+from genai_template.workflow.portfolio.domain import CorpusValidationError
+from genai_template.workflow.portfolio.infrastructure.corpus import (
+    manifest_bytes,
     validate_corpus_directory,
 )
 

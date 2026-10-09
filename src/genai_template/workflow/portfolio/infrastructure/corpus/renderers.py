@@ -7,9 +7,6 @@ import html
 import re
 from collections.abc import Sequence
 
-from genai_template.workflow.portfolio.artifacts.fingerprints import (
-    sha256_canonical_json,
-)
 from genai_template.workflow.portfolio.domain.artifacts import (
     ArtifactKind,
     CachedArtifact,
@@ -24,6 +21,9 @@ from genai_template.workflow.portfolio.domain.summaries import (
     EvidenceSection,
     StructuredSummary,
     summary_evidence_paths,
+)
+from genai_template.workflow.portfolio.infrastructure.fingerprints import (
+    sha256_canonical_json,
 )
 
 _IDENTIFIER_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")

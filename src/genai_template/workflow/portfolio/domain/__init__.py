@@ -25,6 +25,7 @@ from genai_template.workflow.portfolio.domain.corpus import (
 from genai_template.workflow.portfolio.domain.errors import (
     ArtifactCacheError,
     ArtifactValidationError,
+    CorpusValidationError,
     EvidenceValidationError,
     RepositoryReadError,
     SnapshotSelectionError,
@@ -81,6 +82,7 @@ __all__ = [
     "CorpusBuild",
     "CorpusManifest",
     "CorpusManifestV2",
+    "CorpusValidationError",
     "EvidenceSection",
     "EvidenceValidationError",
     "GenerationRequest",

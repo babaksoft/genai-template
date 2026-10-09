@@ -9,21 +9,21 @@ from pathlib import Path
 import pytest
 from corpus_fixtures import CorpusFixture, make_corpus_fixture  # noqa: F401
 
-from genai_template.workflow.portfolio.corpus import loading
-from genai_template.workflow.portfolio.corpus.loading import (
-    load_corpus,
-    normalize_manifest,
-)
-from genai_template.workflow.portfolio.corpus.manifest import (
-    build_corpus_manifest_v2,
-    calculate_corpus_fingerprint,
-    manifest_bytes,
-)
-from genai_template.workflow.portfolio.corpus.validation import CorpusValidationError
-from genai_template.workflow.portfolio.domain.corpus import (
+from genai_template.workflow.portfolio.domain import (
     CorpusManifest,
+    CorpusValidationError,
     ManifestDocumentV2,
     VersionedCorpusManifest,
+)
+from genai_template.workflow.portfolio.infrastructure.corpus import (
+    build_corpus_manifest_v2,
+    load_corpus,
+    loading,
+    manifest_bytes,
+    normalize_manifest,
+)
+from genai_template.workflow.portfolio.infrastructure.fingerprints import (
+    calculate_corpus_fingerprint,
 )
 
 

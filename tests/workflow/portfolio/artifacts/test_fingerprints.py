@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from genai_template.workflow.portfolio.artifacts.fingerprints import (
-    canonical_json_bytes,
-    component_generation_fingerprint,
-    project_generation_fingerprint,
-)
 from genai_template.workflow.portfolio.config import (
     InferenceConfig,
     StructuredGenerationConfig,
+)
+from genai_template.workflow.portfolio.infrastructure.fingerprints import (
+    canonical_json_bytes,
+    component_generation_fingerprint,
+    project_generation_fingerprint,
 )
 
 

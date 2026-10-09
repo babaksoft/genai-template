@@ -1,7 +1,7 @@
-from genai_template.workflow.portfolio.artifacts.fingerprints import (
+from genai_template.workflow.portfolio.domain.reports import GenerationRunReport
+from genai_template.workflow.portfolio.infrastructure.fingerprints import (
     canonical_json_bytes,
 )
-from genai_template.workflow.portfolio.domain.reports import GenerationRunReport
 
 
 def _optional_number(value: object | None) -> str:

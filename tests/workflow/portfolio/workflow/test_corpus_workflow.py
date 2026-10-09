@@ -32,7 +32,7 @@ from genai_template.workflow.portfolio.domain import (
     TextGenerationResponse,
     TokenUsage,
 )
-from genai_template.workflow.portfolio.generation.specifications import (
+from genai_template.workflow.portfolio.infrastructure.generation import (
     SUMMARY_SPECIFICATIONS,
 )
 from genai_template.workflow.portfolio.infrastructure.repositories import (

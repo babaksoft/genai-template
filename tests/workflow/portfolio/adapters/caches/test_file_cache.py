@@ -10,10 +10,6 @@ from typing import Any
 
 import pytest
 
-from genai_template.workflow.portfolio.artifacts import (
-    canonical_json_bytes,
-    sha256_canonical_json,
-)
 from genai_template.workflow.portfolio.domain import (
     ArtifactCacheError,
     ArtifactProvenance,
@@ -27,6 +23,10 @@ from genai_template.workflow.portfolio.domain import (
 from genai_template.workflow.portfolio.infrastructure.caches import (
     CACHE_SCHEMA_VERSION,
     FilesystemArtifactCache,
+)
+from genai_template.workflow.portfolio.infrastructure.fingerprints import (
+    canonical_json_bytes,
+    sha256_canonical_json,
 )
 
 

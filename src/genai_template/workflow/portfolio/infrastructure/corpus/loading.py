@@ -5,21 +5,23 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path, PurePosixPath
 
-from genai_template.workflow.portfolio.corpus.manifest import (
-    calculate_corpus_fingerprint,
-)
-from genai_template.workflow.portfolio.corpus.renderers import build_document_filename
-from genai_template.workflow.portfolio.corpus.validation import (
-    CorpusValidationError,
-    read_manifest,
-)
-from genai_template.workflow.portfolio.domain.corpus import (
+from genai_template.workflow.portfolio.domain import (
     CorpusManifestV2,
+    CorpusValidationError,
     LoadedCorpus,
     ManifestDocumentV2,
     ManifestProject,
     NormalizedCorpusManifest,
     VersionedCorpusManifest,
+)
+from genai_template.workflow.portfolio.infrastructure.corpus.renderers import (
+    build_document_filename,
+)
+from genai_template.workflow.portfolio.infrastructure.corpus.validation import (
+    read_manifest,
+)
+from genai_template.workflow.portfolio.infrastructure.fingerprints import (
+    calculate_corpus_fingerprint,
 )
 
 

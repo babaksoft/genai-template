@@ -7,13 +7,6 @@ from pathlib import Path
 
 import pytest
 
-from genai_template.workflow.portfolio.artifacts import sha256_canonical_json
-from genai_template.workflow.portfolio.corpus import (
-    build_document_filename,
-    render_balanced_documents,
-    render_component_document,
-    render_project_document,
-)
 from genai_template.workflow.portfolio.domain import (
     ArchitectureSummary,
     ArtifactKind,
@@ -32,6 +25,15 @@ from genai_template.workflow.portfolio.domain import (
     TestingOperationsSummary as OperationsSummary,
 )
 from genai_template.workflow.portfolio.domain import TokenUsage
+from genai_template.workflow.portfolio.infrastructure.corpus import (
+    build_document_filename,
+    render_balanced_documents,
+    render_component_document,
+    render_project_document,
+)
+from genai_template.workflow.portfolio.infrastructure.fingerprints import (
+    sha256_canonical_json,
+)
 
 
 def _artifact(

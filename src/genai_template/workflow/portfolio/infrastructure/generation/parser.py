@@ -10,10 +10,10 @@ from genai_template.workflow.portfolio.domain.summaries import (
     EvidenceSection,
     ParsedSummary,
 )
-from genai_template.workflow.portfolio.generation.specifications import (
+from genai_template.workflow.portfolio.infrastructure.generation.specifications import (
     SummarySpecification,
 )
-from genai_template.workflow.portfolio.generation.validation import (
+from genai_template.workflow.portfolio.infrastructure.generation.validation import (
     validate_component_evidence,
     validate_project_evidence,
 )

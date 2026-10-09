@@ -6,10 +6,6 @@ import logging
 from collections.abc import Callable
 from time import perf_counter
 
-from genai_template.workflow.portfolio.artifacts.fingerprints import (
-    component_generation_fingerprint,
-    sha256_canonical_json,
-)
 from genai_template.workflow.portfolio.config.models import GenerationConfig
 from genai_template.workflow.portfolio.domain.artifacts import (
     ArtifactProvenance,
@@ -35,21 +31,25 @@ from genai_template.workflow.portfolio.domain.summaries import (
     SummaryPlan,
     SummaryUnitPlan,
 )
-from genai_template.workflow.portfolio.generation.costs import (
+from genai_template.workflow.portfolio.infrastructure.caches import (
+    CACHE_SCHEMA_VERSION,
+)
+from genai_template.workflow.portfolio.infrastructure.fingerprints import (
+    component_generation_fingerprint,
+    sha256_canonical_json,
+)
+from genai_template.workflow.portfolio.infrastructure.generation.costs import (
     estimate_generation_cost,
 )
-from genai_template.workflow.portfolio.generation.prompts import (
+from genai_template.workflow.portfolio.infrastructure.generation.prompts import (
     COMPONENT_PROMPT,
     assemble_component_prompt,
 )
-from genai_template.workflow.portfolio.generation.service import (
+from genai_template.workflow.portfolio.infrastructure.generation.service import (
     generate_validated_summary,
 )
-from genai_template.workflow.portfolio.generation.validation import (
+from genai_template.workflow.portfolio.infrastructure.generation.validation import (
     validate_component_evidence,
-)
-from genai_template.workflow.portfolio.infrastructure.caches import (
-    CACHE_SCHEMA_VERSION,
 )
 
 logger = logging.getLogger(__name__)

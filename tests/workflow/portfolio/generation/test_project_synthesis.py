@@ -9,9 +9,6 @@ from pathlib import Path
 import pytest
 
 from genai_template.config import settings
-from genai_template.workflow.portfolio.artifacts import (
-    sha256_canonical_json,
-)
 from genai_template.workflow.portfolio.config import (
     GenerationConfig,
     GenerationInputLimits,
@@ -36,13 +33,16 @@ from genai_template.workflow.portfolio.domain import (
     TextGenerationResponse,
     TokenUsage,
 )
-from genai_template.workflow.portfolio.generation import generate_project_summaries
-from genai_template.workflow.portfolio.generation.specifications import (
-    SUMMARY_SPECIFICATIONS,
-)
 from genai_template.workflow.portfolio.infrastructure.caches import (
     CACHE_SCHEMA_VERSION,
     FilesystemArtifactCache,
+)
+from genai_template.workflow.portfolio.infrastructure.fingerprints import (
+    sha256_canonical_json,
+)
+from genai_template.workflow.portfolio.infrastructure.generation import (
+    SUMMARY_SPECIFICATIONS,
+    generate_project_summaries,
 )
 
 

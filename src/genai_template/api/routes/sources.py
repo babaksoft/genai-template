@@ -15,7 +15,7 @@ from genai_template.schemas import (
     SourceResponse,
 )
 from genai_template.services import IndexBuildInProgressError, SourceService
-from genai_template.workflow.portfolio.corpus import CorpusValidationError
+from genai_template.workflow.portfolio.domain import CorpusValidationError
 
 router = APIRouter(prefix="/sources", tags=["sources"])
 

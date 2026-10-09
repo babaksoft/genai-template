@@ -12,9 +12,11 @@ from corpus_fixtures import (
     CorpusFixture,
 )
 
-from genai_template.workflow.portfolio.corpus.manifest import build_corpus_manifest
-from genai_template.workflow.portfolio.corpus.publisher import publish_corpus
-from genai_template.workflow.portfolio.corpus.validation import CorpusValidationError
+from genai_template.workflow.portfolio.domain import CorpusValidationError
+from genai_template.workflow.portfolio.infrastructure.corpus import (
+    build_corpus_manifest,
+    publish_corpus,
+)
 
 
 def test_first_publication_uses_relative_symlink_and_valid_release(

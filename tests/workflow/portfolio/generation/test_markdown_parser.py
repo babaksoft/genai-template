@@ -12,7 +12,7 @@ from genai_template.workflow.portfolio.domain import (
 from genai_template.workflow.portfolio.domain import (
     TestingOperationsSummary as OperationsSummary,
 )
-from genai_template.workflow.portfolio.generation import (
+from genai_template.workflow.portfolio.infrastructure.generation import (
     ARCHITECTURE_SPECIFICATION,
     COMPONENT_SPECIFICATION,
     OVERVIEW_SPECIFICATION,

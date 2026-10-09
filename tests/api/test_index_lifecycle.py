@@ -30,16 +30,16 @@ from genai_template.services import (
     SourceService,
 )
 from genai_template.workflow.portfolio.config import load_portfolio_config
-from genai_template.workflow.portfolio.corpus import (
-    build_corpus_manifest,
-    publish_corpus,
-)
 from genai_template.workflow.portfolio.domain import (
     ArtifactKind,
     CorpusManifestV2,
     RenderedDocument,
     RepositorySnapshot,
     SnapshotFile,
+)
+from genai_template.workflow.portfolio.infrastructure.corpus import (
+    build_corpus_manifest,
+    publish_corpus,
 )
 
 

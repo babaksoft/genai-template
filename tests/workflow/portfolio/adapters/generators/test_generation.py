@@ -19,7 +19,9 @@ from genai_template.workflow.portfolio.domain import (
     TextGenerationError,
     TokenUsage,
 )
-from genai_template.workflow.portfolio.generation import estimate_generation_cost
+from genai_template.workflow.portfolio.infrastructure.generation import (
+    estimate_generation_cost,
+)
 from genai_template.workflow.portfolio.infrastructure.generators import (
     OllamaTextGenerator,
     OpenAITextGenerator,

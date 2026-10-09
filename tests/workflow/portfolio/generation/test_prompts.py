@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 
 from genai_template.workflow.portfolio.domain import SnapshotFile
-from genai_template.workflow.portfolio.generation import (
+from genai_template.workflow.portfolio.infrastructure.generation import (
     ARCHITECTURE_PROMPT,
     ARCHITECTURE_SPECIFICATION,
     COMPONENT_PROMPT,

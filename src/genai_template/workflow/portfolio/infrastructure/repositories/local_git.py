@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fnmatch
 import os
 import subprocess
 from pathlib import Path
@@ -495,3 +496,49 @@ class LocalGitSnapshotReader:
                 operation=operation,
             )
         return result
+
+
+def matches_repository_pattern(path: str, pattern: str) -> bool:
+    """Match an anchored POSIX repository path against a segment glob.
+
+    ``*``, ``?``, and character classes match within one path segment. A segment
+    consisting solely of ``**`` matches zero or more complete segments. Both the
+    path and pattern are anchored at the repository root.
+
+    Args:
+        path:
+            Normalized repository-relative POSIX file path.
+        pattern:
+            Validated repository-relative POSIX glob pattern.
+
+    Returns:
+        Whether the complete path matches the complete pattern.
+    """
+
+    path_parts = tuple(path.split("/"))
+    pattern_parts = tuple(pattern.split("/"))
+    states = {(0, 0)}
+    visited: set[tuple[int, int]] = set()
+
+    while states:
+        pattern_index, path_index = states.pop()
+        state = (pattern_index, path_index)
+        if state in visited:
+            continue
+        visited.add(state)
+        if pattern_index == len(pattern_parts):
+            if path_index == len(path_parts):
+                return True
+            continue
+
+        pattern_part = pattern_parts[pattern_index]
+        if pattern_part == "**":
+            states.add((pattern_index + 1, path_index))
+            if path_index < len(path_parts):
+                states.add((pattern_index, path_index + 1))
+        elif path_index < len(path_parts) and fnmatch.fnmatchcase(
+            path_parts[path_index], pattern_part
+        ):
+            states.add((pattern_index + 1, path_index + 1))
+
+    return False

@@ -16,43 +16,35 @@ from genai_template.workflow.portfolio.config.models import (
     GenerationConfig,
     PortfolioConfig,
 )
-from genai_template.workflow.portfolio.corpus.manifest import (
-    build_corpus_manifest,
-    generation_configuration_fingerprint,
-)
-from genai_template.workflow.portfolio.corpus.publisher import (
+from genai_template.workflow.portfolio.domain import (
+    ArtifactRunReport,
+    GenerationRequest,
+    GenerationRunReport,
     PublicationResult,
-    publish_corpus,
-)
-from genai_template.workflow.portfolio.corpus.renderers import (
-    render_balanced_documents,
-)
-from genai_template.workflow.portfolio.corpus.validation import (
-    validate_rendered_corpus,
+    StepRunReport,
+    TextGenerationResponse,
+    TokenUsage,
 )
 from genai_template.workflow.portfolio.domain.contracts import (
     ArtifactCache,
     RepositoryReader,
     TextGenerator,
 )
-from genai_template.workflow.portfolio.domain.generation import (
-    GenerationRequest,
-    TextGenerationResponse,
-    TokenUsage,
-)
-from genai_template.workflow.portfolio.domain.reports import (
-    ArtifactRunReport,
-    GenerationRunReport,
-    StepRunReport,
-)
-from genai_template.workflow.portfolio.generation.components import (
-    generate_component_summaries,
-)
-from genai_template.workflow.portfolio.generation.projects import (
-    generate_project_summaries,
-)
 from genai_template.workflow.portfolio.infrastructure.caches import (
     FilesystemArtifactCache,
+)
+from genai_template.workflow.portfolio.infrastructure.corpus import (
+    build_corpus_manifest,
+    publish_corpus,
+    render_balanced_documents,
+    validate_rendered_corpus,
+)
+from genai_template.workflow.portfolio.infrastructure.fingerprints import (
+    generation_configuration_fingerprint,
+)
+from genai_template.workflow.portfolio.infrastructure.generation import (
+    generate_component_summaries,
+    generate_project_summaries,
 )
 from genai_template.workflow.portfolio.snapshot.planning import build_summary_plan
 from genai_template.workflow.portfolio.snapshot.selection import (

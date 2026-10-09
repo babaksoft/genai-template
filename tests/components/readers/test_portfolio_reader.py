@@ -26,16 +26,16 @@ from genai_template.components.splitters import (
     MarkdownDocumentSplitter,
 )
 from genai_template.schemas import LoadedDocuments
-from genai_template.workflow.portfolio.corpus import (
-    CorpusValidationError,
-    build_corpus_manifest_v2,
-    manifest_bytes,
-)
 from genai_template.workflow.portfolio.domain import (
     ArtifactKind,
+    CorpusValidationError,
     ManifestDocumentV2,
     ManifestProject,
     ManifestPrompt,
+)
+from genai_template.workflow.portfolio.infrastructure.corpus import (
+    build_corpus_manifest_v2,
+    manifest_bytes,
 )
 
 

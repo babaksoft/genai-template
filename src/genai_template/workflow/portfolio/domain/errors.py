@@ -232,3 +232,7 @@ class SummaryPlanningError(ValueError):
         super().__init__(message)
         self.unit_id = unit_id
         self.reason = reason
+
+
+class CorpusValidationError(RuntimeError):
+    """Failure to validate a complete corpus as one publication unit."""

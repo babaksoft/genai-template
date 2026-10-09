@@ -37,7 +37,7 @@ from genai_template.workflow.portfolio.domain import (
     SnapshotFile,
 )
 from genai_template.workflow.portfolio.domain.contracts import TextGenerator
-from genai_template.workflow.portfolio.generation import (
+from genai_template.workflow.portfolio.infrastructure.generation import (
     COMPONENT_PROMPT,
     OVERVIEW_PROMPT,
     assemble_component_prompt,

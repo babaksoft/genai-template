@@ -9,11 +9,13 @@ from corpus_fixtures import (
     CorpusFixture,
 )
 
-from genai_template.workflow.portfolio.corpus.manifest import (
+from genai_template.workflow.portfolio.infrastructure.corpus import (
     build_corpus_manifest,
+    manifest_bytes,
+)
+from genai_template.workflow.portfolio.infrastructure.fingerprints import (
     calculate_corpus_fingerprint,
     generation_configuration_fingerprint,
-    manifest_bytes,
 )
 
 

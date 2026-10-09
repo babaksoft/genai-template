@@ -9,48 +9,21 @@ import tempfile
 from collections.abc import Sequence
 from pathlib import Path
 
-from pydantic import Field
-
-from genai_template.workflow.portfolio.corpus.manifest import manifest_bytes
-from genai_template.workflow.portfolio.corpus.validation import (
-    CorpusValidationError,
-    validate_corpus_directory,
-)
-from genai_template.workflow.portfolio.domain.corpus import (
+from genai_template.workflow.portfolio.domain import (
     CorpusManifestV2,
+    CorpusValidationError,
+    PublicationResult,
     RenderedDocument,
-)
-from genai_template.workflow.portfolio.domain.snapshot import (
     RepositorySnapshot,
-    _ImmutableDomainModel,
+)
+from genai_template.workflow.portfolio.infrastructure.corpus.manifest import (
+    manifest_bytes,
+)
+from genai_template.workflow.portfolio.infrastructure.corpus.validation import (
+    validate_corpus_directory,
 )
 
 _FINGERPRINT = re.compile(r"^[0-9a-f]{64}$")
-
-
-class PublicationResult(_ImmutableDomainModel):
-    """Paths and reuse status resulting from corpus publication.
-
-    Attributes:
-        publication_path:
-            Atomically replaced public corpus symlink.
-        release_path:
-            Immutable release directory selected by the symlink.
-        corpus_fingerprint:
-            Stable identity naming the immutable release.
-        release_reused:
-            Whether an identical release already existed.
-    """
-
-    publication_path: Path = Field(description="Published corpus symlink path.")
-    release_path: Path = Field(description="Immutable release directory path.")
-    corpus_fingerprint: str = Field(
-        pattern=r"^[0-9a-f]{64}$",
-        description="Stable published corpus identity.",
-    )
-    release_reused: bool = Field(
-        description="Whether an identical immutable release was reused."
-    )
 
 
 def publish_corpus(

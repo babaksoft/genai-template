@@ -4,13 +4,21 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any, Literal
 
 from pydantic import BaseModel
 
 from genai_template.workflow.portfolio.config.models import (
+    GenerationConfig,
     StructuredGenerationConfig,
+)
+from genai_template.workflow.portfolio.domain import (
+    CorpusManifest,
+    CorpusManifestV2,
+    ManifestDocument,
+    ManifestDocumentV2,
+    VersionedCorpusManifest,
 )
 
 
@@ -59,26 +67,6 @@ def sha256_canonical_json(value: object) -> str:
     """
 
     return hashlib.sha256(canonical_json_bytes(value)).hexdigest()
-
-
-def _generation_settings(
-    structured_generation: StructuredGenerationConfig,
-) -> dict[str, Any]:
-    """Project only content-affecting provider settings into an identity.
-
-    Args:
-        structured_generation:
-            Validated provider configuration, including volatile timeout settings.
-
-    Returns:
-        Secret-free stable provider, model, and inference values.
-    """
-
-    return {
-        "provider": structured_generation.provider,
-        "model": structured_generation.model,
-        "inference": structured_generation.inference.model_dump(mode="json"),
-    }
 
 
 def component_generation_fingerprint(
@@ -184,3 +172,104 @@ def project_generation_fingerprint(
         "structured_generation": _generation_settings(structured_generation),
     }
     return sha256_canonical_json(identity)
+
+
+def generation_configuration_fingerprint(config: GenerationConfig) -> str:
+    """Calculate a stable identity for content-affecting generation settings.
+
+    Transport timeouts, storage locations, and pricing are excluded because they
+    cannot change generated content. Prompt templates and source identities have
+    their own explicit manifest fields.
+
+    Args:
+        config:
+            Validated corpus-generation configuration.
+
+    Returns:
+        Lowercase hexadecimal SHA-256 configuration identity.
+    """
+
+    projection = {
+        "configuration_schema": "portfolio-generation-configuration-v1",
+        "profile": config.profile,
+        "structured_generation": {
+            "provider": config.structured_generation.provider,
+            "model": config.structured_generation.model,
+            "inference": config.structured_generation.inference.model_dump(mode="json"),
+        },
+        "prompt_version": config.prompt_version,
+        "output_schema_version": config.output_schema_version,
+        "project_context": config.project_context.model_dump(mode="json"),
+        "input_limits": config.input_limits.model_dump(mode="json"),
+    }
+
+    return sha256_canonical_json(projection)
+
+
+def _generation_settings(
+    structured_generation: StructuredGenerationConfig,
+) -> dict[str, Any]:
+    """Project only content-affecting provider settings into an identity.
+
+    Args:
+        structured_generation:
+            Validated provider configuration, including volatile timeout settings.
+
+    Returns:
+        Secret-free stable provider, model, and inference values.
+    """
+
+    return {
+        "provider": structured_generation.provider,
+        "model": structured_generation.model,
+        "inference": structured_generation.inference.model_dump(mode="json"),
+    }
+
+
+def calculate_corpus_fingerprint(
+    manifest: VersionedCorpusManifest | dict[str, Any],
+    documents: Sequence[ManifestDocument | ManifestDocumentV2] | None = None,
+) -> str:
+    """Calculate the non-circular stable identity of a complete corpus.
+
+    The hash input contains the canonical manifest with ``corpus_fingerprint``
+    omitted and an explicit ordered filename/content-hash list. The latter makes
+    the byte identity boundary obvious even though hashes also occur in records.
+
+    Args:
+        manifest:
+            Complete manifest or pre-validation manifest data.
+        documents:
+            Document records when ``manifest`` does not yet include them.
+
+    Returns:
+        Lowercase hexadecimal SHA-256 corpus identity.
+    """
+
+    projection = (
+        manifest.model_dump(mode="json")
+        if isinstance(manifest, (CorpusManifest, CorpusManifestV2))
+        else dict(manifest)
+    )
+    projection.pop("corpus_fingerprint", None)
+    records_value = documents if documents is not None else projection["documents"]
+    records = [
+        (
+            record.model_dump(mode="json")
+            if isinstance(record, (ManifestDocument, ManifestDocumentV2))
+            else record
+        )
+        for record in records_value
+    ]
+    projection["documents"] = records
+    ordered_hashes = [
+        {"filename": record["filename"], "content_hash": record["content_hash"]}
+        for record in sorted(records, key=lambda value: value["filename"])
+    ]
+    schema_version = projection.get("manifest_schema_version")
+    envelope = {
+        "fingerprint_schema": f"portfolio-corpus-v{schema_version}",
+        "manifest": projection,
+        "markdown": ordered_hashes,
+    }
+    return hashlib.sha256(canonical_json_bytes(envelope)).hexdigest()

@@ -29,10 +29,12 @@ from genai_template.workflow.portfolio.domain import (
     TextGenerationResponse,
     TokenUsage,
 )
-from genai_template.workflow.portfolio.generation import generate_component_summaries
-from genai_template.workflow.portfolio.generation.prompts import PromptDefinition
 from genai_template.workflow.portfolio.infrastructure.caches import (
     FilesystemArtifactCache,
+)
+from genai_template.workflow.portfolio.infrastructure.generation import (
+    PromptDefinition,
+    generate_component_summaries,
 )
 
 

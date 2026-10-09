@@ -8,10 +8,6 @@ from dataclasses import dataclass
 from decimal import Decimal
 from time import perf_counter
 
-from genai_template.workflow.portfolio.artifacts.fingerprints import (
-    project_generation_fingerprint,
-    sha256_canonical_json,
-)
 from genai_template.workflow.portfolio.config.models import GenerationConfig
 from genai_template.workflow.portfolio.domain.artifacts import (
     ArtifactProvenance,
@@ -46,26 +42,32 @@ from genai_template.workflow.portfolio.domain.summaries import (
     TestingOperationsSummary,
     summary_evidence_paths,
 )
-from genai_template.workflow.portfolio.generation.components import (
+from genai_template.workflow.portfolio.infrastructure.caches import (
+    CACHE_SCHEMA_VERSION,
+)
+from genai_template.workflow.portfolio.infrastructure.fingerprints import (
+    project_generation_fingerprint,
+    sha256_canonical_json,
+)
+from genai_template.workflow.portfolio.infrastructure.generation.components import (
     _elapsed,
     _validate_provider_identity,
 )
-from genai_template.workflow.portfolio.generation.costs import estimate_generation_cost
-from genai_template.workflow.portfolio.generation.prompts import (
+from genai_template.workflow.portfolio.infrastructure.generation.costs import (
+    estimate_generation_cost,
+)
+from genai_template.workflow.portfolio.infrastructure.generation.prompts import (
     ARCHITECTURE_PROMPT,
     OVERVIEW_PROMPT,
     TESTING_OPERATIONS_PROMPT,
     PromptDefinition,
     assemble_project_prompt,
 )
-from genai_template.workflow.portfolio.generation.service import (
+from genai_template.workflow.portfolio.infrastructure.generation.service import (
     generate_validated_summary,
 )
-from genai_template.workflow.portfolio.generation.validation import (
+from genai_template.workflow.portfolio.infrastructure.generation.validation import (
     validate_project_evidence,
-)
-from genai_template.workflow.portfolio.infrastructure.caches import (
-    CACHE_SCHEMA_VERSION,
 )
 from genai_template.workflow.portfolio.snapshot.selection import (
     matches_repository_pattern,
@@ -566,7 +568,7 @@ def _component_input_bytes(component_outputs: Mapping[str, object]) -> bytes:
         Canonical UTF-8 JSON bytes supplied in the project prompt.
     """
 
-    from genai_template.workflow.portfolio.artifacts.fingerprints import (
+    from genai_template.workflow.portfolio.infrastructure.fingerprints import (
         canonical_json_bytes,
     )
 

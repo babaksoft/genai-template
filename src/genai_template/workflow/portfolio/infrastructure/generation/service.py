@@ -15,11 +15,13 @@ from genai_template.workflow.portfolio.domain.summaries import (
     ComponentSummary,
     StructuredSummary,
 )
-from genai_template.workflow.portfolio.generation.parser import parse_summary_markdown
-from genai_template.workflow.portfolio.generation.specifications import (
+from genai_template.workflow.portfolio.infrastructure.generation.parser import (
+    parse_summary_markdown,
+)
+from genai_template.workflow.portfolio.infrastructure.generation.specifications import (
     SUMMARY_SPECIFICATIONS,
 )
-from genai_template.workflow.portfolio.generation.validation import (
+from genai_template.workflow.portfolio.infrastructure.generation.validation import (
     validate_component_evidence,
     validate_project_evidence,
 )

@@ -8,14 +8,14 @@ from typing import Literal
 
 from pydantic import Field, computed_field
 
-from genai_template.workflow.portfolio.artifacts.fingerprints import (
-    canonical_json_bytes,
-)
 from genai_template.workflow.portfolio.domain.snapshot import (
     SnapshotFile,
     _ImmutableDomainModel,
 )
-from genai_template.workflow.portfolio.generation.specifications import (
+from genai_template.workflow.portfolio.infrastructure.fingerprints import (
+    canonical_json_bytes,
+)
+from genai_template.workflow.portfolio.infrastructure.generation.specifications import (
     SUMMARY_SPECIFICATIONS,
     SummarySpecification,
 )

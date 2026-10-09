@@ -15,82 +15,6 @@ _IDENTIFIER_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 _WINDOWS_ABSOLUTE_PATTERN = re.compile(r"^[A-Za-z]:[\\/]")
 
 
-def _validate_identifier(value: str, field_name: str) -> str:
-    """Validate a normalized, lowercase kebab-case identifier.
-
-    Args:
-        value:
-            Identifier supplied by configuration.
-        field_name:
-            Human-readable field name for validation errors.
-
-    Returns:
-        The validated identifier.
-
-    Raises:
-        ValueError:
-            If the value is not normalized lowercase kebab case.
-    """
-
-    if not _IDENTIFIER_PATTERN.fullmatch(value):
-        raise ValueError(f"{field_name} must be lowercase kebab case")
-    return value
-
-
-def _validate_ref(value: str) -> str:
-    """Validate a non-empty repository ref without silently normalizing it.
-
-    Args:
-        value:
-            Git ref supplied by configuration.
-
-    Returns:
-        The validated ref.
-
-    Raises:
-        ValueError:
-            If the ref is empty, padded, or contains control characters.
-    """
-
-    if not value or value != value.strip():
-        raise ValueError("repository ref must be non-empty and normalized")
-    if any(ord(character) < 32 or ord(character) == 127 for character in value):
-        raise ValueError("repository ref must not contain control characters")
-    return value
-
-
-def _validate_repository_pattern(value: str) -> str:
-    """Validate a normalized repository-relative POSIX glob pattern.
-
-    Args:
-        value:
-            Pattern supplied by configuration.
-
-    Returns:
-        The validated pattern.
-
-    Raises:
-        ValueError:
-            If the pattern is empty, absolute, traversing, or not normalized.
-    """
-
-    if not value or value != value.strip():
-        raise ValueError("repository pattern must be non-empty and normalized")
-    if "\\" in value:
-        raise ValueError("repository pattern must use POSIX separators")
-    if value.startswith("/") or _WINDOWS_ABSOLUTE_PATTERN.match(value):
-        raise ValueError("repository pattern must be relative")
-
-    parts = value.split("/")
-    if any(part in {"", ".", ".."} for part in parts):
-        raise ValueError(
-            "repository pattern must be normalized and must not contain '..'"
-        )
-    if PurePosixPath(value).is_absolute():
-        raise ValueError("repository pattern must be relative")
-    return value
-
-
 class _ImmutableConfigModel(BaseModel):
     """Base model for strict, immutable portfolio configuration."""
 
@@ -685,3 +609,79 @@ class PortfolioConfig(_ImmutableConfigModel):
         if self.generation is None:
             raise ValueError("generation settings are required for corpus generation")
         return self.generation
+
+
+def _validate_identifier(value: str, field_name: str) -> str:
+    """Validate a normalized, lowercase kebab-case identifier.
+
+    Args:
+        value:
+            Identifier supplied by configuration.
+        field_name:
+            Human-readable field name for validation errors.
+
+    Returns:
+        The validated identifier.
+
+    Raises:
+        ValueError:
+            If the value is not normalized lowercase kebab case.
+    """
+
+    if not _IDENTIFIER_PATTERN.fullmatch(value):
+        raise ValueError(f"{field_name} must be lowercase kebab case")
+    return value
+
+
+def _validate_ref(value: str) -> str:
+    """Validate a non-empty repository ref without silently normalizing it.
+
+    Args:
+        value:
+            Git ref supplied by configuration.
+
+    Returns:
+        The validated ref.
+
+    Raises:
+        ValueError:
+            If the ref is empty, padded, or contains control characters.
+    """
+
+    if not value or value != value.strip():
+        raise ValueError("repository ref must be non-empty and normalized")
+    if any(ord(character) < 32 or ord(character) == 127 for character in value):
+        raise ValueError("repository ref must not contain control characters")
+    return value
+
+
+def _validate_repository_pattern(value: str) -> str:
+    """Validate a normalized repository-relative POSIX glob pattern.
+
+    Args:
+        value:
+            Pattern supplied by configuration.
+
+    Returns:
+        The validated pattern.
+
+    Raises:
+        ValueError:
+            If the pattern is empty, absolute, traversing, or not normalized.
+    """
+
+    if not value or value != value.strip():
+        raise ValueError("repository pattern must be non-empty and normalized")
+    if "\\" in value:
+        raise ValueError("repository pattern must use POSIX separators")
+    if value.startswith("/") or _WINDOWS_ABSOLUTE_PATTERN.match(value):
+        raise ValueError("repository pattern must be relative")
+
+    parts = value.split("/")
+    if any(part in {"", ".", ".."} for part in parts):
+        raise ValueError(
+            "repository pattern must be normalized and must not contain '..'"
+        )
+    if PurePosixPath(value).is_absolute():
+        raise ValueError("repository pattern must be relative")
+    return value

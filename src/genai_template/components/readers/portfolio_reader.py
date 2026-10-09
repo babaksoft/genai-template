@@ -20,12 +20,12 @@ from genai_template.components.readers.portfolio_metadata import (
 )
 from genai_template.components.readers.text_reader import TextReader
 from genai_template.schemas.corpus import LoadedDocuments
-from genai_template.workflow.portfolio.corpus.loading import load_corpus
-from genai_template.workflow.portfolio.corpus.validation import CorpusValidationError
 from genai_template.workflow.portfolio.domain import (
+    CorpusValidationError,
     ManifestDocumentV2,
     ManifestProject,
 )
+from genai_template.workflow.portfolio.infrastructure.corpus import load_corpus
 
 
 class PortfolioReader:
