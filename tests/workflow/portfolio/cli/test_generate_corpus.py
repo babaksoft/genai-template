@@ -15,7 +15,9 @@ from genai_template.workflow.portfolio.domain import (
     TokenUsage,
 )
 
-generate_cli = importlib.import_module("genai_template.workflow.portfolio.cli.generate")
+generate_cli = importlib.import_module(
+    "genai_template.workflow.portfolio.application.cli.generate"
+)
 
 
 def _report() -> GenerationRunReport:

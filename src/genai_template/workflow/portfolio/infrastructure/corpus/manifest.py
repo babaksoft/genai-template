@@ -5,16 +5,20 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from genai_template.workflow.portfolio.domain.config import GenerationConfig
-from genai_template.workflow.portfolio.domain.corpus import (
+from genai_template.workflow.portfolio.domain import (
+    ARCHITECTURE_PROMPT,
+    COMPONENT_PROMPT,
+    OVERVIEW_PROMPT,
+    TESTING_OPERATIONS_PROMPT,
     CorpusManifestV2,
     ManifestDocumentV2,
     ManifestProject,
     ManifestPrompt,
     RenderedDocument,
+    RepositorySnapshot,
     VersionedCorpusManifest,
 )
-from genai_template.workflow.portfolio.domain.snapshot import RepositorySnapshot
+from genai_template.workflow.portfolio.domain.config import GenerationConfig
 from genai_template.workflow.portfolio.infrastructure.corpus.renderers import (
     build_document_filename,
 )
@@ -22,12 +26,6 @@ from genai_template.workflow.portfolio.infrastructure.fingerprints import (
     calculate_corpus_fingerprint,
     canonical_json_bytes,
     generation_configuration_fingerprint,
-)
-from genai_template.workflow.portfolio.infrastructure.generation.prompts import (
-    ARCHITECTURE_PROMPT,
-    COMPONENT_PROMPT,
-    OVERVIEW_PROMPT,
-    TESTING_OPERATIONS_PROMPT,
 )
 
 _PROMPTS = (

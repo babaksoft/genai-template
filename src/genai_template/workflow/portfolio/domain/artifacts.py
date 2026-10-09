@@ -3,25 +3,62 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import Field, JsonValue, model_validator
+from pydantic import Field, JsonValue, PositiveInt, model_validator
 
 from genai_template.workflow.portfolio.domain.base import ImmutableDomainModel
-from genai_template.workflow.portfolio.domain.generation import (
-    GenerationWarning,
-    ProviderAuditMetadata,
-    TokenUsage,
-)
-from genai_template.workflow.portfolio.domain.reports import ArtifactRunReport
 from genai_template.workflow.portfolio.domain.summaries import (
     ArchitectureSummary,
+    ArtifactKind,
     ComponentSummary,
+    GenerationWarning,
+    GenerationWarningCode,
+    ProjectArtifactKind,
     ProjectOverviewSummary,
     StructuredSummary,
     TestingOperationsSummary,
 )
 
-ArtifactKind = Literal["component", "overview", "architecture", "testing_operations"]
-ProjectArtifactKind = Literal["overview", "architecture", "testing_operations"]
+
+class TokenUsage(ImmutableDomainModel):
+    """Provider token counts, preserving unavailable counts as unknown.
+
+    Attributes:
+        input_tokens:
+            Reported input-token count, or null when unavailable.
+        output_tokens:
+            Reported output-token count, or null when unavailable.
+    """
+
+    input_tokens: int | None = Field(
+        default=None,
+        ge=0,
+        description="Reported input-token count, or null when unavailable.",
+    )
+    output_tokens: int | None = Field(
+        default=None,
+        ge=0,
+        description="Reported output-token count, or null when unavailable.",
+    )
+
+
+class ProviderAuditMetadata(ImmutableDomainModel):
+    """Non-secret provider metadata retained for artifact auditing.
+
+    Attributes:
+        request_id:
+            Optional provider request identifier.
+        finish_reason:
+            Optional provider completion reason.
+    """
+
+    request_id: str | None = Field(
+        default=None,
+        description="Optional provider request identifier.",
+    )
+    finish_reason: str | None = Field(
+        default=None,
+        description="Optional provider completion reason.",
+    )
 
 
 class ArtifactProvenance(ImmutableDomainModel):
@@ -252,3 +289,68 @@ class ComponentSummaryArtifact(ImmutableDomainModel):
     run_report: ArtifactRunReport = Field(
         description="Current-run cache, billing, and latency information."
     )
+
+
+class ArtifactRunReport(ImmutableDomainModel):
+    """Volatile current-run metrics for one generated or cached artifact.
+
+    Attributes:
+        artifact_kind:
+            Logical type of the artifact.
+        generation_fingerprint:
+            Stable generation identity of the artifact.
+        cache_hit:
+            Whether the artifact was reused without a provider call.
+        token_usage:
+            Usage billed during this run, unknown when unavailable.
+        estimated_cost:
+            Cost estimated from current-run billed usage.
+        original_token_usage:
+            Usage recorded by the provider call that created the artifact.
+        original_estimated_cost:
+            Cost recorded when the artifact was originally created.
+        generation_warning_counts:
+            Response-recovery counts keyed by stable warning code.
+        latency_seconds:
+            Current-run provider or cache lookup latency.
+    """
+
+    artifact_kind: ArtifactKind = Field(description="Logical generated-artifact type.")
+    generation_fingerprint: str = Field(
+        pattern=r"^[0-9a-f]{64}$",
+        description="Stable generation identity of the artifact.",
+    )
+    cache_hit: bool = Field(description="Whether this run reused a cached artifact.")
+    token_usage: TokenUsage = Field(description="Token usage billed during this run.")
+    estimated_cost: Decimal | None = Field(
+        default=None,
+        ge=Decimal(0),
+        description="Estimated cost billed during this run.",
+    )
+    original_token_usage: TokenUsage | None = Field(
+        default=None,
+        description="Original provider usage retained with the artifact.",
+    )
+    original_estimated_cost: Decimal | None = Field(
+        default=None,
+        ge=Decimal(0),
+        description="Original estimated provider cost retained with the artifact.",
+    )
+    generation_warning_counts: dict[GenerationWarningCode, PositiveInt] = Field(
+        default_factory=dict,
+        description="Response-recovery counts keyed by stable warning code.",
+    )
+    latency_seconds: float = Field(
+        ge=0.0,
+        description="Current-run artifact latency in seconds.",
+    )
+
+    @property
+    def generation_warning_count(self) -> int:
+        """Return the total number of retained response recoveries.
+
+        Returns:
+            Sum of all per-code warning counts.
+        """
+
+        return sum(self.generation_warning_counts.values())

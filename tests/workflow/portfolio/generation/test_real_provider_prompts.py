@@ -21,6 +21,8 @@ from genai_template.workflow.portfolio.application.workflow import (
     run_portfolio_corpus_workflow,
 )
 from genai_template.workflow.portfolio.domain import (
+    COMPONENT_PROMPT,
+    OVERVIEW_PROMPT,
     ArtifactProvenance,
     ComponentSummary,
     GenerationRequest,
@@ -44,8 +46,6 @@ from genai_template.workflow.portfolio.domain.config import (
 )
 from genai_template.workflow.portfolio.domain.contracts import TextGenerator
 from genai_template.workflow.portfolio.infrastructure.generation import (
-    COMPONENT_PROMPT,
-    OVERVIEW_PROMPT,
     assemble_component_prompt,
     assemble_project_prompt,
     generate_validated_summary,

@@ -2,88 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Literal
-
 from pydantic import Field, JsonValue
 
-from genai_template.workflow.portfolio.domain.artifacts import ArtifactProvenance
+from genai_template.workflow.portfolio.domain.artifacts import (
+    ArtifactProvenance,
+    GenerationWarning,
+    ProviderAuditMetadata,
+    TokenUsage,
+)
 from genai_template.workflow.portfolio.domain.base import ImmutableDomainModel
 from genai_template.workflow.portfolio.domain.summaries import StructuredSummary
-
-GenerationWarningCode = Literal[
-    "missing_section",
-    "duplicate_section",
-    "reordered_section",
-    "unexpected_section",
-    "unassigned_content",
-    "invalid_evidence_path",
-    "evidence_scope_fallback",
-]
-
-
-class GenerationWarning(ImmutableDomainModel):
-    """One typed deterministic recovery performed while parsing Markdown.
-
-    Attributes:
-        code:
-            Stable machine-readable recovery category.
-        section:
-            Affected configured or unexpected heading when applicable.
-        detail:
-            Stable human-readable description without provider prose.
-    """
-
-    code: GenerationWarningCode = Field(description="Stable recovery category.")
-    section: str | None = Field(
-        default=None,
-        description="Affected Markdown heading when applicable.",
-    )
-    detail: str = Field(
-        min_length=1,
-        description="Stable recovery description.",
-    )
-
-
-class TokenUsage(ImmutableDomainModel):
-    """Provider token counts, preserving unavailable counts as unknown.
-
-    Attributes:
-        input_tokens:
-            Reported input-token count, or null when unavailable.
-        output_tokens:
-            Reported output-token count, or null when unavailable.
-    """
-
-    input_tokens: int | None = Field(
-        default=None,
-        ge=0,
-        description="Reported input-token count, or null when unavailable.",
-    )
-    output_tokens: int | None = Field(
-        default=None,
-        ge=0,
-        description="Reported output-token count, or null when unavailable.",
-    )
-
-
-class ProviderAuditMetadata(ImmutableDomainModel):
-    """Non-secret provider metadata retained for artifact auditing.
-
-    Attributes:
-        request_id:
-            Optional provider request identifier.
-        finish_reason:
-            Optional provider completion reason.
-    """
-
-    request_id: str | None = Field(
-        default=None,
-        description="Optional provider request identifier.",
-    )
-    finish_reason: str | None = Field(
-        default=None,
-        description="Optional provider completion reason.",
-    )
 
 
 class GenerationRequest(ImmutableDomainModel):

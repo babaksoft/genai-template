@@ -6,20 +6,16 @@ import hashlib
 from collections.abc import Iterable
 from typing import cast
 
-from genai_template.workflow.portfolio.domain.contracts import TextGenerator
-from genai_template.workflow.portfolio.domain.generation import (
+from genai_template.workflow.portfolio.domain import (
+    SUMMARY_SPECIFICATIONS,
+    ComponentSummary,
     GenerationRequest,
+    StructuredSummary,
     SummaryGenerationResponse,
 )
-from genai_template.workflow.portfolio.domain.summaries import (
-    ComponentSummary,
-    StructuredSummary,
-)
+from genai_template.workflow.portfolio.domain.contracts import TextGenerator
 from genai_template.workflow.portfolio.infrastructure.generation.parser import (
     parse_summary_markdown,
-)
-from genai_template.workflow.portfolio.infrastructure.generation.specifications import (
-    SUMMARY_SPECIFICATIONS,
 )
 from genai_template.workflow.portfolio.infrastructure.generation.validation import (
     validate_component_evidence,

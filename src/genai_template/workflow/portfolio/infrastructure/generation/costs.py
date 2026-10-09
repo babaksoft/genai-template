@@ -2,10 +2,10 @@
 
 from decimal import Decimal
 
+from genai_template.workflow.portfolio.domain import TokenUsage
 from genai_template.workflow.portfolio.domain.config import (
     TokenPricingConfig,
 )
-from genai_template.workflow.portfolio.domain.generation import TokenUsage
 
 _TOKENS_PER_MILLION = Decimal(1_000_000)
 

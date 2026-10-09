@@ -4,13 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from genai_template.workflow.portfolio.domain.generation import GenerationWarning
-from genai_template.workflow.portfolio.domain.summaries import (
+from genai_template.workflow.portfolio.domain import (
     ComponentSummary,
     EvidenceSection,
+    GenerationWarning,
     ParsedSummary,
-)
-from genai_template.workflow.portfolio.infrastructure.generation.specifications import (
     SummarySpecification,
 )
 from genai_template.workflow.portfolio.infrastructure.generation.validation import (

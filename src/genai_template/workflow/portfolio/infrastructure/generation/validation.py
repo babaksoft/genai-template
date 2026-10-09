@@ -6,10 +6,10 @@ from collections.abc import Iterable
 
 from genai_template.workflow.portfolio.domain import (
     ComponentSummary,
+    EvidenceValidationError,
     StructuredSummary,
     summary_evidence_paths,
 )
-from genai_template.workflow.portfolio.domain.errors import EvidenceValidationError
 
 
 def validate_component_evidence(

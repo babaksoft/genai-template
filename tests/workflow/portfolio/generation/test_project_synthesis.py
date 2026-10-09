@@ -10,6 +10,7 @@ import pytest
 
 from genai_template.config import settings
 from genai_template.workflow.portfolio.domain import (
+    SUMMARY_SPECIFICATIONS,
     ArtifactProvenance,
     ArtifactRunReport,
     ArtifactValidationError,
@@ -41,7 +42,6 @@ from genai_template.workflow.portfolio.infrastructure.fingerprints import (
     sha256_canonical_json,
 )
 from genai_template.workflow.portfolio.infrastructure.generation import (
-    SUMMARY_SPECIFICATIONS,
     generate_project_summaries,
 )
 

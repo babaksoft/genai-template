@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from genai_template.workflow.portfolio.domain.errors import TextGenerationError
-from genai_template.workflow.portfolio.domain.generation import GenerationRequest
+from genai_template.workflow.portfolio.domain import (
+    GenerationRequest,
+    TextGenerationError,
+)
 
 
 class TextGeneratorBase:

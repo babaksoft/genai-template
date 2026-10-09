@@ -4,16 +4,12 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import Field, model_validator
+
+from genai_template.workflow.portfolio.domain.base import ImmutableDomainModel
 
 
-class _ImmutableDomainModel(BaseModel):
-    """Base model for immutable values crossing workflow boundaries."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-
-class CommittedRepositoryEntry(_ImmutableDomainModel):
+class CommittedRepositoryEntry(ImmutableDomainModel):
     """One entry read from an immutable repository commit.
 
     Blob entries carry their bytes. Gitlink entries identify submodules and do not
@@ -72,7 +68,7 @@ class CommittedRepositoryEntry(_ImmutableDomainModel):
         return self
 
 
-class RepositoryReadResult(_ImmutableDomainModel):
+class RepositoryReadResult(ImmutableDomainModel):
     """Provider-neutral contents read from one immutable repository commit.
 
     Attributes:
@@ -103,7 +99,7 @@ class RepositoryReadResult(_ImmutableDomainModel):
     )
 
 
-class SnapshotFile(_ImmutableDomainModel):
+class SnapshotFile(ImmutableDomainModel):
     """A normalized UTF-8 text file selected from a repository commit.
 
     Attributes:
@@ -132,7 +128,7 @@ class SnapshotFile(_ImmutableDomainModel):
     )
 
 
-class RepositorySnapshot(_ImmutableDomainModel):
+class RepositorySnapshot(ImmutableDomainModel):
     """Canonical selected contents and identity of one repository commit.
 
     Attributes:

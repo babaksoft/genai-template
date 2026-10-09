@@ -12,6 +12,7 @@ from genai_template.config import settings
 from genai_template.workflow.portfolio.domain import (
     ArtifactValidationError,
     GenerationRequest,
+    PromptDefinition,
     ProviderAuditMetadata,
     SnapshotFile,
     SummaryPlan,
@@ -33,7 +34,6 @@ from genai_template.workflow.portfolio.infrastructure.caches import (
     FilesystemArtifactCache,
 )
 from genai_template.workflow.portfolio.infrastructure.generation import (
-    PromptDefinition,
     generate_component_summaries,
 )
 

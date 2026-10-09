@@ -6,30 +6,25 @@ import logging
 from collections.abc import Callable
 from time import perf_counter
 
-from genai_template.workflow.portfolio.domain.artifacts import (
+from genai_template.workflow.portfolio.domain import (
+    COMPONENT_PROMPT,
+    OUTPUT_SCHEMA_VERSION,
     ArtifactProvenance,
+    ArtifactRunReport,
+    ArtifactValidationError,
     CachedArtifact,
+    ComponentSummary,
     ComponentSummaryArtifact,
+    GenerationRequest,
+    SummaryPlan,
+    SummaryUnitPlan,
+    TokenUsage,
+    count_generation_warnings,
 )
 from genai_template.workflow.portfolio.domain.config import GenerationConfig
 from genai_template.workflow.portfolio.domain.contracts import (
     ArtifactCache,
     TextGenerator,
-)
-from genai_template.workflow.portfolio.domain.errors import ArtifactValidationError
-from genai_template.workflow.portfolio.domain.generation import (
-    GenerationRequest,
-    TokenUsage,
-)
-from genai_template.workflow.portfolio.domain.reports import (
-    ArtifactRunReport,
-    count_generation_warnings,
-)
-from genai_template.workflow.portfolio.domain.summaries import (
-    OUTPUT_SCHEMA_VERSION,
-    ComponentSummary,
-    SummaryPlan,
-    SummaryUnitPlan,
 )
 from genai_template.workflow.portfolio.infrastructure.caches import (
     CACHE_SCHEMA_VERSION,
@@ -42,7 +37,6 @@ from genai_template.workflow.portfolio.infrastructure.generation.costs import (
     estimate_generation_cost,
 )
 from genai_template.workflow.portfolio.infrastructure.generation.prompts import (
-    COMPONENT_PROMPT,
     assemble_component_prompt,
 )
 from genai_template.workflow.portfolio.infrastructure.generation.service import (

@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import hashlib
 
-from genai_template.workflow.portfolio.domain import SnapshotFile
-from genai_template.workflow.portfolio.infrastructure.generation import (
+from genai_template.workflow.portfolio.domain import (
     ARCHITECTURE_PROMPT,
     ARCHITECTURE_SPECIFICATION,
     COMPONENT_PROMPT,
@@ -14,6 +13,9 @@ from genai_template.workflow.portfolio.infrastructure.generation import (
     OVERVIEW_SPECIFICATION,
     TESTING_OPERATIONS_PROMPT,
     TESTING_OPERATIONS_SPECIFICATION,
+    SnapshotFile,
+)
+from genai_template.workflow.portfolio.infrastructure.generation import (
     assemble_component_prompt,
     assemble_project_prompt,
 )

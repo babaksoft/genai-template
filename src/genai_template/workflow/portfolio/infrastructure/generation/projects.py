@@ -8,42 +8,35 @@ from dataclasses import dataclass
 from decimal import Decimal
 from time import perf_counter
 
-from genai_template.workflow.portfolio.application.snapshot.selection import (
-    matches_repository_pattern,
-)
-from genai_template.workflow.portfolio.domain.artifacts import (
+from genai_template.workflow.portfolio.domain import (
+    ARCHITECTURE_PROMPT,
+    OUTPUT_SCHEMA_VERSION,
+    OVERVIEW_PROMPT,
+    TESTING_OPERATIONS_PROMPT,
+    ArchitectureSummary,
     ArtifactProvenance,
+    ArtifactRunReport,
+    ArtifactValidationError,
     CachedArtifact,
     ComponentSummaryArtifact,
+    GenerationRequest,
+    GenerationWarning,
     ProjectArtifactKind,
+    ProjectOverviewSummary,
     ProjectSummaryArtifact,
+    PromptDefinition,
+    RepositorySnapshot,
+    SnapshotFile,
+    StructuredSummary,
+    TestingOperationsSummary,
+    TokenUsage,
+    count_generation_warnings,
+    summary_evidence_paths,
 )
 from genai_template.workflow.portfolio.domain.config import GenerationConfig
 from genai_template.workflow.portfolio.domain.contracts import (
     ArtifactCache,
     TextGenerator,
-)
-from genai_template.workflow.portfolio.domain.errors import ArtifactValidationError
-from genai_template.workflow.portfolio.domain.generation import (
-    GenerationRequest,
-    GenerationWarning,
-    TokenUsage,
-)
-from genai_template.workflow.portfolio.domain.reports import (
-    ArtifactRunReport,
-    count_generation_warnings,
-)
-from genai_template.workflow.portfolio.domain.snapshot import (
-    RepositorySnapshot,
-    SnapshotFile,
-)
-from genai_template.workflow.portfolio.domain.summaries import (
-    OUTPUT_SCHEMA_VERSION,
-    ArchitectureSummary,
-    ProjectOverviewSummary,
-    StructuredSummary,
-    TestingOperationsSummary,
-    summary_evidence_paths,
 )
 from genai_template.workflow.portfolio.infrastructure.caches import (
     CACHE_SCHEMA_VERSION,
@@ -60,10 +53,6 @@ from genai_template.workflow.portfolio.infrastructure.generation.costs import (
     estimate_generation_cost,
 )
 from genai_template.workflow.portfolio.infrastructure.generation.prompts import (
-    ARCHITECTURE_PROMPT,
-    OVERVIEW_PROMPT,
-    TESTING_OPERATIONS_PROMPT,
-    PromptDefinition,
     assemble_project_prompt,
 )
 from genai_template.workflow.portfolio.infrastructure.generation.service import (
@@ -71,6 +60,9 @@ from genai_template.workflow.portfolio.infrastructure.generation.service import 
 )
 from genai_template.workflow.portfolio.infrastructure.generation.validation import (
     validate_project_evidence,
+)
+from genai_template.workflow.portfolio.infrastructure.repositories import (
+    matches_repository_pattern,
 )
 
 logger = logging.getLogger(__name__)

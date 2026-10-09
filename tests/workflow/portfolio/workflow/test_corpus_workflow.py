@@ -16,6 +16,7 @@ from genai_template.workflow.portfolio.application.workflow import (
     run_portfolio_corpus_workflow,
 )
 from genai_template.workflow.portfolio.domain import (
+    SUMMARY_SPECIFICATIONS,
     GenerationRequest,
     ProviderAuditMetadata,
     TextGenerationError,
@@ -35,9 +36,6 @@ from genai_template.workflow.portfolio.domain.config import (
     StructuredGenerationConfig,
     SummaryUnitConfig,
     TokenPricingConfig,
-)
-from genai_template.workflow.portfolio.infrastructure.generation import (
-    SUMMARY_SPECIFICATIONS,
 )
 from genai_template.workflow.portfolio.infrastructure.repositories import (
     LocalGitSnapshotReader,

@@ -7,18 +7,14 @@ import html
 import re
 from collections.abc import Sequence
 
-from genai_template.workflow.portfolio.domain.artifacts import (
+from genai_template.workflow.portfolio.domain import (
     ArtifactKind,
     CachedArtifact,
     ComponentSummaryArtifact,
+    EvidenceSection,
     ProjectArtifactKind,
     ProjectSummaryArtifact,
-)
-from genai_template.workflow.portfolio.domain.corpus import (
     RenderedDocument,
-)
-from genai_template.workflow.portfolio.domain.summaries import (
-    EvidenceSection,
     StructuredSummary,
     summary_evidence_paths,
 )

@@ -8,13 +8,13 @@ import subprocess
 from pathlib import Path
 from typing import Literal
 
+from genai_template.workflow.portfolio.domain import (
+    CommittedRepositoryEntry,
+    RepositoryReadError,
+    RepositoryReadResult,
+)
 from genai_template.workflow.portfolio.domain.config import (
     LocalGitRepositoryConfig,
-)
-from genai_template.workflow.portfolio.domain.errors import RepositoryReadError
-from genai_template.workflow.portfolio.domain.snapshot import (
-    CommittedRepositoryEntry,
-    RepositoryReadResult,
 )
 
 _TreeRecord = tuple[str, Literal["blob", "commit"], str, str]

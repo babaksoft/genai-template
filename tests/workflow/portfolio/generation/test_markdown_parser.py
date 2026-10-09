@@ -5,20 +5,20 @@ from __future__ import annotations
 import pytest
 
 from genai_template.workflow.portfolio.domain import (
-    ArchitectureSummary,
-    ComponentSummary,
-    ProjectOverviewSummary,
-)
-from genai_template.workflow.portfolio.domain import (
-    TestingOperationsSummary as OperationsSummary,
-)
-from genai_template.workflow.portfolio.infrastructure.generation import (
     ARCHITECTURE_SPECIFICATION,
     COMPONENT_SPECIFICATION,
     OVERVIEW_SPECIFICATION,
     SUMMARY_SPECIFICATIONS,
     TESTING_OPERATIONS_SPECIFICATION,
+    ArchitectureSummary,
+    ComponentSummary,
+    ProjectOverviewSummary,
     SummarySpecification,
+)
+from genai_template.workflow.portfolio.domain import (
+    TestingOperationsSummary as OperationsSummary,
+)
+from genai_template.workflow.portfolio.infrastructure.generation import (
     parse_summary_markdown,
     validate_component_evidence,
     validate_project_evidence,

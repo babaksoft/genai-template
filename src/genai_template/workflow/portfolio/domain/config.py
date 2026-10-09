@@ -7,21 +7,16 @@ from decimal import Decimal
 from pathlib import Path, PurePosixPath
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from genai_template.config import settings
+from genai_template.workflow.portfolio.domain.base import ImmutableDomainModel
 
 _IDENTIFIER_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 _WINDOWS_ABSOLUTE_PATTERN = re.compile(r"^[A-Za-z]:[\\/]")
 
 
-class _ImmutableConfigModel(BaseModel):
-    """Base model for strict, immutable portfolio configuration."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-
-class LocalGitRepositoryConfig(_ImmutableConfigModel):
+class LocalGitRepositoryConfig(ImmutableDomainModel):
     """Settings for reading a commit from a local Git repository.
 
     Attributes:
@@ -69,7 +64,7 @@ RepositoryConfig = Annotated[
 ]
 
 
-class SelectionConfig(_ImmutableConfigModel):
+class SelectionConfig(ImmutableDomainModel):
     """Allowlist-first repository file-selection settings.
 
     Attributes:
@@ -110,7 +105,7 @@ class SelectionConfig(_ImmutableConfigModel):
         return tuple(_validate_repository_pattern(value) for value in values)
 
 
-class SummaryUnitConfig(_ImmutableConfigModel):
+class SummaryUnitConfig(ImmutableDomainModel):
     """Configuration for one explicit logical summary unit.
 
     Attributes:
@@ -160,7 +155,7 @@ class SummaryUnitConfig(_ImmutableConfigModel):
         return tuple(_validate_repository_pattern(value) for value in values)
 
 
-class InferenceConfig(_ImmutableConfigModel):
+class InferenceConfig(ImmutableDomainModel):
     """Content-affecting structured-generation settings.
 
     Attributes:
@@ -183,7 +178,7 @@ class InferenceConfig(_ImmutableConfigModel):
     )
 
 
-class StructuredGenerationConfig(_ImmutableConfigModel):
+class StructuredGenerationConfig(ImmutableDomainModel):
     """Provider settings for validated structured generation.
 
     Stage 1 deliberately treats OpenAI seed behavior as unsupported because its
@@ -254,7 +249,7 @@ class StructuredGenerationConfig(_ImmutableConfigModel):
         return self
 
 
-class ProjectDocumentContextConfig(_ImmutableConfigModel):
+class ProjectDocumentContextConfig(ImmutableDomainModel):
     """Repository context patterns for balanced project documents.
 
     Attributes:
@@ -295,7 +290,7 @@ class ProjectDocumentContextConfig(_ImmutableConfigModel):
         return tuple(_validate_repository_pattern(value) for value in values)
 
 
-class GenerationInputLimits(_ImmutableConfigModel):
+class GenerationInputLimits(ImmutableDomainModel):
     """Hard input limits applied to each structured-generation call.
 
     Attributes:
@@ -315,7 +310,7 @@ class GenerationInputLimits(_ImmutableConfigModel):
     )
 
 
-class GenerationLocations(_ImmutableConfigModel):
+class GenerationLocations(ImmutableDomainModel):
     """Repository-root-relative storage locations used by corpus generation.
 
     Attributes:
@@ -374,7 +369,7 @@ class GenerationLocations(_ImmutableConfigModel):
         return self
 
 
-class TokenPricingConfig(_ImmutableConfigModel):
+class TokenPricingConfig(ImmutableDomainModel):
     """Explicit rates used only to estimate generation cost.
 
     Attributes:
@@ -396,7 +391,7 @@ class TokenPricingConfig(_ImmutableConfigModel):
     )
 
 
-class GenerationConfig(_ImmutableConfigModel):
+class GenerationConfig(ImmutableDomainModel):
     """Balanced corpus-generation profile and stable artifact settings.
 
     Attributes:
@@ -467,7 +462,7 @@ class GenerationConfig(_ImmutableConfigModel):
         return value
 
 
-class ProjectConfig(_ImmutableConfigModel):
+class ProjectConfig(ImmutableDomainModel):
     """Identity and snapshot settings for one portfolio project.
 
     Attributes:
@@ -556,7 +551,7 @@ class ProjectConfig(_ImmutableConfigModel):
         return self
 
 
-class PortfolioConfig(_ImmutableConfigModel):
+class PortfolioConfig(ImmutableDomainModel):
     """Top-level versioned portfolio snapshot configuration.
 
     Attributes:
