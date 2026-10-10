@@ -161,10 +161,23 @@ def _snapshot() -> RepositorySnapshot:
     )
 
 
+def _project_config() -> ProjectDocumentContextConfig:
+    """Build project document context.
+
+    Returns:
+        Valid project document context.
+    """
+
+    return ProjectDocumentContextConfig(
+        overview=("README.md",),
+        architecture=("src/**/*.py",),
+        testing_operations=("tests/**/*.py",),
+    )
+
+
 def _config(
     *,
     max_bytes: int = 100_000,
-    contexts: ProjectDocumentContextConfig | None = None,
 ) -> GenerationConfig:
     """Build balanced generation settings.
 
@@ -187,12 +200,6 @@ def _config(
         ),
         prompt_version="v1",
         output_schema_version="v1",
-        project_context=contexts
-        or ProjectDocumentContextConfig(
-            overview=("README.md",),
-            architecture=("src/**/*.py",),
-            testing_operations=("tests/**/*.py",),
-        ),
         input_limits=GenerationInputLimits(max_files=10, max_bytes=max_bytes),
         locations=GenerationLocations(
             cache=settings.REPO_ROOT / "storage/test-project-cache",
@@ -273,11 +280,21 @@ def test_unchanged_project_synthesis_uses_cache_without_provider_calls(
     cache = FilesystemArtifactCache(tmp_path / "cache")
     first_generator = _ProjectGenerator()
     first = generate_project_summaries(
-        _snapshot(), (_component(),), _config(), first_generator, cache
+        _snapshot(),
+        (_component(),),
+        _project_config(),
+        _config(),
+        first_generator,
+        cache,
     )
     second_generator = _ProjectGenerator()
     second = generate_project_summaries(
-        _snapshot(), (_component(),), _config(), second_generator, cache
+        _snapshot(),
+        (_component(),),
+        _project_config(),
+        _config(),
+        second_generator,
+        cache,
     )
 
     assert first_generator.calls == [
@@ -298,12 +315,18 @@ def test_changed_component_output_invalidates_every_project_dependency(
 
     cache = FilesystemArtifactCache(tmp_path / "cache")
     generate_project_summaries(
-        _snapshot(), (_component(),), _config(), _ProjectGenerator(), cache
+        _snapshot(),
+        (_component(),),
+        _project_config(),
+        _config(),
+        _ProjectGenerator(),
+        cache,
     )
     changed_generator = _ProjectGenerator()
     generate_project_summaries(
         _snapshot(),
         (_component("Changed component behavior."),),
+        _project_config(),
         _config(),
         changed_generator,
         cache,
@@ -325,6 +348,7 @@ def test_recoverable_project_responses_are_cached_and_reported(
     first = generate_project_summaries(
         _snapshot(),
         (_component(),),
+        _project_config(),
         _config(),
         _RecoveringProjectGenerator(),
         cache,
@@ -333,6 +357,7 @@ def test_recoverable_project_responses_are_cached_and_reported(
     second = generate_project_summaries(
         _snapshot(),
         (_component(),),
+        _project_config(),
         _config(),
         second_generator,
         cache,
@@ -379,7 +404,8 @@ def test_empty_context_pattern_fails_before_any_provider_call(tmp_path: Path) ->
         generate_project_summaries(
             _snapshot(),
             (_component(),),
-            _config(contexts=contexts),
+            contexts,
+            _config(),
             generator,
             FilesystemArtifactCache(tmp_path / "cache"),
         )
@@ -398,6 +424,7 @@ def test_complete_synthesis_input_budget_fails_before_provider_call(
         generate_project_summaries(
             _snapshot(),
             (_component(),),
+            _project_config(),
             _config(max_bytes=1),
             generator,
             FilesystemArtifactCache(tmp_path / "cache"),

@@ -194,11 +194,6 @@ def _config(repository: Path, output_root: Path) -> PortfolioConfig:
         ),
         prompt_version="v1",
         output_schema_version="v1",
-        project_context=ProjectDocumentContextConfig(
-            overview=("README.md",),
-            architecture=("src/**/*.py",),
-            testing_operations=("tests/**/*.py",),
-        ),
         input_limits=GenerationInputLimits(max_files=10, max_bytes=100_000),
         locations=locations,
         pricing=TokenPricingConfig(
@@ -221,6 +216,11 @@ def _config(repository: Path, output_root: Path) -> PortfolioConfig:
                 selection=SelectionConfig(
                     include=("README.md", "src/**/*.py", "tests/**/*.py"),
                     max_file_bytes=10_000,
+                ),
+                document_context=ProjectDocumentContextConfig(
+                    overview=("README.md",),
+                    architecture=("src/**/*.py",),
+                    testing_operations=("tests/**/*.py",),
                 ),
                 summary_units=(
                     SummaryUnitConfig(

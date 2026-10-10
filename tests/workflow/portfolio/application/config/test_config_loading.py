@@ -41,6 +41,11 @@ def _valid_config() -> dict[str, Any]:
                     "exclude": ["**/__pycache__/**"],
                     "max_file_bytes": 1024,
                 },
+                "document_context": {
+                    "overview": ["README.md"],
+                    "architecture": ["src/api/**/*.py"],
+                    "testing_operations": ["tests/api/**/*.py"],
+                },
                 "summary_units": [{"id": "application-core", "paths": ["src/**/*.py"]}],
             }
         ],

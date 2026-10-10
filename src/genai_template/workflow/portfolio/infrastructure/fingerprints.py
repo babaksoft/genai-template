@@ -199,7 +199,6 @@ def generation_configuration_fingerprint(config: GenerationConfig) -> str:
         },
         "prompt_version": config.prompt_version,
         "output_schema_version": config.output_schema_version,
-        "project_context": config.project_context.model_dump(mode="json"),
         "input_limits": config.input_limits.model_dump(mode="json"),
     }
 

@@ -26,7 +26,6 @@ from genai_template.workflow.portfolio.domain.config import (
     GenerationInputLimits,
     GenerationLocations,
     InferenceConfig,
-    ProjectDocumentContextConfig,
     StructuredGenerationConfig,
     TokenPricingConfig,
 )
@@ -209,11 +208,6 @@ def _config(
         ),
         prompt_version="v1",
         output_schema_version="v1",
-        project_context=ProjectDocumentContextConfig(
-            overview=("README.md",),
-            architecture=("src/**/*.py",),
-            testing_operations=("tests/**/*.py",),
-        ),
         input_limits=GenerationInputLimits(max_files=10, max_bytes=10_000),
         locations=GenerationLocations(
             cache=settings.REPO_ROOT / "storage/test-portfolio-cache",

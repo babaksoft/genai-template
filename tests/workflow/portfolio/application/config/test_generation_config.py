@@ -44,11 +44,6 @@ def _balanced_config() -> dict[str, Any]:
             },
             "prompt_version": "v1",
             "output_schema_version": "v1",
-            "project_context": {
-                "overview": ["README.md"],
-                "architecture": ["src/**/*.py"],
-                "testing_operations": ["tests/**/*.py"],
-            },
             "input_limits": {"max_files": 50, "max_bytes": 100_000},
             "locations": {
                 "cache": "storage/portfolio-cache",
@@ -68,6 +63,11 @@ def _balanced_config() -> dict[str, Any]:
                     "include": ["README.md", "src/**/*.py"],
                     "exclude": [],
                     "max_file_bytes": 100_000,
+                },
+                "document_context": {
+                    "overview": ["README.md"],
+                    "architecture": ["src/**/*.py"],
+                    "testing_operations": ["tests/**/*.py"],
                 },
                 "summary_units": [{"id": "core", "paths": ["src/**/*.py"]}],
             }

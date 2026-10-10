@@ -403,8 +403,6 @@ class GenerationConfig(ImmutableDomainModel):
             Version of the prompt family used for generation.
         output_schema_version:
             Version of the validated structured-output schemas.
-        project_context:
-            Repository context patterns for project-level documents.
         input_limits:
             Per-call source and artifact input limits.
         locations:
@@ -426,9 +424,6 @@ class GenerationConfig(ImmutableDomainModel):
     output_schema_version: str = Field(
         min_length=1,
         description="Version of the validated structured-output schemas.",
-    )
-    project_context: ProjectDocumentContextConfig = Field(
-        description="Repository context patterns for project-level documents."
     )
     input_limits: GenerationInputLimits = Field(
         description="Per-call source and artifact input limits."
@@ -474,6 +469,8 @@ class ProjectConfig(ImmutableDomainModel):
             Repository provider and immutable-ref settings.
         selection:
             Rules controlling which committed files enter the snapshot.
+        document_context:
+            Repository context patterns for project-level documents.
         summary_units:
             Explicit logical groups to plan from the selected snapshot files.
     """
@@ -491,6 +488,9 @@ class ProjectConfig(ImmutableDomainModel):
     )
     selection: SelectionConfig = Field(
         description="Committed-file selection and size-limit settings."
+    )
+    document_context: ProjectDocumentContextConfig = Field(
+        description="Repository context patterns for project-level documents."
     )
     summary_units: tuple[SummaryUnitConfig, ...] = Field(
         min_length=1,

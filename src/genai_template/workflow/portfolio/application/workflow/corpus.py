@@ -337,6 +337,7 @@ class PortfolioCorpusWorkflow(Workflow):
             projects = generate_project_summaries(
                 event.snapshot,
                 event.components,
+                event.project.document_context,
                 event.generation,
                 generator,
                 cache,

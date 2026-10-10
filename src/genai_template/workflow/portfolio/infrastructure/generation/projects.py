@@ -33,7 +33,10 @@ from genai_template.workflow.portfolio.domain import (
     count_generation_warnings,
     summary_evidence_paths,
 )
-from genai_template.workflow.portfolio.domain.config import GenerationConfig
+from genai_template.workflow.portfolio.domain.config import (
+    GenerationConfig,
+    ProjectDocumentContextConfig,
+)
 from genai_template.workflow.portfolio.domain.contracts import (
     ArtifactCache,
     TextGenerator,
@@ -95,6 +98,7 @@ class _ProjectSynthesisSpec:
 def generate_project_summaries(
     snapshot: RepositorySnapshot,
     components: tuple[ComponentSummaryArtifact, ...],
+    project: ProjectDocumentContextConfig,
     generation: GenerationConfig,
     generator: TextGenerator,
     cache: ArtifactCache,
@@ -112,6 +116,8 @@ def generate_project_summaries(
             Canonical immutable repository snapshot.
         components:
             Validated component artifacts supplied to every synthesis call.
+        project:
+            Context patterns for project-level documents.
         generation:
             Validated balanced generation configuration.
         generator:
@@ -140,7 +146,7 @@ def generate_project_summaries(
     component_outputs, component_hashes, component_evidence = _validate_components(
         snapshot, components
     )
-    specs = _build_specs(snapshot, generation)
+    specs = _build_specs(snapshot, project)
     return tuple(
         _generate_project_summary(
             snapshot,
@@ -199,7 +205,7 @@ def resolve_project_context(
 
 def _build_specs(
     snapshot: RepositorySnapshot,
-    generation: GenerationConfig,
+    project: ProjectDocumentContextConfig,
 ) -> tuple[_ProjectSynthesisSpec, ...]:
     """Build and preflight the three fixed project synthesis specifications.
 
@@ -213,7 +219,6 @@ def _build_specs(
         Fully resolved synthesis specifications in publication order.
     """
 
-    contexts = generation.project_context
     definitions: tuple[
         tuple[
             ProjectArtifactKind,
@@ -223,18 +228,18 @@ def _build_specs(
         ],
         ...,
     ] = (
-        ("overview", OVERVIEW_PROMPT, ProjectOverviewSummary, contexts.overview),
+        ("overview", OVERVIEW_PROMPT, ProjectOverviewSummary, project.overview),
         (
             "architecture",
             ARCHITECTURE_PROMPT,
             ArchitectureSummary,
-            contexts.architecture,
+            project.architecture,
         ),
         (
             "testing_operations",
             TESTING_OPERATIONS_PROMPT,
             TestingOperationsSummary,
-            contexts.testing_operations,
+            project.testing_operations,
         ),
     )
     return tuple(

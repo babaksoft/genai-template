@@ -11,20 +11,6 @@ generation:
     timeout_seconds: 180
   prompt_version: v1
   output_schema_version: v1
-  project_context:
-    overview:
-      - README.md
-      - pyproject.toml
-    architecture:
-      - src/genai_template/api/**/*.py
-      - src/genai_template/components/splitters/**/*.py
-      - src/genai_template/services/**/*.py
-    testing_operations:
-      - README.md
-      - pyproject.toml
-      - tests/api/**/*.py
-      - tests/components/splitters/**/*.py
-      - tests/services/**/*.py
   input_limits:
     max_files: 100
     max_bytes: 262144
@@ -51,6 +37,20 @@ projects:
       exclude:
         - "**/__pycache__/**"
       max_file_bytes: 262144
+    document_context:
+      overview:
+        - README.md
+        - pyproject.toml
+      architecture:
+        - src/genai_template/api/**/*.py
+        - src/genai_template/components/splitters/**/*.py
+        - src/genai_template/services/**/*.py
+      testing_operations:
+        - README.md
+        - pyproject.toml
+        - tests/api/**/*.py
+        - tests/components/splitters/**/*.py
+        - tests/services/**/*.py
     summary_units:
       - id: api
         paths:
