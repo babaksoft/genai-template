@@ -32,7 +32,7 @@ from genai_template.services import (
 from genai_template.workflow.portfolio.application.config import load_portfolio_config
 from genai_template.workflow.portfolio.domain import (
     ArtifactKind,
-    CorpusManifestV2,
+    CorpusManifest,
     RenderedDocument,
     RepositorySnapshot,
     SnapshotFile,
@@ -337,7 +337,7 @@ def _corpus(
 ) -> tuple[
     RepositorySnapshot,
     tuple[RenderedDocument, ...],
-    CorpusManifestV2,
+    CorpusManifest,
 ]:
     """Build one valid single-document Portfolio corpus.
 

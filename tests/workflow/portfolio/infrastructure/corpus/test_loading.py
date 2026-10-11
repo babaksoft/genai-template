@@ -4,55 +4,60 @@ from __future__ import annotations
 
 import hashlib
 import os
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
 from corpus_fixtures import CorpusFixture, make_corpus_fixture  # noqa: F401
 
+from genai_template.config.settings import REPO_ROOT
 from genai_template.workflow.portfolio.domain import (
     CorpusManifest,
     CorpusValidationError,
-    ManifestDocumentV2,
-    VersionedCorpusManifest,
+    ManifestDocument,
+)
+from genai_template.workflow.portfolio.domain.config import (
+    GenerationConfig,
+    GenerationInputLimits,
+    GenerationLocations,
+    InferenceConfig,
+    StructuredGenerationConfig,
+    TokenPricingConfig,
 )
 from genai_template.workflow.portfolio.infrastructure.corpus import (
     build_corpus_manifest_v2,
     load_corpus,
     loading,
     manifest_bytes,
-    normalize_manifest,
-)
-from genai_template.workflow.portfolio.infrastructure.fingerprints import (
-    calculate_corpus_fingerprint,
 )
 
 
-def _legacy_manifest(fixture: CorpusFixture) -> CorpusManifest:
-    """Project a current one-project fixture into the unchanged v1 contract.
-
-    Args:
-        fixture:
-            Current consistent corpus fixture.
+def _config() -> GenerationConfig:
+    """Return a complete balanced configuration.
 
     Returns:
-        Canonical legacy manifest with its original v1 fingerprint algorithm.
+        Independent mutable configuration data.
     """
 
-    project = fixture.manifest.projects[0]
-    data = {
-        "manifest_schema_version": 1,
-        **project.model_dump(mode="json"),
-        "documents": tuple(
-            {
-                key: value
-                for key, value in record.model_dump(mode="json").items()
-                if key != "project_slug"
-            }
-            for record in fixture.manifest.documents
+    return GenerationConfig(
+        profile="balanced",
+        structured_generation=StructuredGenerationConfig(
+            provider="ollama",
+            model="test-model",
+            inference=InferenceConfig(temperature=0, seed=7),
         ),
-    }
-    data["corpus_fingerprint"] = calculate_corpus_fingerprint(data)
-    return CorpusManifest.model_validate(data)
+        prompt_version="v1",
+        output_schema_version="v1",
+        input_limits=GenerationInputLimits(max_files=10, max_bytes=1024),
+        locations=GenerationLocations(
+            cache=REPO_ROOT / "storage/test-project-cache",
+            publication=REPO_ROOT / "data/test-project-corpus",
+        ),
+        pricing=TokenPricingConfig(
+            input_per_million_tokens=Decimal(2),
+            output_per_million_tokens=Decimal(8),
+        ),
+    )
 
 
 def _write_release(
@@ -75,39 +80,6 @@ def _write_release(
     (path / "manifest.json").write_bytes(manifest_bytes(manifest or fixture.manifest))
 
 
-def test_v1_normalization_preserves_original_fingerprint(
-    corpus_fixture: CorpusFixture,
-) -> None:
-    """Legacy bytes normalize into one project without changing identity."""
-
-    legacy = _legacy_manifest(corpus_fixture)
-
-    normalized = normalize_manifest(legacy)
-
-    assert normalized.source_schema_version == 1
-    assert normalized.corpus_fingerprint == legacy.corpus_fingerprint
-    assert normalized.projects[0].project_slug == legacy.project_slug
-    assert {record.project_slug for record in normalized.documents} == {"sample"}
-
-
-def test_loads_canonical_legacy_release(
-    tmp_path: Path,
-    corpus_fixture: CorpusFixture,
-) -> None:
-    """A byte-identical v1 release remains valid for consumers."""
-
-    legacy = _legacy_manifest(corpus_fixture)
-    release = tmp_path / "release"
-    _write_release(release, corpus_fixture, legacy)
-    original_bytes = (release / "manifest.json").read_bytes()
-
-    loaded = load_corpus(release)
-
-    assert loaded.manifest.source_schema_version == 1
-    assert loaded.manifest.corpus_fingerprint == legacy.corpus_fingerprint
-    assert (release / "manifest.json").read_bytes() == original_bytes
-
-
 def test_loads_two_project_v2_with_distinct_provenance(
     tmp_path: Path,
     corpus_fixture: CorpusFixture,
@@ -122,15 +94,13 @@ def test_loads_two_project_v2_with_distinct_provenance(
             "repository_url": "https://example.test/second.git",
             "resolved_commit_sha": "c" * 40,
             "source_fingerprint": "d" * 64,
-            "model": "other-model",
-            "configuration_fingerprint": "e" * 64,
         }
     )
     first_record = corpus_fixture.manifest.documents[0]
     second_content = b"# Second overview\n"
-    second_record = ManifestDocumentV2(
+    second_record = ManifestDocument(
         project_slug="second",
-        filename="second--overview.md",
+        file_name="second--overview.md",
         document_type="overview",
         component_id=None,
         evidence_paths=("README.md",),
@@ -140,6 +110,7 @@ def test_loads_two_project_v2_with_distinct_provenance(
         byte_size=len(second_content),
     )
     manifest = build_corpus_manifest_v2(
+        generation=_config(),
         projects=(second, first),
         documents=(second_record, first_record),
     )
@@ -148,11 +119,11 @@ def test_loads_two_project_v2_with_distinct_provenance(
     original_document = next(
         document
         for document in corpus_fixture.documents
-        if document.filename == first_record.filename
+        if document.filename == first_record.file_name
     )
     original = original_document.content.encode("utf-8")
-    (release / first_record.filename).write_bytes(original)
-    (release / second_record.filename).write_bytes(second_content)
+    (release / first_record.file_name).write_bytes(original)
+    (release / second_record.file_name).write_bytes(second_content)
     (release / "manifest.json").write_bytes(manifest_bytes(manifest))
 
     loaded = load_corpus(release)
@@ -161,7 +132,6 @@ def test_loads_two_project_v2_with_distinct_provenance(
         "sample",
         "second",
     ]
-    assert loaded.manifest.projects[1].model == "other-model"
     assert [record.project_slug for record in loaded.documents] == [
         "sample",
         "second",
@@ -183,7 +153,7 @@ def test_publication_switch_during_load_keeps_initial_release(
     publication.symlink_to(first.relative_to(tmp_path))
     real_read_manifest = loading.read_manifest
 
-    def switch_then_read(path: Path) -> VersionedCorpusManifest:
+    def switch_then_read(path: Path) -> CorpusManifest:
         """Switch the pointer after pinning, then read the pinned manifest.
 
         Args:

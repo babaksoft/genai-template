@@ -11,7 +11,7 @@ import pytest
 from genai_template.workflow.portfolio.application.config import load_portfolio_config
 from genai_template.workflow.portfolio.domain import (
     ArtifactKind,
-    CorpusManifestV2,
+    CorpusManifest,
     RenderedDocument,
     RepositorySnapshot,
     SnapshotFile,
@@ -40,7 +40,7 @@ class CorpusFixture:
     snapshot: RepositorySnapshot
     generation: GenerationConfig
     documents: tuple[RenderedDocument, ...]
-    manifest: CorpusManifestV2
+    manifest: CorpusManifest
 
 
 @pytest.fixture(name="corpus_fixture")

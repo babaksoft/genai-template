@@ -8,7 +8,7 @@ from llama_index.core.workflow import Event, StartEvent
 
 from genai_template.workflow.portfolio.domain import (
     ComponentSummaryArtifact,
-    CorpusManifestV2,
+    CorpusManifest,
     ProjectSummaryArtifact,
     RenderedDocument,
     RepositorySnapshot,
@@ -215,6 +215,6 @@ class CorpusValidatedEvent(Event):
     snapshot: RepositorySnapshot
     artifacts: tuple[ComponentSummaryArtifact | ProjectSummaryArtifact, ...]
     documents: tuple[RenderedDocument, ...]
-    manifest: CorpusManifestV2
+    manifest: CorpusManifest
     run_started_at: float
     steps: tuple[StepRunReport, ...]

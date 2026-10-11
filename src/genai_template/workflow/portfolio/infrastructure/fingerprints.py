@@ -11,10 +11,7 @@ from pydantic import BaseModel
 
 from genai_template.workflow.portfolio.domain import (
     CorpusManifest,
-    CorpusManifestV2,
     ManifestDocument,
-    ManifestDocumentV2,
-    VersionedCorpusManifest,
 )
 from genai_template.workflow.portfolio.domain.config import (
     GenerationConfig,
@@ -226,8 +223,8 @@ def _generation_settings(
 
 
 def calculate_corpus_fingerprint(
-    manifest: VersionedCorpusManifest | dict[str, Any],
-    documents: Sequence[ManifestDocument | ManifestDocumentV2] | None = None,
+    manifest: CorpusManifest | dict[str, Any],
+    documents: Sequence[ManifestDocument] | None = None,
 ) -> str:
     """Calculate the non-circular stable identity of a complete corpus.
 
@@ -247,7 +244,7 @@ def calculate_corpus_fingerprint(
 
     projection = (
         manifest.model_dump(mode="json")
-        if isinstance(manifest, (CorpusManifest, CorpusManifestV2))
+        if isinstance(manifest, CorpusManifest)
         else dict(manifest)
     )
     projection.pop("corpus_fingerprint", None)
@@ -255,15 +252,15 @@ def calculate_corpus_fingerprint(
     records = [
         (
             record.model_dump(mode="json")
-            if isinstance(record, (ManifestDocument, ManifestDocumentV2))
+            if isinstance(record, ManifestDocument)
             else record
         )
         for record in records_value
     ]
     projection["documents"] = records
     ordered_hashes = [
-        {"filename": record["filename"], "content_hash": record["content_hash"]}
-        for record in sorted(records, key=lambda value: value["filename"])
+        {"filename": record["file_name"], "content_hash": record["content_hash"]}
+        for record in sorted(records, key=lambda value: value["file_name"])
     ]
     schema_version = projection.get("manifest_schema_version")
     envelope = {

@@ -2,7 +2,6 @@
 
 from genai_template.workflow.portfolio.infrastructure.corpus.loading import (
     load_corpus,
-    normalize_manifest,
 )
 from genai_template.workflow.portfolio.infrastructure.corpus.manifest import (
     build_corpus_manifest,
@@ -30,7 +29,6 @@ __all__ = [
     "build_document_filename",
     "load_corpus",
     "manifest_bytes",
-    "normalize_manifest",
     "publish_corpus",
     "read_manifest",
     "render_balanced_documents",

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from decimal import Decimal
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -25,13 +26,21 @@ from genai_template.components.splitters import (
     DocumentSplitter,
     MarkdownDocumentSplitter,
 )
+from genai_template.config.settings import REPO_ROOT
 from genai_template.schemas import LoadedDocuments
 from genai_template.workflow.portfolio.domain import (
     ArtifactKind,
     CorpusValidationError,
-    ManifestDocumentV2,
+    ManifestDocument,
     ManifestProject,
-    ManifestPrompt,
+)
+from genai_template.workflow.portfolio.domain.config import (
+    GenerationConfig,
+    GenerationInputLimits,
+    GenerationLocations,
+    InferenceConfig,
+    StructuredGenerationConfig,
+    TokenPricingConfig,
 )
 from genai_template.workflow.portfolio.infrastructure.corpus import (
     build_corpus_manifest_v2,
@@ -39,16 +48,23 @@ from genai_template.workflow.portfolio.infrastructure.corpus import (
 )
 
 
-def _write_corpus(directory: Path) -> tuple[str, dict[str, dict[str, str]]]:
+def _write_corpus(
+    release_dir: Path, cache_dir: Path | None = None
+) -> tuple[str, dict[str, dict[str, str]]]:
     """Write a valid two-project Portfolio corpus fixture.
 
     Args:
-        directory:
+        release_root:
             Release directory to populate.
+        cache_dir:
+            Configured artifact cache directory.
 
     Returns:
         Corpus fingerprint and expected metadata keyed by filename.
     """
+
+    if cache_dir is None:
+        cache_dir = release_dir.parent / "cache"
 
     specifications: tuple[tuple[str, str, str, ArtifactKind, str | None, str], ...] = (
         ("alpha", "Alpha", "alpha--overview.md", "overview", None, "a"),
@@ -63,12 +79,6 @@ def _write_corpus(directory: Path) -> tuple[str, dict[str, dict[str, str]]]:
             resolved_commit_sha=character * 40,
             source_fingerprint=character * 64,
             generation_profile="balanced",
-            prompt_version="v1",
-            prompts=(ManifestPrompt(prompt_id="test.v1", prompt_hash="c" * 64),),
-            output_schema_version="v1",
-            provider="openai",
-            model=f"model-{slug}",
-            configuration_fingerprint="d" * 64,
         )
         for slug, display_name, _, _, _, character in specifications
     )
@@ -77,9 +87,9 @@ def _write_corpus(directory: Path) -> tuple[str, dict[str, dict[str, str]]]:
         for slug, display_name, filename, _, _, _ in specifications
     }
     records = tuple(
-        ManifestDocumentV2(
+        ManifestDocument(
             project_slug=slug,
-            filename=filename,
+            file_name=filename,
             document_type=document_type,
             component_id=component_id,
             evidence_paths=("README.md",),
@@ -90,11 +100,32 @@ def _write_corpus(directory: Path) -> tuple[str, dict[str, dict[str, str]]]:
         )
         for slug, _, filename, document_type, component_id, character in specifications
     )
-    manifest = build_corpus_manifest_v2(projects=projects, documents=records)
-    directory.mkdir()
-    for filename, content in contents.items():
-        (directory / filename).write_text(content, encoding="utf-8")
-    (directory / "manifest.json").write_bytes(manifest_bytes(manifest))
+    generation = GenerationConfig(
+        profile="balanced",
+        structured_generation=StructuredGenerationConfig(
+            provider="ollama",
+            model="test-model",
+            inference=InferenceConfig(temperature=0, seed=7),
+        ),
+        prompt_version="v1",
+        output_schema_version="v1",
+        input_limits=GenerationInputLimits(max_files=10, max_bytes=1024),
+        locations=GenerationLocations(
+            cache=REPO_ROOT / "storage/test-project-cache",
+            publication=REPO_ROOT / "data/test-project-corpus",
+        ),
+        pricing=TokenPricingConfig(
+            input_per_million_tokens=Decimal(2),
+            output_per_million_tokens=Decimal(8),
+        ),
+    )
+    manifest = build_corpus_manifest_v2(
+        generation=generation, projects=projects, documents=records
+    )
+    release_dir.mkdir()
+    for file_name, content in contents.items():
+        (release_dir / file_name).write_text(content, encoding="utf-8")
+    (release_dir / "manifest.json").write_bytes(manifest_bytes(manifest))
 
     project_by_slug = {project.project_slug: project for project in projects}
     expected: dict[str, dict[str, str]] = {}
@@ -108,11 +139,11 @@ def _write_corpus(directory: Path) -> tuple[str, dict[str, dict[str, str]]]:
             RESOLVED_COMMIT_SHA: project.resolved_commit_sha,
             CORPUS_FINGERPRINT: manifest.corpus_fingerprint,
             GENERATION_FINGERPRINT: record.generation_fingerprint,
-            FILE_NAME: record.filename,
+            FILE_NAME: record.file_name,
         }
         if record.component_id is not None:
             metadata[COMPONENT_ID] = record.component_id
-        expected[record.filename] = metadata
+        expected[record.file_name] = metadata
     return manifest.corpus_fingerprint, expected
 
 

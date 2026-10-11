@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from genai_template.workflow.portfolio.domain import (
-    CorpusManifestV2,
+    CorpusManifest,
     CorpusValidationError,
     PublicationResult,
     RenderedDocument,
@@ -29,7 +29,7 @@ _FINGERPRINT = re.compile(r"^[0-9a-f]{64}$")
 def publish_corpus(
     *,
     publication_path: Path,
-    manifest: CorpusManifestV2,
+    manifest: CorpusManifest,
     documents: Sequence[RenderedDocument],
     snapshot: RepositorySnapshot,
 ) -> PublicationResult:
@@ -94,7 +94,7 @@ def publish_corpus(
 
 def _write_stage(
     stage_path: Path,
-    manifest: CorpusManifestV2,
+    manifest: CorpusManifest,
     documents: Sequence[RenderedDocument],
 ) -> None:
     """Write all proposed release files into an unpublished directory.
@@ -112,7 +112,7 @@ def _write_stage(
             If provided documents do not correspond one-to-one with the manifest.
     """
 
-    records = {record.filename: record for record in manifest.documents}
+    records = {record.file_name: record for record in manifest.documents}
     supplied = {document.filename: document for document in documents}
     if len(supplied) != len(documents) or supplied.keys() != records.keys():
         raise CorpusValidationError("rendered documents do not match the manifest")
@@ -169,7 +169,7 @@ def _validate_existing_release(
     release_path: Path,
     stage_path: Path,
     snapshot: RepositorySnapshot,
-    manifest: CorpusManifestV2,
+    manifest: CorpusManifest,
 ) -> None:
     """Validate and byte-compare an immutable release selected for reuse.
 

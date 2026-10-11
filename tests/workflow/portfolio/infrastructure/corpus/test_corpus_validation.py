@@ -58,7 +58,7 @@ def test_file_set_and_bytes_are_strictly_validated(
 
     corpus = tmp_path / "corpus"
     _write_corpus(corpus, corpus_fixture)
-    filename = corpus_fixture.manifest.documents[0].filename
+    filename = corpus_fixture.manifest.documents[0].file_name
     if mutation == "extra":
         (corpus / "extra.md").write_text("extra", encoding="utf-8")
     elif mutation == "missing":

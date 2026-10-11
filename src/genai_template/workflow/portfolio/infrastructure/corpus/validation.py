@@ -12,11 +12,9 @@ from pydantic import ValidationError
 
 from genai_template.workflow.portfolio.domain import (
     CorpusManifest,
-    CorpusManifestV2,
     CorpusValidationError,
     RenderedDocument,
     RepositorySnapshot,
-    VersionedCorpusManifest,
 )
 from genai_template.workflow.portfolio.infrastructure.corpus.manifest import (
     manifest_bytes,
@@ -34,7 +32,7 @@ _SAFE_FILENAME = re.compile(
 
 
 def validate_rendered_corpus(
-    manifest: CorpusManifestV2,
+    manifest: CorpusManifest,
     documents: Sequence[RenderedDocument],
     snapshot: RepositorySnapshot,
 ) -> None:
@@ -55,7 +53,7 @@ def validate_rendered_corpus(
 
     _validate_source_identity(manifest, snapshot)
     _validate_document_records(manifest, snapshot)
-    records = {record.filename: record for record in manifest.documents}
+    records = {record.file_name: record for record in manifest.documents}
     supplied = {document.filename: document for document in documents}
     if len(supplied) != len(documents) or supplied.keys() != records.keys():
         raise CorpusValidationError("rendered documents do not match the manifest")
@@ -79,7 +77,7 @@ def validate_rendered_corpus(
         raise CorpusValidationError("corpus fingerprint does not match manifest")
 
 
-def read_manifest(path: Path) -> VersionedCorpusManifest:
+def read_manifest(path: Path) -> CorpusManifest:
     """Read and strictly validate a canonical on-disk manifest.
 
     Args:
@@ -100,13 +98,7 @@ def read_manifest(path: Path) -> VersionedCorpusManifest:
         value = json.loads(text)
         if not isinstance(value, dict):
             raise TypeError("manifest root must be an object")
-        schema_version = value.get("manifest_schema_version")
-        if schema_version == 1:
-            manifest: VersionedCorpusManifest = CorpusManifest.model_validate(value)
-        elif schema_version == 2:
-            manifest = CorpusManifestV2.model_validate(value)
-        else:
-            raise ValueError("unknown manifest schema version")
+        manifest = CorpusManifest.model_validate(value)
     except (
         OSError,
         UnicodeDecodeError,
@@ -125,8 +117,8 @@ def validate_corpus_directory(
     directory: Path,
     snapshot: RepositorySnapshot,
     *,
-    expected_manifest: CorpusManifestV2 | None = None,
-) -> CorpusManifestV2:
+    expected_manifest: CorpusManifest | None = None,
+) -> CorpusManifest:
     """Validate every file and stable identity in a staged or released corpus.
 
     Args:
@@ -154,8 +146,6 @@ def validate_corpus_directory(
     if not manifest_path.is_file():
         raise CorpusValidationError("corpus is missing manifest.json")
     manifest = read_manifest(manifest_path)
-    if not isinstance(manifest, CorpusManifestV2):
-        raise CorpusValidationError("producer validation requires manifest schema v2")
     if expected_manifest is not None and manifest != expected_manifest:
         raise CorpusValidationError("on-disk manifest differs from expected manifest")
 
@@ -163,21 +153,21 @@ def validate_corpus_directory(
     _validate_document_records(manifest, snapshot)
     expected_files = {
         "manifest.json",
-        *(record.filename for record in manifest.documents),
+        *(record.file_name for record in manifest.documents),
     }
     actual_files = {entry.name for entry in entries}
     if actual_files != expected_files:
         raise CorpusValidationError("corpus file set does not match its manifest")
 
     for record in manifest.documents:
-        raw = (directory / record.filename).read_bytes()
+        raw = (directory / record.file_name).read_bytes()
         if len(raw) != record.byte_size:
             raise CorpusValidationError(
-                f"document byte size does not match manifest: {record.filename}"
+                f"document byte size does not match manifest: {record.file_name}"
             )
         if hashlib.sha256(raw).hexdigest() != record.content_hash:
             raise CorpusValidationError(
-                f"document content hash does not match manifest: {record.filename}"
+                f"document content hash does not match manifest: {record.file_name}"
             )
 
     if calculate_corpus_fingerprint(manifest) != manifest.corpus_fingerprint:
@@ -186,7 +176,7 @@ def validate_corpus_directory(
 
 
 def _validate_source_identity(
-    manifest: CorpusManifestV2,
+    manifest: CorpusManifest,
     snapshot: RepositorySnapshot,
 ) -> None:
     """Require the manifest to identify the supplied immutable snapshot.
@@ -215,7 +205,7 @@ def _validate_source_identity(
 
 
 def _validate_document_records(
-    manifest: CorpusManifestV2,
+    manifest: CorpusManifest,
     snapshot: RepositorySnapshot,
 ) -> None:
     """Validate filenames, balanced types, and snapshot evidence membership.
@@ -231,7 +221,7 @@ def _validate_document_records(
             If a record violates a document or evidence invariant.
     """
 
-    filenames = tuple(record.filename for record in manifest.documents)
+    filenames = tuple(record.file_name for record in manifest.documents)
     if filenames != tuple(sorted(filenames)) or len(filenames) != len(set(filenames)):
         raise CorpusValidationError("manifest filenames must be unique and sorted")
     project_slugs = tuple(project.project_slug for project in manifest.projects)
@@ -247,9 +237,9 @@ def _validate_document_records(
     for record in manifest.documents:
         if record.project_slug != snapshot.project_slug:
             raise CorpusValidationError("document belongs to an unexpected project")
-        pure_name = PurePosixPath(record.filename)
-        if pure_name.name != record.filename or not _SAFE_FILENAME.fullmatch(
-            record.filename
+        pure_name = PurePosixPath(record.file_name)
+        if pure_name.name != record.file_name or not _SAFE_FILENAME.fullmatch(
+            record.file_name
         ):
             raise CorpusValidationError("manifest contains an unsafe filename")
         try:
@@ -260,7 +250,7 @@ def _validate_document_records(
             )
         except ValueError as exc:
             raise CorpusValidationError("document identity is invalid") from exc
-        if record.filename != expected_name:
+        if record.file_name != expected_name:
             raise CorpusValidationError("document filename does not match its type")
         if not record.evidence_paths:
             raise CorpusValidationError("every document requires evidence")

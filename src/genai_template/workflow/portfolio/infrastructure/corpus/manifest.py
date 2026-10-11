@@ -10,13 +10,11 @@ from genai_template.workflow.portfolio.domain import (
     COMPONENT_PROMPT,
     OVERVIEW_PROMPT,
     TESTING_OPERATIONS_PROMPT,
-    CorpusManifestV2,
-    ManifestDocumentV2,
+    CorpusManifest,
+    ManifestDocument,
     ManifestProject,
-    ManifestPrompt,
     RenderedDocument,
     RepositorySnapshot,
-    VersionedCorpusManifest,
 )
 from genai_template.workflow.portfolio.domain.config import GenerationConfig
 from genai_template.workflow.portfolio.infrastructure.corpus.renderers import (
@@ -42,7 +40,7 @@ def build_corpus_manifest(
     snapshot: RepositorySnapshot,
     generation: GenerationConfig,
     documents: Sequence[RenderedDocument],
-) -> CorpusManifestV2:
+) -> CorpusManifest:
     """Build a canonical manifest and its non-circular corpus fingerprint.
 
     Args:
@@ -67,13 +65,13 @@ def build_corpus_manifest(
         _document_record(document, project_slug=snapshot.project_slug)
         for document in documents
     )
-    filenames = tuple(record.filename for record in records)
+    filenames = tuple(record.file_name for record in records)
     if not records:
         raise ValueError("a corpus manifest requires at least one document")
     if len(filenames) != len(set(filenames)):
         raise ValueError("manifest document filenames must be unique")
     if filenames != tuple(sorted(filenames)):
-        records = tuple(sorted(records, key=lambda record: record.filename))
+        records = tuple(sorted(records, key=lambda record: record.file_name))
 
     project = ManifestProject(
         project_slug=snapshot.project_slug,
@@ -83,24 +81,20 @@ def build_corpus_manifest(
         resolved_commit_sha=snapshot.resolved_commit_sha,
         source_fingerprint=snapshot.source_fingerprint,
         generation_profile=generation.profile,
-        prompt_version=generation.prompt_version,
-        prompts=tuple(
-            ManifestPrompt(prompt_id=prompt.prompt_id, prompt_hash=prompt.prompt_hash)
-            for prompt in _PROMPTS
-        ),
-        output_schema_version=generation.output_schema_version,
-        provider=generation.structured_generation.provider,
-        model=generation.structured_generation.model,
-        configuration_fingerprint=generation_configuration_fingerprint(generation),
     )
-    return build_corpus_manifest_v2(projects=(project,), documents=records)
+    return build_corpus_manifest_v2(
+        generation=generation,
+        projects=(project,),
+        documents=records,
+    )
 
 
 def build_corpus_manifest_v2(
     *,
+    generation: GenerationConfig,
     projects: Sequence[ManifestProject],
-    documents: Sequence[ManifestDocumentV2],
-) -> CorpusManifestV2:
+    documents: Sequence[ManifestDocument],
+) -> CorpusManifest:
     """Build a canonical v2 manifest from one or more project projections.
 
     Args:
@@ -119,9 +113,11 @@ def build_corpus_manifest_v2(
     """
 
     ordered_projects = tuple(sorted(projects, key=lambda project: project.project_slug))
-    ordered_documents = tuple(sorted(documents, key=lambda document: document.filename))
+    ordered_documents = tuple(
+        sorted(documents, key=lambda document: document.file_name)
+    )
     project_slugs = tuple(project.project_slug for project in ordered_projects)
-    filenames = tuple(document.filename for document in ordered_documents)
+    filenames = tuple(document.file_name for document in ordered_documents)
 
     if not ordered_projects:
         raise ValueError("a corpus manifest requires at least one project")
@@ -146,11 +142,23 @@ def build_corpus_manifest_v2(
             )
         except ValueError as exc:
             raise ValueError("manifest document identity is invalid") from exc
-        if document.filename != expected_filename:
+        if document.file_name != expected_filename:
             raise ValueError("manifest document filename does not match its owner")
 
     data: dict[str, Any] = {
-        "manifest_schema_version": 2,
+        "schema_version": 1,
+        "prompt_version": generation.prompt_version,
+        "prompts": tuple(
+            {
+                "prompt_id": prompt.prompt_id,
+                "prompt_hash": prompt.prompt_hash,
+            }
+            for prompt in _PROMPTS
+        ),
+        "output_schema_version": generation.output_schema_version,
+        "provider": generation.structured_generation.provider,
+        "model": generation.structured_generation.model,
+        "configuration_fingerprint": generation_configuration_fingerprint(generation),
         "projects": tuple(
             project.model_dump(mode="json") for project in ordered_projects
         ),
@@ -159,10 +167,10 @@ def build_corpus_manifest_v2(
         ),
     }
     data["corpus_fingerprint"] = calculate_corpus_fingerprint(data, ordered_documents)
-    return CorpusManifestV2.model_validate(data)
+    return CorpusManifest.model_validate(data)
 
 
-def manifest_bytes(manifest: VersionedCorpusManifest) -> bytes:
+def manifest_bytes(manifest: CorpusManifest) -> bytes:
     """Serialize a manifest as compact canonical JSON with one final newline.
 
     Args:
@@ -178,7 +186,7 @@ def manifest_bytes(manifest: VersionedCorpusManifest) -> bytes:
 
 def _document_record(
     document: RenderedDocument, *, project_slug: str
-) -> ManifestDocumentV2:
+) -> ManifestDocument:
     """Project a rendered document into stable manifest metadata.
 
     Args:
@@ -191,9 +199,9 @@ def _document_record(
         Stable document manifest record.
     """
 
-    return ManifestDocumentV2(
+    return ManifestDocument(
         project_slug=project_slug,
-        filename=document.filename,
+        file_name=document.filename,
         document_type=document.document_type,
         component_id=document.component_id,
         evidence_paths=document.evidence_paths,

@@ -122,10 +122,10 @@ class LoadedCorpus(ImmutableDomainModel):
     """
 
     release_path: Path = Field(description="Pinned validated release directory.")
-    manifest: NormalizedCorpusManifest = Field(
+    manifest: CorpusManifest = Field(
         description="Version-neutral normalized corpus manifest."
     )
-    documents: tuple[ManifestDocumentV2, ...] = Field(
+    documents: tuple[ManifestDocument, ...] = Field(
         min_length=1,
         description="Ordered normalized document records.",
     )
@@ -152,8 +152,10 @@ class ManifestDocument(ImmutableDomainModel):
     """Stable manifest record for one rendered Markdown document.
 
     Attributes:
-        filename:
-            Safe flat Markdown filename.
+        project_slug:
+            Slug of the project that owns this document.
+        file_name:
+            Safe flat Markdown file name.
         document_type:
             Logical type of the rendered document.
         component_id:
@@ -170,7 +172,11 @@ class ManifestDocument(ImmutableDomainModel):
             Size of the published Markdown in bytes.
     """
 
-    filename: str = Field(min_length=1, description="Safe flat Markdown filename.")
+    project_slug: str = Field(
+        min_length=1,
+        description="Slug of the project that owns this document.",
+    )
+    file_name: str = Field(min_length=1, description="Safe flat Markdown file name.")
     document_type: ArtifactKind = Field(description="Logical document type.")
     component_id: str | None = Field(
         default=None,
@@ -212,36 +218,6 @@ class ManifestDocument(ImmutableDomainModel):
         return self
 
 
-class ManifestDocumentV2(ManifestDocument):
-    """Stable v2 manifest record with explicit project ownership.
-
-    Attributes:
-        filename:
-            Safe flat Markdown filename.
-        document_type:
-            Logical type of the rendered document.
-        component_id:
-            Component identifier for a component document.
-        evidence_paths:
-            Ordered repository-relative evidence paths.
-        generation_fingerprint:
-            SHA-256 identity of the structured-generation inputs.
-        artifact_hash:
-            SHA-256 hash of the validated structured output.
-        content_hash:
-            SHA-256 hash of the published Markdown bytes.
-        byte_size:
-            Size of the published Markdown in bytes.
-        project_slug:
-            Slug of the project that owns this document.
-    """
-
-    project_slug: str = Field(
-        min_length=1,
-        description="Slug of the project that owns this document.",
-    )
-
-
 class ManifestProject(ImmutableDomainModel):
     """Stable source and generation provenance for one v2 corpus project.
 
@@ -260,18 +236,6 @@ class ManifestProject(ImmutableDomainModel):
             SHA-256 identity of the selected source snapshot.
         generation_profile:
             Corpus generation profile name.
-        prompt_version:
-            Version of the configured prompt family.
-        prompts:
-            Ordered prompt template identities used by generation.
-        output_schema_version:
-            Version of the structured-output schemas.
-        provider:
-            Structured-generation provider identifier.
-        model:
-            Provider model identifier.
-        configuration_fingerprint:
-            Stable content-affecting generation configuration identity.
     """
 
     project_slug: str = Field(min_length=1, description="Stable project identifier.")
@@ -297,49 +261,15 @@ class ManifestProject(ImmutableDomainModel):
     )
     generation_profile: Literal["balanced"] = Field(
         description="Corpus generation profile name."
-    )
-    prompt_version: str = Field(
-        min_length=1,
-        description="Configured prompt-family version.",
-    )
-    prompts: tuple[ManifestPrompt, ...] = Field(
-        min_length=1,
-        description="Ordered prompt template identities used by generation.",
-    )
-    output_schema_version: str = Field(
-        min_length=1,
-        description="Validated structured-output schema version.",
-    )
-    provider: Literal["ollama", "openai"] = Field(
-        description="Structured-generation provider identifier."
-    )
-    model: str = Field(min_length=1, description="Provider model identifier.")
-    configuration_fingerprint: str = Field(
-        pattern=r"^[0-9a-f]{64}$",
-        description="Stable content-affecting configuration identity.",
     )
 
 
 class CorpusManifest(ImmutableDomainModel):
-    """Canonical stable provenance for one complete published corpus.
+    """Canonical multi-project published corpus manifest.
 
     Attributes:
-        manifest_schema_version:
+        schema_version:
             Version of this manifest contract.
-        project_slug:
-            Stable configured project identifier.
-        project_display_name:
-            Human-readable configured project name.
-        repository_url:
-            Normalized repository URL when available.
-        requested_ref:
-            Repository ref requested before commit resolution.
-        resolved_commit_sha:
-            Immutable repository commit used for generation.
-        source_fingerprint:
-            SHA-256 identity of the selected source snapshot.
-        generation_profile:
-            Corpus generation profile name.
         prompt_version:
             Version of the configured prompt family.
         prompts:
@@ -352,76 +282,6 @@ class CorpusManifest(ImmutableDomainModel):
             Provider model identifier.
         configuration_fingerprint:
             Stable content-affecting generation configuration identity.
-        documents:
-            Ordered records corresponding one-to-one with Markdown files.
-        corpus_fingerprint:
-            SHA-256 identity of the manifest projection and Markdown bytes.
-    """
-
-    manifest_schema_version: Literal[1] = Field(
-        default=1,
-        description="Version of the corpus manifest contract.",
-    )
-    project_slug: str = Field(min_length=1, description="Stable project identifier.")
-    project_display_name: str = Field(
-        min_length=1,
-        description="Human-readable project name.",
-    )
-    repository_url: str | None = Field(
-        default=None,
-        description="Normalized repository URL when available.",
-    )
-    requested_ref: str = Field(
-        min_length=1,
-        description="Repository ref requested before commit resolution.",
-    )
-    resolved_commit_sha: str = Field(
-        pattern=r"^[0-9a-f]{40}(?:[0-9a-f]{24})?$",
-        description="Immutable repository commit used for generation.",
-    )
-    source_fingerprint: str = Field(
-        pattern=r"^[0-9a-f]{64}$",
-        description="SHA-256 identity of the selected source snapshot.",
-    )
-    generation_profile: Literal["balanced"] = Field(
-        description="Corpus generation profile name."
-    )
-    prompt_version: str = Field(
-        min_length=1,
-        description="Configured prompt-family version.",
-    )
-    prompts: tuple[ManifestPrompt, ...] = Field(
-        min_length=1,
-        description="Ordered prompt template identities used by generation.",
-    )
-    output_schema_version: str = Field(
-        min_length=1,
-        description="Validated structured-output schema version.",
-    )
-    provider: Literal["ollama", "openai"] = Field(
-        description="Structured-generation provider identifier."
-    )
-    model: str = Field(min_length=1, description="Provider model identifier.")
-    configuration_fingerprint: str = Field(
-        pattern=r"^[0-9a-f]{64}$",
-        description="Stable content-affecting configuration identity.",
-    )
-    documents: tuple[ManifestDocument, ...] = Field(
-        min_length=1,
-        description="Ordered published-document records.",
-    )
-    corpus_fingerprint: str = Field(
-        pattern=r"^[0-9a-f]{64}$",
-        description="SHA-256 identity of the complete stable corpus.",
-    )
-
-
-class CorpusManifestV2(ImmutableDomainModel):
-    """Canonical multi-project published corpus manifest.
-
-    Attributes:
-        manifest_schema_version:
-            Version of this manifest contract.
         projects:
             Ordered non-empty registry of project provenance.
         documents:
@@ -430,15 +290,35 @@ class CorpusManifestV2(ImmutableDomainModel):
             SHA-256 identity of the complete stable corpus.
     """
 
-    manifest_schema_version: Literal[2] = Field(
-        default=2,
+    schema_version: Literal[1] = Field(
+        default=1,
         description="Version of the corpus manifest contract.",
+    )
+    prompt_version: str = Field(
+        min_length=1,
+        description="Configured prompt-family version.",
+    )
+    prompts: tuple[ManifestPrompt, ...] = Field(
+        min_length=1,
+        description="Ordered prompt template identities used by generation.",
+    )
+    output_schema_version: str = Field(
+        min_length=1,
+        description="Validated structured-output schema version.",
+    )
+    provider: Literal["ollama", "openai"] = Field(
+        description="Structured-generation provider identifier."
+    )
+    model: str = Field(min_length=1, description="Provider model identifier.")
+    configuration_fingerprint: str = Field(
+        pattern=r"^[0-9a-f]{64}$",
+        description="Stable content-affecting configuration identity.",
     )
     projects: tuple[ManifestProject, ...] = Field(
         min_length=1,
         description="Ordered project provenance registry.",
     )
-    documents: tuple[ManifestDocumentV2, ...] = Field(
+    documents: tuple[ManifestDocument, ...] = Field(
         min_length=1,
         description="Ordered project-owned published-document records.",
     )
@@ -446,37 +326,3 @@ class CorpusManifestV2(ImmutableDomainModel):
         pattern=r"^[0-9a-f]{64}$",
         description="SHA-256 identity of the complete stable corpus.",
     )
-
-
-class NormalizedCorpusManifest(ImmutableDomainModel):
-    """Version-neutral immutable manifest used by corpus consumers.
-
-    Attributes:
-        source_schema_version:
-            Schema version of the manifest bytes that were normalized.
-        projects:
-            Ordered project provenance registry.
-        documents:
-            Ordered project-owned document records.
-        corpus_fingerprint:
-            Original manifest corpus fingerprint, preserved unchanged.
-    """
-
-    source_schema_version: Literal[1, 2] = Field(
-        description="Schema version of the source manifest."
-    )
-    projects: tuple[ManifestProject, ...] = Field(
-        min_length=1,
-        description="Ordered normalized project provenance registry.",
-    )
-    documents: tuple[ManifestDocumentV2, ...] = Field(
-        min_length=1,
-        description="Ordered normalized project-owned document records.",
-    )
-    corpus_fingerprint: str = Field(
-        pattern=r"^[0-9a-f]{64}$",
-        description="Original manifest corpus fingerprint.",
-    )
-
-
-type VersionedCorpusManifest = CorpusManifest | CorpusManifestV2

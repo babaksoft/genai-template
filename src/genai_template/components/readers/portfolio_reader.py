@@ -22,7 +22,7 @@ from genai_template.components.readers.text_reader import TextReader
 from genai_template.schemas.corpus import LoadedDocuments
 from genai_template.workflow.portfolio.domain import (
     CorpusValidationError,
-    ManifestDocumentV2,
+    ManifestDocument,
     ManifestProject,
 )
 from genai_template.workflow.portfolio.infrastructure.corpus import load_corpus
@@ -61,7 +61,7 @@ class PortfolioReader:
         loaded = self._text_reader.load(corpus.release_path)
         documents = loaded.documents if isinstance(loaded, LoadedDocuments) else loaded
         by_name: dict[str, Document] = {}
-        expected_names = {record.filename for record in corpus.documents}
+        expected_names = {record.file_name for record in corpus.documents}
 
         for document in documents:
             filename = document.metadata.get(FILE_NAME)
@@ -97,7 +97,7 @@ class PortfolioReader:
         }
         projected = tuple(
             self._project_document(
-                by_name[record.filename],
+                by_name[record.file_name],
                 record,
                 projects[record.project_slug],
                 corpus.manifest.corpus_fingerprint,
@@ -109,7 +109,7 @@ class PortfolioReader:
     @staticmethod
     def _project_document(
         document: Document,
-        record: ManifestDocumentV2,
+        record: ManifestDocument,
         project: ManifestProject,
         corpus_fingerprint: str,
     ) -> Document:
@@ -136,11 +136,11 @@ class PortfolioReader:
             RESOLVED_COMMIT_SHA: project.resolved_commit_sha,
             CORPUS_FINGERPRINT: corpus_fingerprint,
             GENERATION_FINGERPRINT: record.generation_fingerprint,
-            FILE_NAME: record.filename,
+            FILE_NAME: record.file_name,
         }
         if record.component_id is not None:
             metadata[COMPONENT_ID] = record.component_id
         if project.repository_url is not None:
             metadata[REPOSITORY_URL] = project.repository_url
         validate_portfolio_metadata(metadata, allow_header_path=False)
-        return Document(text=document.text, id_=record.filename, metadata=metadata)
+        return Document(text=document.text, id_=record.file_name, metadata=metadata)

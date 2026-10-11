@@ -8,7 +8,7 @@ from typing import overload
 
 from llama_index.core import Document
 
-from genai_template.workflow.portfolio.domain.corpus import NormalizedCorpusManifest
+from genai_template.workflow.portfolio.domain.corpus import CorpusManifest
 
 
 @dataclass(frozen=True)
@@ -27,7 +27,7 @@ class LoadedDocuments(Sequence[Document]):
     """
 
     documents: tuple[Document, ...]
-    provenance: NormalizedCorpusManifest | None = None
+    provenance: CorpusManifest | None = None
 
     def __len__(self) -> int:
         """Return the number of loaded documents.
