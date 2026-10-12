@@ -61,6 +61,7 @@ def validate_project_evidence(
 
     if isinstance(summary, ComponentSummary):
         raise TypeError("project evidence validation does not accept components")
+
     permitted_paths = set(repository_context_paths) | set(component_evidence_paths)
     _validate_scope(summary, permitted_paths)
     return summary

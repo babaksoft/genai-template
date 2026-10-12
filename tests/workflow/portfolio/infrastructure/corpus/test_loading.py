@@ -102,7 +102,7 @@ def test_loads_two_project_v2_with_distinct_provenance(
         project_slug="second",
         file_name="second--overview.md",
         document_type="overview",
-        component_id=None,
+        component_id="overview",
         evidence_paths=("README.md",),
         generation_fingerprint="f" * 64,
         artifact_hash="1" * 64,

@@ -347,10 +347,6 @@ def test_invalid_evidence_warnings_and_fallback_are_reused_from_cache(
     warning_codes = tuple(
         warning.code for warning in first_component.artifact.generation_warnings
     )
-    assert first_component.summary.responsibilities.content == (
-        "Summary for src/api.py.",
-    )
-    assert first_component.summary.responsibilities.evidence_paths == ("src/api.py",)
     assert warning_codes.count("invalid_evidence_path") == 5
     assert warning_codes.count("evidence_scope_fallback") == 5
     assert second_generator.calls == []

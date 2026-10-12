@@ -249,47 +249,6 @@ class StructuredGenerationConfig(ImmutableDomainModel):
         return self
 
 
-class ProjectDocumentContextConfig(ImmutableDomainModel):
-    """Repository context patterns for balanced project documents.
-
-    Attributes:
-        overview:
-            Patterns supplying repository context to overview synthesis.
-        architecture:
-            Patterns supplying repository context to architecture synthesis.
-        testing_operations:
-            Patterns supplying context to testing and operations synthesis.
-    """
-
-    overview: tuple[str, ...] = Field(
-        min_length=1,
-        description="Repository patterns supplying overview context.",
-    )
-    architecture: tuple[str, ...] = Field(
-        min_length=1,
-        description="Repository patterns supplying architecture context.",
-    )
-    testing_operations: tuple[str, ...] = Field(
-        min_length=1,
-        description="Repository patterns supplying testing and operations context.",
-    )
-
-    @field_validator("overview", "architecture", "testing_operations")
-    @classmethod
-    def validate_patterns(cls, values: tuple[str, ...]) -> tuple[str, ...]:
-        """Validate project-document repository patterns.
-
-        Args:
-            values:
-                Patterns supplied by configuration.
-
-        Returns:
-            The validated patterns.
-        """
-
-        return tuple(_validate_repository_pattern(value) for value in values)
-
-
 class GenerationInputLimits(ImmutableDomainModel):
     """Hard input limits applied to each structured-generation call.
 
@@ -489,9 +448,6 @@ class ProjectConfig(ImmutableDomainModel):
     selection: SelectionConfig = Field(
         description="Committed-file selection and size-limit settings."
     )
-    document_context: ProjectDocumentContextConfig = Field(
-        description="Repository context patterns for project-level documents."
-    )
     summary_units: tuple[SummaryUnitConfig, ...] = Field(
         min_length=1,
         description="Explicit logical groups planned from selected files.",
@@ -667,6 +623,7 @@ def _validate_repository_pattern(value: str) -> str:
 
     if not value or value != value.strip():
         raise ValueError("repository pattern must be non-empty and normalized")
+
     if "\\" in value:
         raise ValueError("repository pattern must use POSIX separators")
     if value.startswith("/") or _WINDOWS_ABSOLUTE_PATTERN.match(value):
@@ -677,6 +634,8 @@ def _validate_repository_pattern(value: str) -> str:
         raise ValueError(
             "repository pattern must be normalized and must not contain '..'"
         )
+
     if PurePosixPath(value).is_absolute():
         raise ValueError("repository pattern must be relative")
+
     return value

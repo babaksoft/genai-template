@@ -37,21 +37,23 @@ projects:
       exclude:
         - "**/__pycache__/**"
       max_file_bytes: 262144
-    document_context:
-      overview:
-        - README.md
-        - pyproject.toml
-      architecture:
-        - src/genai_template/api/**/*.py
-        - src/genai_template/components/splitters/**/*.py
-        - src/genai_template/services/**/*.py
-      testing_operations:
-        - README.md
-        - pyproject.toml
-        - tests/api/**/*.py
-        - tests/components/splitters/**/*.py
-        - tests/services/**/*.py
     summary_units:
+      - id: overview
+        paths:
+          - README.md
+          - pyproject.toml
+      - id: architecture
+        paths:
+          - src/genai_template/api/**/*.py
+          - src/genai_template/components/splitters/**/*.py
+          - src/genai_template/services/**/*.py
+      - id: testing_operations
+        paths:
+          - README.md
+          - pyproject.toml
+          - tests/api/**/*.py
+          - tests/components/splitters/**/*.py
+          - tests/services/**/*.py
       - id: api
         paths:
           - src/genai_template/api/**/*.py

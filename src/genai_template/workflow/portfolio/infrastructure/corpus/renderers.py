@@ -12,8 +12,6 @@ from genai_template.workflow.portfolio.domain import (
     CachedArtifact,
     ComponentSummaryArtifact,
     EvidenceSection,
-    ProjectArtifactKind,
-    ProjectSummaryArtifact,
     RenderedDocument,
     StructuredSummary,
     summary_evidence_paths,
@@ -23,17 +21,10 @@ from genai_template.workflow.portfolio.infrastructure.fingerprints import (
 )
 
 _IDENTIFIER_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
-_PROJECT_ORDER: dict[ProjectArtifactKind, int] = {
-    "overview": 0,
-    "architecture": 1,
-    "testing_operations": 2,
-}
-_PROJECT_TITLES: dict[ProjectArtifactKind, str] = {
+_SECTION_TITLES: dict[str, str] = {
     "overview": "Overview",
     "architecture": "Architecture",
     "testing_operations": "Testing and Operations",
-}
-_SECTION_TITLES: dict[str, str] = {
     "responsibilities": "Responsibilities",
     "important_abstractions": "Important Abstractions",
     "behavior": "Behavior",
@@ -55,45 +46,33 @@ _SECTION_TITLES: dict[str, str] = {
 _MARKDOWN_PUNCTUATION = re.compile(r"([\\`*_{}\[\]()<>#+\-.!|])")
 
 
-def build_document_filename(
+def build_document_file_name(
     project_slug: str,
-    document_type: ArtifactKind,
-    *,
-    component_id: str | None = None,
+    component_id: str,
 ) -> str:
-    """Construct one safe deterministic flat Markdown filename.
+    """Construct one safe deterministic flat Markdown file name.
 
     Args:
         project_slug:
             Normalized project identifier.
-        document_type:
-            Logical type of document to name.
         component_id:
             Normalized summary-unit identifier for a component document.
 
     Returns:
-        Project-prefixed flat Markdown filename.
+        Project-prefixed flat Markdown file name.
 
     Raises:
         ValueError:
             If identifiers are unsafe or component identity does not match type.
     """
 
+    if component_id is None:
+        raise ValueError("component documents require a component identifier")
+
     _validate_identifier(project_slug, "project slug")
-    if document_type == "component":
-        if component_id is None:
-            raise ValueError("component documents require a component identifier")
-        _validate_identifier(component_id, "component identifier")
-        return f"{project_slug}--component--{component_id}.md"
-    if component_id is not None:
-        raise ValueError("project documents cannot have a component identifier")
-    suffixes: dict[ArtifactKind, str] = {
-        "overview": "overview",
-        "architecture": "architecture",
-        "testing_operations": "testing-operations",
-        "component": "component",
-    }
-    return f"{project_slug}--{suffixes[document_type]}.md"
+    _validate_identifier(component_id, "component identifier")
+
+    return f"{project_slug}--component--{component_id}.md"
 
 
 def render_component_document(
@@ -126,41 +105,10 @@ def render_component_document(
     )
 
 
-def render_project_document(
-    project_slug: str,
-    display_name: str,
-    project: ProjectSummaryArtifact,
-) -> RenderedDocument:
-    """Render one validated project artifact as deterministic Markdown.
-
-    Args:
-        project_slug:
-            Normalized project identifier used only for the filename.
-        display_name:
-            Human-readable project name used in the owned title template.
-        project:
-            Validated project summary and artifact metadata.
-
-    Returns:
-        Immutable rendered document with a hash of its actual UTF-8 bytes.
-    """
-
-    title = f"{display_name} — {_PROJECT_TITLES[project.artifact_kind]}"
-    return _render_document(
-        project_slug=project_slug,
-        title=title,
-        document_type=project.artifact_kind,
-        component_id=None,
-        summary=project.summary,
-        artifact=project.artifact,
-    )
-
-
 def render_balanced_documents(
     project_slug: str,
     display_name: str,
     components: Sequence[ComponentSummaryArtifact],
-    projects: Sequence[ProjectSummaryArtifact],
 ) -> tuple[RenderedDocument, ...]:
     """Render and validate the exact balanced-profile document set.
 
@@ -187,15 +135,6 @@ def render_balanced_documents(
             If artifacts are missing, duplicated, or produce filename collisions.
     """
 
-    ordered_projects = tuple(
-        sorted(projects, key=lambda value: _PROJECT_ORDER[value.artifact_kind])
-    )
-    project_kinds = [project.artifact_kind for project in ordered_projects]
-    if project_kinds != ["overview", "architecture", "testing_operations"]:
-        raise ValueError(
-            "balanced rendering requires one overview, architecture, and "
-            "testing/operations artifact"
-        )
     ordered_components = tuple(sorted(components, key=lambda value: value.unit_id))
     component_ids = [component.unit_id for component in ordered_components]
     if not component_ids:
@@ -203,22 +142,17 @@ def render_balanced_documents(
     if len(component_ids) != len(set(component_ids)):
         raise ValueError("component document identifiers must be unique")
 
-    filenames = [
-        build_document_filename(project_slug, project.artifact_kind)
-        for project in ordered_projects
-    ] + [
-        build_document_filename(
-            project_slug, "component", component_id=component.unit_id
+    file_names = [
+        build_document_file_name(
+            project_slug,
+            component.unit_id,
         )
         for component in ordered_components
     ]
-    if len(filenames) != len(set(filenames)):
+    if len(file_names) != len(set(file_names)):
         raise ValueError("balanced document filenames collide")
 
     return tuple(
-        render_project_document(project_slug, display_name, project)
-        for project in ordered_projects
-    ) + tuple(
         render_component_document(project_slug, display_name, component)
         for component in ordered_components
     )
@@ -229,7 +163,7 @@ def _render_document(
     project_slug: str,
     title: str,
     document_type: ArtifactKind,
-    component_id: str | None,
+    component_id: str,
     summary: StructuredSummary,
     artifact: CachedArtifact,
 ) -> RenderedDocument:
@@ -257,8 +191,6 @@ def _render_document(
             If summary, artifact, and requested document type disagree.
     """
 
-    if artifact.provenance.artifact_kind != document_type:
-        raise ValueError("rendered document type does not match artifact provenance")
     expected_output = summary.model_dump(mode="json")
     if artifact.summary != expected_output:
         raise ValueError("rendered summary does not match its artifact output")
@@ -274,9 +206,7 @@ def _render_document(
     content = "\n".join(lines).rstrip("\n") + "\n"
     content_bytes = content.encode("utf-8")
     return RenderedDocument(
-        filename=build_document_filename(
-            project_slug, document_type, component_id=component_id
-        ),
+        filename=build_document_file_name(project_slug, component_id),
         document_type=document_type,
         component_id=component_id,
         generation_fingerprint=artifact.provenance.generation_fingerprint,

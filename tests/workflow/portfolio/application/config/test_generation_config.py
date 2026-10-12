@@ -19,7 +19,6 @@ from genai_template.workflow.portfolio.domain.config import (
     GenerationInputLimits,
     GenerationLocations,
     InferenceConfig,
-    ProjectDocumentContextConfig,
     StructuredGenerationConfig,
     TokenPricingConfig,
 )
@@ -187,7 +186,6 @@ def test_credentials_are_not_configuration_fields(tmp_path: Path) -> None:
     [
         InferenceConfig,
         StructuredGenerationConfig,
-        ProjectDocumentContextConfig,
         GenerationInputLimits,
         GenerationLocations,
         TokenPricingConfig,

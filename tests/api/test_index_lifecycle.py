@@ -365,11 +365,15 @@ def _corpus(
             ),
         ),
     )
-    specifications: tuple[tuple[str, ArtifactKind, str | None], ...] = (
-        ("sample--architecture.md", "architecture", None),
+    specifications: tuple[tuple[str, ArtifactKind, str], ...] = (
+        ("sample--component--architecture.md", "architecture", "architecture"),
         ("sample--component--api.md", "component", "api"),
-        ("sample--overview.md", "overview", None),
-        ("sample--testing-operations.md", "testing_operations", None),
+        ("sample--component--overview.md", "overview", "overview"),
+        (
+            "sample--component--testing-operations.md",
+            "testing_operations",
+            "testing_operations",
+        ),
     )
     documents = tuple(
         _rendered_document(filename, document_type, component_id, body)
@@ -392,7 +396,7 @@ def _corpus(
 def _rendered_document(
     filename: str,
     document_type: ArtifactKind,
-    component_id: str | None,
+    component_id: str,
     body: str,
 ) -> RenderedDocument:
     """Build one deterministic generated document.

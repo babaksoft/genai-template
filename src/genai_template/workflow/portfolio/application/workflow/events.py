@@ -9,7 +9,6 @@ from llama_index.core.workflow import Event, StartEvent
 from genai_template.workflow.portfolio.domain import (
     ComponentSummaryArtifact,
     CorpusManifest,
-    ProjectSummaryArtifact,
     RenderedDocument,
     RepositorySnapshot,
     StepRunReport,
@@ -130,35 +129,6 @@ class ComponentsGeneratedEvent(Event):
     steps: tuple[StepRunReport, ...]
 
 
-class ProjectsGeneratedEvent(Event):
-    """Validated project synthesis artifacts generated or reused.
-
-    Attributes:
-        project:
-            Selected project configuration.
-        generation:
-            Balanced generation configuration.
-        snapshot:
-            Canonical selected committed snapshot.
-        components:
-            Ordered validated component artifacts.
-        projects:
-            Ordered validated project artifacts.
-        run_started_at:
-            Monotonic start value for the complete run.
-        steps:
-            Completed workflow-step reports.
-    """
-
-    project: ProjectConfig
-    generation: GenerationConfig
-    snapshot: RepositorySnapshot
-    components: tuple[ComponentSummaryArtifact, ...]
-    projects: tuple[ProjectSummaryArtifact, ...]
-    run_started_at: float
-    steps: tuple[StepRunReport, ...]
-
-
 class DocumentsRenderedEvent(Event):
     """Deterministic Markdown documents ready for manifest construction.
 
@@ -182,7 +152,7 @@ class DocumentsRenderedEvent(Event):
     project: ProjectConfig
     generation: GenerationConfig
     snapshot: RepositorySnapshot
-    artifacts: tuple[ComponentSummaryArtifact | ProjectSummaryArtifact, ...]
+    artifacts: tuple[ComponentSummaryArtifact, ...]
     documents: tuple[RenderedDocument, ...]
     run_started_at: float
     steps: tuple[StepRunReport, ...]
@@ -213,7 +183,7 @@ class CorpusValidatedEvent(Event):
     project: ProjectConfig
     generation: GenerationConfig
     snapshot: RepositorySnapshot
-    artifacts: tuple[ComponentSummaryArtifact | ProjectSummaryArtifact, ...]
+    artifacts: tuple[ComponentSummaryArtifact, ...]
     documents: tuple[RenderedDocument, ...]
     manifest: CorpusManifest
     run_started_at: float

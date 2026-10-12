@@ -139,6 +139,7 @@ def _generate_component_summary(
         output_schema_version=generation.output_schema_version,
         structured_generation=structured_generation,
     )
+
     cached = cache.get(
         fingerprint,
         expected_kind="component",
@@ -153,10 +154,12 @@ def _generate_component_summary(
         sum(file.byte_size for file in unit.files),
         fingerprint,
     )
+
     if cached is not None:
         summary = ComponentSummary.model_validate(cached.summary)
         validate_component_evidence(summary, paths)
         logger.info("Component summary %s accepted from cache", unit.unit_id)
+
         return ComponentSummaryArtifact(
             unit_id=unit.unit_id,
             summary=summary,

@@ -43,6 +43,7 @@ def canonical_json_bytes(value: object) -> bytes:
     serializable = (
         value.model_dump(mode="json") if isinstance(value, BaseModel) else value
     )
+
     return json.dumps(
         serializable,
         allow_nan=False,

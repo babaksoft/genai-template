@@ -24,7 +24,6 @@ from genai_template.workflow.portfolio.application.workflow.events import (
     CorpusValidatedEvent,
     DocumentsRenderedEvent,
     GenerateCorpusStartEvent,
-    ProjectsGeneratedEvent,
     SnapshotSelectedEvent,
     SummaryPlannedEvent,
 )
@@ -60,7 +59,6 @@ from genai_template.workflow.portfolio.infrastructure.fingerprints import (
 )
 from genai_template.workflow.portfolio.infrastructure.generation import (
     generate_component_summaries,
-    generate_project_summaries,
 )
 
 logger = logging.getLogger(__name__)
@@ -312,52 +310,8 @@ class PortfolioCorpusWorkflow(Workflow):
         )
 
     @step
-    async def generate_projects(
-        self, event: ComponentsGeneratedEvent
-    ) -> ProjectsGeneratedEvent:
-        """Generate or reuse the three project synthesis artifacts.
-
-        Args:
-            event:
-                Validated component artifacts and snapshot.
-
-        Returns:
-            Component and project artifacts.
-        """
-
-        logger.info("Portfolio workflow step started: project-synthesis")
-        started_at = self.clock()
-        generator = _ObservedGenerator(self.generator_factory(event.generation))
-        cache = self.cache_factory(event.generation.locations.cache)
-        with application_span(
-            "portfolio.project_synthesis",
-            "CHAIN",
-            {"component.count": len(event.components)},
-        ):
-            projects = generate_project_summaries(
-                event.snapshot,
-                event.components,
-                event.project.document_context,
-                event.generation,
-                generator,
-                cache,
-                clock=self.clock,
-            )
-        return ProjectsGeneratedEvent(
-            project=event.project,
-            generation=event.generation,
-            snapshot=event.snapshot,
-            components=event.components,
-            projects=projects,
-            run_started_at=event.run_started_at,
-            steps=_append_step(
-                event.steps, "project-synthesis", self.clock, started_at
-            ),
-        )
-
-    @step
     async def render_documents(
-        self, event: ProjectsGeneratedEvent
+        self, event: ComponentsGeneratedEvent
     ) -> DocumentsRenderedEvent:
         """Render validated artifacts into deterministic Markdown.
 
@@ -380,7 +334,6 @@ class PortfolioCorpusWorkflow(Workflow):
                 event.project.slug,
                 event.project.display_name,
                 event.components,
-                event.projects,
             )
         return DocumentsRenderedEvent(
             project=event.project,

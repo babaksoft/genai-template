@@ -26,7 +26,7 @@ _FINGERPRINT_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
 class FilesystemArtifactCache:
-    """Store canonical cache envelopes under a dedicated filesystem directory.
+    """Store canonical cache envelopes under a dedicated file system directory.
 
     Attributes:
         root:
@@ -34,7 +34,7 @@ class FilesystemArtifactCache:
     """
 
     def __init__(self, root: Path) -> None:
-        """Initialize the filesystem cache.
+        """Initialize the file system cache.
 
         Args:
             root:
@@ -106,6 +106,7 @@ class FilesystemArtifactCache:
             output_schema_version=output_schema_version,
             output_type=output_type,
         )
+
         return artifact
 
     def put[SummaryT: StructuredSummary](
@@ -162,14 +163,14 @@ class FilesystemArtifactCache:
                 temporary_path.unlink(missing_ok=True)
 
     def _entry_path(self, generation_fingerprint: str) -> Path:
-        """Resolve a validated fingerprint to its flat cache filename.
+        """Resolve a validated fingerprint to its flat cache file name.
 
         Args:
             generation_fingerprint:
                 Candidate cache key.
 
         Returns:
-            Filesystem path for the cache entry.
+            File system path for the cache entry.
 
         Raises:
             ArtifactCacheError:
@@ -219,6 +220,7 @@ class FilesystemArtifactCache:
                 "cache envelope schema version does not match",
                 "cache-schema-mismatch",
             )
+
         provenance = artifact.provenance
         if provenance.generation_fingerprint != generation_fingerprint:
             raise FilesystemArtifactCache._error(
@@ -226,12 +228,14 @@ class FilesystemArtifactCache:
                 "cache entry fingerprint does not match its key",
                 "key-mismatch",
             )
+
         if provenance.artifact_kind != expected_kind:
             raise FilesystemArtifactCache._error(
                 generation_fingerprint,
                 "cache entry artifact kind does not match",
                 "kind-mismatch",
             )
+
         if provenance.output_schema_version != output_schema_version:
             raise FilesystemArtifactCache._error(
                 generation_fingerprint,
@@ -254,6 +258,7 @@ class FilesystemArtifactCache:
                 "cache entry summary is not canonical",
                 "noncanonical-output",
             )
+
         if sha256_canonical_json(artifact.summary) != artifact.output_hash:
             raise FilesystemArtifactCache._error(
                 generation_fingerprint,

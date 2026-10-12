@@ -6,7 +6,6 @@ from genai_template.workflow.portfolio.domain.artifacts import (
     ArtifactRunReport,
     CachedArtifact,
     ComponentSummaryArtifact,
-    ProjectSummaryArtifact,
     ProviderAuditMetadata,
     TokenUsage,
 )
@@ -117,7 +116,6 @@ __all__ = [
     "ParsedSummary",
     "ProjectArtifactKind",
     "ProjectOverviewSummary",
-    "ProjectSummaryArtifact",
     "PromptDefinition",
     "ProviderAuditMetadata",
     "PublicationResult",

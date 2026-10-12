@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import hashlib
-from pathlib import Path
 
 import pytest
 
 from genai_template.workflow.portfolio.domain import (
-    ArchitectureSummary,
     ArtifactKind,
     ArtifactProvenance,
     ArtifactRunReport,
@@ -16,20 +14,13 @@ from genai_template.workflow.portfolio.domain import (
     ComponentSummary,
     ComponentSummaryArtifact,
     EvidenceSection,
-    ProjectArtifactKind,
-    ProjectOverviewSummary,
-    ProjectSummaryArtifact,
     StructuredSummary,
+    TokenUsage,
 )
-from genai_template.workflow.portfolio.domain import (
-    TestingOperationsSummary as OperationsSummary,
-)
-from genai_template.workflow.portfolio.domain import TokenUsage
 from genai_template.workflow.portfolio.infrastructure.corpus import (
-    build_document_filename,
+    build_document_file_name,
     render_balanced_documents,
     render_component_document,
-    render_project_document,
 )
 from genai_template.workflow.portfolio.infrastructure.fingerprints import (
     sha256_canonical_json,
@@ -146,41 +137,6 @@ def _component(unit_id: str = "api") -> ComponentSummaryArtifact:
     )
 
 
-def _project(kind: ProjectArtifactKind) -> ProjectSummaryArtifact:
-    """Build one renderable project artifact of the requested type.
-
-    Args:
-        kind:
-            Overview, architecture, or testing/operations kind.
-
-    Returns:
-        Valid project summary artifact.
-    """
-
-    section = _section("Project <script> detail.")
-    schemas: dict[ProjectArtifactKind, type[StructuredSummary]] = {
-        "overview": ProjectOverviewSummary,
-        "architecture": ArchitectureSummary,
-        "testing_operations": OperationsSummary,
-    }
-    characters: dict[ProjectArtifactKind, str] = {
-        "overview": "2",
-        "architecture": "3",
-        "testing_operations": "4",
-    }
-    schema = schemas[kind]
-    summary = schema.model_validate(
-        {field_name: section for field_name in schema.model_fields}
-    )
-    character = characters[kind]
-    return ProjectSummaryArtifact(
-        artifact_kind=kind,
-        summary=summary,
-        artifact=_artifact(kind, summary, character),
-        run_report=_report(kind, character),
-    )
-
-
 def test_component_renderer_matches_golden_markdown_and_hashes_actual_bytes() -> None:
     """Component headings, escaping, evidence, whitespace, and hash are fixed."""
 
@@ -239,71 +195,33 @@ Evidence:
 def test_balanced_rendering_is_stable_for_shuffled_inputs_and_all_four_types() -> None:
     """The exact balanced set has canonical order independent of input order."""
 
-    projects = (
-        _project("testing_operations"),
-        _project("overview"),
-        _project("architecture"),
-    )
     components = (_component("web"), _component("api"))
 
-    first = render_balanced_documents("sample", "Sample", components, projects)
-    second = render_balanced_documents(
-        "sample", "Sample", tuple(reversed(components)), tuple(reversed(projects))
-    )
+    first = render_balanced_documents("sample", "Sample", components)
+    second = render_balanced_documents("sample", "Sample", tuple(reversed(components)))
 
     assert first == second
     assert [document.document_type for document in first] == [
-        "overview",
-        "architecture",
-        "testing_operations",
         "component",
         "component",
     ]
     assert [document.filename for document in first] == [
-        "sample--overview.md",
-        "sample--architecture.md",
-        "sample--testing-operations.md",
         "sample--component--api.md",
         "sample--component--web.md",
     ]
     assert "&lt;script&gt;" in first[0].content
 
 
-@pytest.mark.parametrize(
-    "kind",
-    ["overview", "architecture", "testing_operations"],
-)
-def test_project_renderer_matches_golden_markdown(
-    kind: ProjectArtifactKind,
-) -> None:
-    """Each project-document schema has fixed golden Markdown output.
-
-    Args:
-        kind:
-            Project document type whose golden output is checked.
-    """
-
-    golden_path = Path(__file__).parent / "golden" / f"{kind}.md"
-    document = render_project_document("sample", "Sample", _project(kind))
-
-    assert document.content.encode("utf-8") == golden_path.read_bytes()
-
-
 def test_filename_construction_rejects_unsafe_values_and_collisions() -> None:
     """Model values cannot control paths and duplicate units fail as a set."""
 
     with pytest.raises(ValueError, match="lowercase kebab case"):
-        build_document_filename("../sample", "overview")
+        build_document_file_name("../sample", "overview")
     with pytest.raises(ValueError, match="require a component"):
-        build_document_filename("sample", "component")
+        build_document_file_name("sample", "component")
     with pytest.raises(ValueError, match="identifiers must be unique"):
         render_balanced_documents(
             "sample",
             "Sample",
             (_component("api"), _component("api")),
-            (
-                _project("overview"),
-                _project("architecture"),
-                _project("testing_operations"),
-            ),
         )

@@ -12,10 +12,9 @@ from genai_template.workflow.portfolio.infrastructure.corpus.publisher import (
     publish_corpus,
 )
 from genai_template.workflow.portfolio.infrastructure.corpus.renderers import (
-    build_document_filename,
+    build_document_file_name,
     render_balanced_documents,
     render_component_document,
-    render_project_document,
 )
 from genai_template.workflow.portfolio.infrastructure.corpus.validation import (
     read_manifest,
@@ -26,14 +25,13 @@ from genai_template.workflow.portfolio.infrastructure.corpus.validation import (
 __all__ = [
     "build_corpus_manifest",
     "build_corpus_manifest_v2",
-    "build_document_filename",
+    "build_document_file_name",
     "load_corpus",
     "manifest_bytes",
     "publish_corpus",
     "read_manifest",
     "render_balanced_documents",
     "render_component_document",
-    "render_project_document",
     "validate_corpus_directory",
     "validate_rendered_corpus",
 ]

@@ -38,7 +38,6 @@ from genai_template.workflow.portfolio.domain.config import (
     LocalGitRepositoryConfig,
     PortfolioConfig,
     ProjectConfig,
-    ProjectDocumentContextConfig,
     SelectionConfig,
     StructuredGenerationConfig,
     SummaryUnitConfig,
@@ -322,11 +321,6 @@ def _gate_config(
                 selection=SelectionConfig(
                     include=("README.md", "src/**/*.py", "tests/**/*.py"),
                     max_file_bytes=100_000,
-                ),
-                document_context=ProjectDocumentContextConfig(
-                    overview=("README.md",),
-                    architecture=("src/**/*.py",),
-                    testing_operations=("README.md", "tests/**/*.py"),
                 ),
                 summary_units=(
                     SummaryUnitConfig(

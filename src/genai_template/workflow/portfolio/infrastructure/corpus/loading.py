@@ -11,7 +11,7 @@ from genai_template.workflow.portfolio.domain import (
     LoadedCorpus,
 )
 from genai_template.workflow.portfolio.infrastructure.corpus.renderers import (
-    build_document_filename,
+    build_document_file_name,
 )
 from genai_template.workflow.portfolio.infrastructure.corpus.validation import (
     read_manifest,
@@ -144,10 +144,9 @@ def _validate_consumer_contract(manifest: CorpusManifest) -> None:
             raise CorpusValidationError("manifest contains an unsafe filename")
 
         try:
-            expected = build_document_filename(
+            expected = build_document_file_name(
                 record.project_slug,
-                record.document_type,
-                component_id=record.component_id,
+                record.component_id,
             )
         except ValueError as exc:
             raise CorpusValidationError("document identity is invalid") from exc

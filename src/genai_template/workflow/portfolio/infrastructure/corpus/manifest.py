@@ -18,7 +18,7 @@ from genai_template.workflow.portfolio.domain import (
 )
 from genai_template.workflow.portfolio.domain.config import GenerationConfig
 from genai_template.workflow.portfolio.infrastructure.corpus.renderers import (
-    build_document_filename,
+    build_document_file_name,
 )
 from genai_template.workflow.portfolio.infrastructure.fingerprints import (
     calculate_corpus_fingerprint,
@@ -135,10 +135,9 @@ def build_corpus_manifest_v2(
 
     for document in ordered_documents:
         try:
-            expected_filename = build_document_filename(
+            expected_filename = build_document_file_name(
                 document.project_slug,
-                document.document_type,
-                component_id=document.component_id,
+                document.component_id,
             )
         except ValueError as exc:
             raise ValueError("manifest document identity is invalid") from exc

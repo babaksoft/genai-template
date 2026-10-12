@@ -33,9 +33,9 @@ class RenderedDocument(ImmutableDomainModel):
 
     filename: str = Field(min_length=1, description="Safe flat corpus filename.")
     document_type: ArtifactKind = Field(description="Logical document type.")
-    component_id: str | None = Field(
-        default=None,
-        description="Component unit identifier when applicable.",
+    component_id: str = Field(
+        min_length=1,
+        description="Component unit identifier.",
     )
     generation_fingerprint: str = Field(
         pattern=r"^[0-9a-f]{64}$",
@@ -178,9 +178,9 @@ class ManifestDocument(ImmutableDomainModel):
     )
     file_name: str = Field(min_length=1, description="Safe flat Markdown file name.")
     document_type: ArtifactKind = Field(description="Logical document type.")
-    component_id: str | None = Field(
-        default=None,
-        description="Component identifier when this is a component document.",
+    component_id: str = Field(
+        min_length=1,
+        description="Component identifier for this document.",
     )
     evidence_paths: tuple[str, ...] = Field(
         description="Ordered repository-relative evidence paths."

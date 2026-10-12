@@ -58,9 +58,11 @@ def generate_validated_summary[SummaryT: StructuredSummary](
     repository_paths = tuple(repository_context_paths)
     component_paths = tuple(component_evidence_paths)
     response = generator.generate(request)
+
     specification = SUMMARY_SPECIFICATIONS[request.provenance.artifact_kind]
     if specification.output_type is not output_type:
         raise ValueError("summary output type does not match artifact specification")
+
     parsed = parse_summary_markdown(
         response.text,
         specification,
@@ -71,6 +73,7 @@ def generate_validated_summary[SummaryT: StructuredSummary](
         validate_component_evidence(value, repository_paths)
     else:
         validate_project_evidence(value, repository_paths, component_paths)
+
     return SummaryGenerationResponse[SummaryT](
         value=value,
         provider=response.provider,

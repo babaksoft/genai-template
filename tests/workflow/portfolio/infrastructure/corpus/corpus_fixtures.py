@@ -72,10 +72,15 @@ def make_corpus_fixture() -> CorpusFixture:
             "src/genai_template/workflow/portfolio/application/config/profiles/local.yml"
         )
     ).require_generation()
-    specifications: tuple[tuple[str, ArtifactKind, str | None, str], ...] = (
-        ("sample--overview.md", "overview", None, "1"),
-        ("sample--architecture.md", "architecture", None, "2"),
-        ("sample--testing-operations.md", "testing_operations", None, "3"),
+    specifications: tuple[tuple[str, ArtifactKind, str, str], ...] = (
+        ("sample--overview.md", "overview", "overview", "1"),
+        ("sample--architecture.md", "architecture", "architecture", "2"),
+        (
+            "sample--testing-operations.md",
+            "testing_operations",
+            "testing_operations",
+            "3",
+        ),
         ("sample--component--api.md", "component", "api", "4"),
     )
     documents = tuple(
@@ -94,7 +99,7 @@ def make_corpus_fixture() -> CorpusFixture:
 def _document(
     filename: str,
     document_type: ArtifactKind,
-    component_id: str | None,
+    component_id: str,
     character: str,
 ) -> RenderedDocument:
     """Build one internally consistent rendered document.

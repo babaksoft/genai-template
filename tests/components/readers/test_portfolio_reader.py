@@ -66,8 +66,15 @@ def _write_corpus(
     if cache_dir is None:
         cache_dir = release_dir.parent / "cache"
 
-    specifications: tuple[tuple[str, str, str, ArtifactKind, str | None, str], ...] = (
-        ("alpha", "Alpha", "alpha--overview.md", "overview", None, "a"),
+    specifications: tuple[tuple[str, str, str, ArtifactKind, str, str], ...] = (
+        (
+            "alpha",
+            "Alpha",
+            "alpha--component--overview.md",
+            "overview",
+            "overview",
+            "a",
+        ),
         ("beta", "Beta", "beta--component--api.md", "component", "api", "b"),
     )
     projects = tuple(
