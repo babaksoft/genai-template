@@ -47,7 +47,7 @@ projects:
           - src/genai_template/api/**/*.py
           - src/genai_template/components/splitters/**/*.py
           - src/genai_template/services/**/*.py
-      - id: testing_operations
+      - id: testing-operations
         paths:
           - README.md
           - pyproject.toml

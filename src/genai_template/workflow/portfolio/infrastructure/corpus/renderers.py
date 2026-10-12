@@ -56,7 +56,7 @@ def build_document_file_name(
         project_slug:
             Normalized project identifier.
         component_id:
-            Normalized summary-unit identifier for a component document.
+            Normalized summary-unit identifier.
 
     Returns:
         Project-prefixed flat Markdown file name.
@@ -150,7 +150,7 @@ def render_balanced_documents(
         for component in ordered_components
     ]
     if len(file_names) != len(set(file_names)):
-        raise ValueError("balanced document filenames collide")
+        raise ValueError("balanced document file names collide")
 
     return tuple(
         render_component_document(project_slug, display_name, component)

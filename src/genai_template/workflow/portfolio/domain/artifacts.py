@@ -257,16 +257,16 @@ class ComponentSummaryArtifact(ImmutableDomainModel):
             "testing_operations": TestingOperationsSummary,
         }
 
-        artifact_kind = cast(ArtifactKind, self.unit_id)
-        if artifact_kind is not None:
-            if not isinstance(self.summary, expected_types[artifact_kind]):
-                raise TypeError(
-                    "project artifact kind does not match its summary schema"
-                )
-            if self.artifact.provenance.artifact_kind != artifact_kind:
-                raise ValueError("project artifact kind does not match its provenance")
-            if self.run_report.artifact_kind != artifact_kind:
-                raise ValueError("project artifact kind does not match its run report")
+        artifact_kind: ArtifactKind = "component"
+        if self.unit_id in ("overview", "architecture", "testing_operations"):
+            artifact_kind = cast(ArtifactKind, self.unit_id)
+
+        if not isinstance(self.summary, expected_types[artifact_kind]):
+            raise TypeError("project artifact kind does not match its summary schema")
+        if self.artifact.provenance.artifact_kind != artifact_kind:
+            raise ValueError("project artifact kind does not match its provenance")
+        if self.run_report.artifact_kind != artifact_kind:
+            raise ValueError("project artifact kind does not match its run report")
 
         return self
 

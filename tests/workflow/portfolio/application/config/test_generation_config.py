@@ -63,11 +63,6 @@ def _balanced_config() -> dict[str, Any]:
                     "exclude": [],
                     "max_file_bytes": 100_000,
                 },
-                "document_context": {
-                    "overview": ["README.md"],
-                    "architecture": ["src/**/*.py"],
-                    "testing_operations": ["tests/**/*.py"],
-                },
                 "summary_units": [{"id": "core", "paths": ["src/**/*.py"]}],
             }
         ],

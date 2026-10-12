@@ -100,7 +100,7 @@ def test_loads_two_project_v2_with_distinct_provenance(
     second_content = b"# Second overview\n"
     second_record = ManifestDocument(
         project_slug="second",
-        file_name="second--overview.md",
+        file_name="second--component--overview.md",
         document_type="overview",
         component_id="overview",
         evidence_paths=("README.md",),

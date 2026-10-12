@@ -73,12 +73,12 @@ def make_corpus_fixture() -> CorpusFixture:
         )
     ).require_generation()
     specifications: tuple[tuple[str, ArtifactKind, str, str], ...] = (
-        ("sample--overview.md", "overview", "overview", "1"),
-        ("sample--architecture.md", "architecture", "architecture", "2"),
+        ("sample--component--overview.md", "overview", "overview", "1"),
+        ("sample--component--architecture.md", "architecture", "architecture", "2"),
         (
-            "sample--testing-operations.md",
+            "sample--component--testing-operations.md",
             "testing_operations",
-            "testing_operations",
+            "testing-operations",
             "3",
         ),
         ("sample--component--api.md", "component", "api", "4"),

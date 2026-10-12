@@ -142,7 +142,7 @@ def build_corpus_manifest_v2(
         except ValueError as exc:
             raise ValueError("manifest document identity is invalid") from exc
         if document.file_name != expected_filename:
-            raise ValueError("manifest document filename does not match its owner")
+            raise ValueError("manifest document file name does not match its owner")
 
     data: dict[str, Any] = {
         "schema_version": 1,

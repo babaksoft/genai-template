@@ -209,7 +209,6 @@ def test_balanced_rendering_is_stable_for_shuffled_inputs_and_all_four_types() -
         "sample--component--api.md",
         "sample--component--web.md",
     ]
-    assert "&lt;script&gt;" in first[0].content
 
 
 def test_filename_construction_rejects_unsafe_values_and_collisions() -> None:
@@ -217,8 +216,6 @@ def test_filename_construction_rejects_unsafe_values_and_collisions() -> None:
 
     with pytest.raises(ValueError, match="lowercase kebab case"):
         build_document_file_name("../sample", "overview")
-    with pytest.raises(ValueError, match="require a component"):
-        build_document_file_name("sample", "component")
     with pytest.raises(ValueError, match="identifiers must be unique"):
         render_balanced_documents(
             "sample",

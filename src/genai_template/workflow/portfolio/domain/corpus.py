@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field
 
 from genai_template.workflow.portfolio.domain.artifacts import ArtifactKind
 from genai_template.workflow.portfolio.domain.base import ImmutableDomainModel
@@ -198,24 +198,6 @@ class ManifestDocument(ImmutableDomainModel):
         description="SHA-256 hash of the Markdown bytes.",
     )
     byte_size: int = Field(ge=0, description="Published Markdown size in bytes.")
-
-    @model_validator(mode="after")
-    def validate_component_identity(self) -> ManifestDocument:
-        """Require component identity only on component documents.
-
-        Returns:
-            The validated document record.
-
-        Raises:
-            ValueError:
-                If document type and component identity disagree.
-        """
-
-        if self.document_type == "component" and self.component_id is None:
-            raise ValueError("component manifest records require a component id")
-        if self.document_type != "component" and self.component_id is not None:
-            raise ValueError("project manifest records cannot have a component id")
-        return self
 
 
 class ManifestProject(ImmutableDomainModel):

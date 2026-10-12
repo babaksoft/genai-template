@@ -328,7 +328,7 @@ class PortfolioCorpusWorkflow(Workflow):
         with application_span(
             "portfolio.rendering",
             "CHAIN",
-            {"artifact.count": len(event.components) + len(event.projects)},
+            {"artifact.count": len(event.components)},
         ):
             documents = render_balanced_documents(
                 event.project.slug,
@@ -339,7 +339,7 @@ class PortfolioCorpusWorkflow(Workflow):
             project=event.project,
             generation=event.generation,
             snapshot=event.snapshot,
-            artifacts=(*event.components, *event.projects),
+            artifacts=event.components,
             documents=documents,
             run_started_at=event.run_started_at,
             steps=_append_step(event.steps, "rendering", self.clock, started_at),
@@ -374,6 +374,7 @@ class PortfolioCorpusWorkflow(Workflow):
                 documents=event.documents,
             )
             validate_rendered_corpus(manifest, event.documents, event.snapshot)
+
         return CorpusValidatedEvent(
             project=event.project,
             generation=event.generation,

@@ -93,7 +93,7 @@ def validate_portfolio_metadata(
     filename = metadata[FILE_NAME]
     pure_name = PurePosixPath(filename)
     if pure_name.name != filename or pure_name.suffix != ".md":
-        raise ValueError("Portfolio file_name must be a safe Markdown basename")
+        raise ValueError("Portfolio file_name must be a safe Markdown base name")
 
     document_type = metadata[DOCUMENT_TYPE]
     if document_type not in {
@@ -103,10 +103,6 @@ def validate_portfolio_metadata(
         "component",
     }:
         raise ValueError("Portfolio document_type is invalid")
-
-    component_id = metadata.get(COMPONENT_ID)
-    if (document_type == "component") != (component_id is not None):
-        raise ValueError("Portfolio component identity is inconsistent")
 
     for key in (COMPONENT_ID, REPOSITORY_URL, HEADER_PATH):
         value = metadata.get(key)

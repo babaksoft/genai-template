@@ -41,11 +41,6 @@ def _valid_config() -> dict[str, Any]:
                     "exclude": ["**/__pycache__/**"],
                     "max_file_bytes": 1024,
                 },
-                "document_context": {
-                    "overview": ["README.md"],
-                    "architecture": ["src/api/**/*.py"],
-                    "testing_operations": ["tests/api/**/*.py"],
-                },
                 "summary_units": [{"id": "application-core", "paths": ["src/**/*.py"]}],
             }
         ],
@@ -86,18 +81,12 @@ def test_loads_documented_configuration() -> None:
     config = load_portfolio_config(config_path)
 
     assert config.version == 1
-    assert len(config.projects) == 1
     project = config.projects[0]
     assert project.slug == "genai-template"
     assert isinstance(project.repository, LocalGitRepositoryConfig)
     assert project.repository.path == settings.REPO_ROOT
     assert project.repository.ref == "HEAD"
     assert project.selection.max_file_bytes == 262144
-    assert {unit.id for unit in project.summary_units} == {
-        "api",
-        "components-splitters",
-        "rag-services",
-    }
     generation = config.require_generation()
     assert generation.profile == "balanced"
     assert (

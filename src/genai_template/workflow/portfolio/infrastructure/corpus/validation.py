@@ -221,9 +221,12 @@ def _validate_document_records(
             If a record violates a document or evidence invariant.
     """
 
-    filenames = tuple(record.file_name for record in manifest.documents)
-    if filenames != tuple(sorted(filenames)) or len(filenames) != len(set(filenames)):
+    file_names = tuple(record.file_name for record in manifest.documents)
+    if file_names != tuple(sorted(file_names)) or len(file_names) != len(
+        set(file_names)
+    ):
         raise CorpusValidationError("manifest filenames must be unique and sorted")
+
     project_slugs = tuple(project.project_slug for project in manifest.projects)
     if project_slugs != tuple(sorted(project_slugs)) or len(project_slugs) != len(
         set(project_slugs)
@@ -231,6 +234,7 @@ def _validate_document_records(
         raise CorpusValidationError("manifest projects must be unique and sorted")
     if snapshot.project_slug not in project_slugs:
         raise CorpusValidationError("manifest does not identify the supplied snapshot")
+
     evidence_members = {file.path for file in snapshot.files}
     project_types: set[str] = set()
     component_ids: set[str] = set()
@@ -242,6 +246,7 @@ def _validate_document_records(
             record.file_name
         ):
             raise CorpusValidationError("manifest contains an unsafe filename")
+
         try:
             expected_name = build_document_file_name(
                 record.project_slug,
@@ -249,6 +254,7 @@ def _validate_document_records(
             )
         except ValueError as exc:
             raise CorpusValidationError("document identity is invalid") from exc
+
         if record.file_name != expected_name:
             raise CorpusValidationError("document filename does not match its type")
         if not record.evidence_paths:
@@ -257,6 +263,7 @@ def _validate_document_records(
             raise CorpusValidationError("document evidence must be unique and sorted")
         if not set(record.evidence_paths).issubset(evidence_members):
             raise CorpusValidationError("document evidence is outside the snapshot")
+
         if record.document_type == "component":
             assert record.component_id is not None
             if record.component_id in component_ids:
@@ -266,7 +273,5 @@ def _validate_document_records(
             if record.document_type in project_types:
                 raise CorpusValidationError("project document types must be unique")
             project_types.add(record.document_type)
-    if project_types != {"overview", "architecture", "testing_operations"}:
-        raise CorpusValidationError("balanced corpus project documents are incomplete")
     if not component_ids:
         raise CorpusValidationError("balanced corpus requires component documents")

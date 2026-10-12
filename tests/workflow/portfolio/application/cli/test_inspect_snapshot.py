@@ -78,11 +78,6 @@ def _write_project_config(
                     "exclude": ["src/excluded.py"],
                     "max_file_bytes": 1024,
                 },
-                "document_context": {
-                    "overview": ["README.md"],
-                    "architecture": ["src/**/*.py"],
-                    "testing_operations": ["tests/**/*.py"],
-                },
                 "summary_units": [
                     {
                         "id": "application",
