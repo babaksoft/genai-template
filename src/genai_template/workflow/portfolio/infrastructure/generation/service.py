@@ -8,7 +8,6 @@ from typing import cast
 
 from genai_template.workflow.portfolio.domain import (
     SUMMARY_SPECIFICATIONS,
-    ComponentSummary,
     GenerationRequest,
     StructuredSummary,
     SummaryGenerationResponse,
@@ -18,8 +17,7 @@ from genai_template.workflow.portfolio.infrastructure.generation.parser import (
     parse_summary_markdown,
 )
 from genai_template.workflow.portfolio.infrastructure.generation.validation import (
-    validate_component_evidence,
-    validate_project_evidence,
+    validate_evidence,
 )
 
 
@@ -69,10 +67,7 @@ def generate_validated_summary[SummaryT: StructuredSummary](
         (*repository_paths, *component_paths),
     )
     value = cast(SummaryT, parsed.summary)
-    if isinstance(value, ComponentSummary):
-        validate_component_evidence(value, repository_paths)
-    else:
-        validate_project_evidence(value, repository_paths, component_paths)
+    validate_evidence(value, repository_paths)
 
     return SummaryGenerationResponse[SummaryT](
         value=value,

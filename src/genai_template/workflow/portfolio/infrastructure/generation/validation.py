@@ -12,10 +12,10 @@ from genai_template.workflow.portfolio.domain import (
 )
 
 
-def validate_component_evidence(
-    summary: ComponentSummary,
+def validate_evidence(
+    summary: StructuredSummary,
     planned_paths: Iterable[str],
-) -> ComponentSummary:
+) -> StructuredSummary:
     """Require component evidence to belong to that component's planned files.
 
     Args:
@@ -33,37 +33,6 @@ def validate_component_evidence(
     """
 
     _validate_scope(summary, planned_paths)
-    return summary
-
-
-def validate_project_evidence(
-    summary: StructuredSummary,
-    repository_context_paths: Iterable[str],
-    component_evidence_paths: Iterable[str],
-) -> StructuredSummary:
-    """Require project evidence to have been supplied to synthesis.
-
-    Args:
-        summary:
-            Validated overview, architecture, or testing/operations output.
-        repository_context_paths:
-            Exact repository paths supplied directly to the synthesis call.
-        component_evidence_paths:
-            Evidence paths present in component artifacts supplied to the call.
-
-    Returns:
-        The unchanged validated summary.
-
-    Raises:
-        EvidenceValidationError:
-            If any cited path was absent from both actual input scopes.
-    """
-
-    if isinstance(summary, ComponentSummary):
-        raise TypeError("project evidence validation does not accept components")
-
-    permitted_paths = set(repository_context_paths) | set(component_evidence_paths)
-    _validate_scope(summary, permitted_paths)
     return summary
 
 

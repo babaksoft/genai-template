@@ -11,8 +11,7 @@ from genai_template.workflow.portfolio.domain import (
 )
 from genai_template.workflow.portfolio.domain.errors import EvidenceValidationError
 from genai_template.workflow.portfolio.infrastructure.generation import (
-    validate_component_evidence,
-    validate_project_evidence,
+    validate_evidence,
 )
 
 
@@ -51,42 +50,10 @@ def _component(path: str) -> ComponentSummary:
     )
 
 
-def test_component_evidence_requires_exact_planned_file_membership() -> None:
+def test_evidence_requires_exact_planned_file_membership() -> None:
     """A path from another component is rejected even if in the snapshot."""
 
     with pytest.raises(EvidenceValidationError) as caught:
-        validate_component_evidence(_component("src/other.py"), ("src/mine.py",))
+        validate_evidence(_component("src/other.py"), ("src/mine.py",))
 
     assert caught.value.invalid_paths == ("src/other.py",)
-
-
-def test_project_evidence_accepts_context_or_component_evidence() -> None:
-    """Project documents can cite only the two input scopes they consumed."""
-
-    summary = ArchitectureSummary(
-        boundaries=_section("README.md"),
-        dependencies=_section("src/component.py"),
-        principal_flows=_section("README.md"),
-    )
-
-    assert (
-        validate_project_evidence(
-            summary,
-            repository_context_paths=("README.md",),
-            component_evidence_paths=("src/component.py",),
-        )
-        is summary
-    )
-
-
-def test_project_evidence_rejects_snapshot_path_not_supplied_to_call() -> None:
-    """Snapshot membership alone does not make a path valid synthesis evidence."""
-
-    summary = ArchitectureSummary(
-        boundaries=_section("README.md"),
-        dependencies=_section("src/unseen.py"),
-        principal_flows=_section("README.md"),
-    )
-
-    with pytest.raises(EvidenceValidationError, match="exact generation input"):
-        validate_project_evidence(summary, ("README.md",), ("src/supplied.py",))

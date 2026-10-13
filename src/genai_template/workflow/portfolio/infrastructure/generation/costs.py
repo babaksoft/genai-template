@@ -28,6 +28,8 @@ def estimate_generation_cost(
 
     if usage.input_tokens is None or usage.output_tokens is None:
         return None
+
     input_cost = Decimal(usage.input_tokens) * pricing.input_per_million_tokens
     output_cost = Decimal(usage.output_tokens) * pricing.output_per_million_tokens
+
     return (input_cost + output_cost) / _TOKENS_PER_MILLION

@@ -16,7 +16,6 @@ from genai_template.workflow.portfolio.domain.snapshot import SnapshotFile
 OUTPUT_SCHEMA_VERSION = "v1"
 
 ArtifactKind = Literal["component", "overview", "architecture", "testing_operations"]
-ProjectArtifactKind = Literal["overview", "architecture", "testing_operations"]
 GenerationWarningCode = Literal[
     "missing_section",
     "duplicate_section",
@@ -76,6 +75,10 @@ class SummaryUnitPlan(ImmutableDomainModel):
         description="Ordered snapshot files assigned to this summary unit.",
     )
 
+    @property
+    def artifact_kind(self) -> ArtifactKind:
+        kinds = ("component" "summary", "architecture", "testing_operations")
+        return "component" if self.unit_id not in kinds else self.unit_id
 
 class SummaryPlan(ImmutableDomainModel):
     """Stable logical summary work derived from a repository snapshot.

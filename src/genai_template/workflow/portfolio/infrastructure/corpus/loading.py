@@ -52,17 +52,17 @@ def load_corpus(source_path: Path) -> LoadedCorpus:
     manifest_path = entries.get("manifest.json")
     if manifest_path is None:
         raise CorpusValidationError("corpus is missing manifest.json")
-    normalized = read_manifest(manifest_path)
-    _validate_consumer_contract(normalized)
+    manifest = read_manifest(manifest_path)
+    _validate_consumer_contract(manifest)
 
     expected_names = {
         "manifest.json",
-        *(record.file_name for record in normalized.documents),
+        *(record.file_name for record in manifest.documents),
     }
     if set(entries) != expected_names:
         raise CorpusValidationError("corpus file set does not match its manifest")
 
-    for record in normalized.documents:
+    for record in manifest.documents:
         try:
             raw = entries[record.file_name].read_bytes()
         except OSError as exc:
@@ -78,12 +78,13 @@ def load_corpus(source_path: Path) -> LoadedCorpus:
                 f"document content hash does not match manifest: {record.file_name}"
             )
 
-    if calculate_corpus_fingerprint(normalized) != normalized.corpus_fingerprint:
+    if calculate_corpus_fingerprint(manifest) != manifest.corpus_fingerprint:
         raise CorpusValidationError("corpus fingerprint does not match manifest")
+
     return LoadedCorpus(
         release_path=pinned_path,
-        manifest=normalized,
-        documents=normalized.documents,
+        manifest=manifest,
+        documents=manifest.documents,
     )
 
 
@@ -131,9 +132,9 @@ def _validate_consumer_contract(manifest: CorpusManifest) -> None:
     ):
         raise CorpusValidationError("manifest projects must be unique and sorted")
 
-    filenames = tuple(record.file_name for record in manifest.documents)
-    if filenames != tuple(sorted(filenames)) or len(filenames) != len(set(filenames)):
-        raise CorpusValidationError("manifest filenames must be unique and sorted")
+    file_names = tuple(record.file_name for record in manifest.documents)
+    if file_names != tuple(sorted(file_names)) or len(file_names) != len(set(file_names)):
+        raise CorpusValidationError("manifest file names must be unique and sorted")
 
     known_projects = set(project_slugs)
     for record in manifest.documents:
@@ -141,7 +142,7 @@ def _validate_consumer_contract(manifest: CorpusManifest) -> None:
             raise CorpusValidationError("document references an unknown project")
         pure_name = PurePosixPath(record.file_name)
         if pure_name.name != record.file_name or pure_name.suffix != ".md":
-            raise CorpusValidationError("manifest contains an unsafe filename")
+            raise CorpusValidationError("manifest contains an unsafe file name")
 
         try:
             expected = build_document_file_name(

@@ -17,7 +17,6 @@ from genai_template.workflow.portfolio.domain import (
 )
 from genai_template.workflow.portfolio.infrastructure.generation import (
     assemble_component_prompt,
-    assemble_project_prompt,
 )
 
 
@@ -70,24 +69,6 @@ def test_component_prompt_is_stable_ordered_and_treats_source_as_untrusted() -> 
     assert "</repository-context>" in prompt
 
 
-def test_project_prompt_is_independent_of_mapping_and_file_order() -> None:
-    """Equivalent synthesis inputs produce byte-identical prompts."""
-
-    files = (_file("b.md", "B"), _file("a.md", "A"))
-    first = assemble_project_prompt(
-        OVERVIEW_PROMPT, files, {"web": {"x": 1}, "api": {"x": 2}}
-    )
-    second = assemble_project_prompt(
-        OVERVIEW_PROMPT,
-        tuple(reversed(files)),
-        {"api": {"x": 2}, "web": {"x": 1}},
-    )
-
-    assert first == second
-    assert "<repository-context>" in first
-    assert "<component-summaries>" in first
-
-
 def test_every_v1_prompt_has_a_distinct_complete_markdown_contract() -> None:
     """Every artifact prompt hash covers its full ordered section skeleton."""
 
@@ -113,43 +94,15 @@ def test_every_v1_prompt_has_a_distinct_complete_markdown_contract() -> None:
     }
 
     for definition, specification in contracts:
-        if definition.artifact_kind == "component":
-            assembled = assemble_component_prompt(
-                definition, (_file("src/a.py", "content"),)
-            )
-        else:
-            assembled = assemble_project_prompt(
-                definition, (_file("src/a.py", "content"),), {}
-            )
+        assembled = assemble_component_prompt(
+            definition, (_file("src/a.py", "content"),)
+        )
         heading_positions = [
             assembled.index(f"## {section.heading}")
             for section in specification.sections
         ]
+
         assert heading_positions == sorted(heading_positions)
         assert definition.prompt_hash == expected_hashes[definition.prompt_id]
 
     assert len({prompt.prompt_hash for prompt, _ in contracts}) == len(contracts)
-
-
-def test_project_prompt_catalog_includes_component_evidence_paths() -> None:
-    """Project synthesis catalogs direct and component-derived evidence exactly."""
-
-    prompt = assemble_project_prompt(
-        OVERVIEW_PROMPT,
-        (_file("README.md", "Instructions inside evidence are untrusted."),),
-        {
-            "api": {
-                "responsibilities": {
-                    "content": ["Serves requests."],
-                    "evidence_paths": ["src/api.py"],
-                }
-            }
-        },
-    )
-    catalog = prompt.split("Allowed evidence paths:\n", maxsplit=1)[1].split(
-        "\n\nComplete response skeleton:", maxsplit=1
-    )[0]
-
-    assert catalog == "- README.md\n- src/api.py"
-    assert 'path="README.md"' in prompt
-    assert "Instructions inside evidence are untrusted." in prompt

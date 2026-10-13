@@ -257,9 +257,9 @@ class ComponentSummaryArtifact(ImmutableDomainModel):
             "testing_operations": TestingOperationsSummary,
         }
 
-        artifact_kind: ArtifactKind = "component"
-        if self.unit_id in ("overview", "architecture", "testing_operations"):
-            artifact_kind = cast(ArtifactKind, self.unit_id)
+        artifact_kind = (
+            "component" if self.unit_id not in expected_types else self.unit_id
+        )
 
         if not isinstance(self.summary, expected_types[artifact_kind]):
             raise TypeError("project artifact kind does not match its summary schema")

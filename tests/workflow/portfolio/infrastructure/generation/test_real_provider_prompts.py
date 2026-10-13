@@ -46,7 +46,6 @@ from genai_template.workflow.portfolio.domain.config import (
 from genai_template.workflow.portfolio.domain.contracts import TextGenerator
 from genai_template.workflow.portfolio.infrastructure.generation import (
     assemble_component_prompt,
-    assemble_project_prompt,
     generate_validated_summary,
 )
 from genai_template.workflow.portfolio.infrastructure.generators import (
@@ -161,33 +160,6 @@ def _assert_real_prompt_contracts(
     )
 
     assert component.warnings == ()
-
-    readme_file = _snapshot_file(
-        "README.md",
-        (
-            "# Example Project\n\n"
-            "A typed Python arithmetic library exposing `add` from "
-            "`src/example.py`.\n"
-        ),
-    )
-    overview_request = GenerationRequest(
-        provenance=_provenance(provider, model, artifact_kind="overview"),
-        prompt=assemble_project_prompt(
-            OVERVIEW_PROMPT,
-            (readme_file,),
-            {"arithmetic": component.value},
-        ),
-        input_paths=(readme_file.path,),
-    )
-    overview = generate_validated_summary(
-        generator,
-        overview_request,
-        ProjectOverviewSummary,
-        repository_context_paths=(readme_file.path,),
-        component_evidence_paths=(component_file.path,),
-    )
-
-    assert overview.warnings == ()
 
 
 def _git(repository: Path, *arguments: str) -> str:

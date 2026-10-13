@@ -25,7 +25,7 @@ from genai_template.workflow.portfolio.domain.config import (
     TokenPricingConfig,
 )
 from genai_template.workflow.portfolio.infrastructure.corpus import (
-    build_corpus_manifest_v2,
+    build_future_corpus_manifest,
     load_corpus,
     loading,
     manifest_bytes,
@@ -109,7 +109,7 @@ def test_loads_two_project_v2_with_distinct_provenance(
         content_hash=hashlib.sha256(second_content).hexdigest(),
         byte_size=len(second_content),
     )
-    manifest = build_corpus_manifest_v2(
+    manifest = build_future_corpus_manifest(
         generation=_config(),
         projects=(second, first),
         documents=(second_record, first_record),

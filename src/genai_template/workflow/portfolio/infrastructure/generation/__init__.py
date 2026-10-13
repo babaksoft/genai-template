@@ -11,23 +11,19 @@ from genai_template.workflow.portfolio.infrastructure.generation.parser import (
 )
 from genai_template.workflow.portfolio.infrastructure.generation.prompts import (
     assemble_component_prompt,
-    assemble_project_prompt,
 )
 from genai_template.workflow.portfolio.infrastructure.generation.service import (
     generate_validated_summary,
 )
 from genai_template.workflow.portfolio.infrastructure.generation.validation import (
-    validate_component_evidence,
-    validate_project_evidence,
+    validate_evidence,
 )
 
 __all__ = [
     "assemble_component_prompt",
-    "assemble_project_prompt",
     "estimate_generation_cost",
     "generate_component_summaries",
     "generate_validated_summary",
     "parse_summary_markdown",
-    "validate_component_evidence",
-    "validate_project_evidence",
+    "validate_evidence",
 ]

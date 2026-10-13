@@ -61,17 +61,16 @@ def build_corpus_manifest(
             If documents are empty, duplicated, or have invalid ownership.
     """
 
-    records = tuple(
-        _document_record(document, project_slug=snapshot.project_slug)
-        for document in documents
-    )
-    filenames = tuple(record.file_name for record in records)
-    if not records:
+    file_names = tuple(document.filename for document in documents)
+    if not documents:
         raise ValueError("a corpus manifest requires at least one document")
-    if len(filenames) != len(set(filenames)):
-        raise ValueError("manifest document filenames must be unique")
-    if filenames != tuple(sorted(filenames)):
-        records = tuple(sorted(records, key=lambda record: record.file_name))
+    if len(file_names) != len(set(file_names)):
+        raise ValueError("manifest document file names must be unique")
+
+    manifest_documents = tuple(
+        _to_manifest_document(document, project_slug=snapshot.project_slug)
+        for document in sorted(documents, key=lambda document: document.filename)
+    )
 
     project = ManifestProject(
         project_slug=snapshot.project_slug,
@@ -82,14 +81,43 @@ def build_corpus_manifest(
         source_fingerprint=snapshot.source_fingerprint,
         generation_profile=generation.profile,
     )
-    return build_corpus_manifest_v2(
-        generation=generation,
-        projects=(project,),
-        documents=records,
-    )
+
+    for document in manifest_documents:
+        try:
+            expected_filename = build_document_file_name(
+                document.project_slug,
+                document.component_id,
+            )
+        except ValueError as exc:
+            raise ValueError("manifest document has invalid file name") from exc
+        if document.file_name != expected_filename:
+            raise ValueError("manifest document has unexpected file name")
+
+    data: dict[str, Any] = {
+        "schema_version": 1,
+        "prompt_version": generation.prompt_version,
+        "prompts": tuple(
+            {
+                "prompt_id": prompt.prompt_id,
+                "prompt_hash": prompt.prompt_hash,
+            }
+            for prompt in _PROMPTS
+        ),
+        "output_schema_version": generation.output_schema_version,
+        "provider": generation.structured_generation.provider,
+        "model": generation.structured_generation.model,
+        "configuration_fingerprint": generation_configuration_fingerprint(generation),
+        "projects": tuple(project.model_dump(mode="json"),),
+        "documents": tuple(
+            document.model_dump(mode="json") for document in manifest_documents
+        ),
+    }
+    data["corpus_fingerprint"] = calculate_corpus_fingerprint(data, manifest_documents)
+
+    return CorpusManifest.model_validate(data)
 
 
-def build_corpus_manifest_v2(
+def build_future_corpus_manifest(
     *,
     generation: GenerationConfig,
     projects: Sequence[ManifestProject],
@@ -140,9 +168,9 @@ def build_corpus_manifest_v2(
                 document.component_id,
             )
         except ValueError as exc:
-            raise ValueError("manifest document identity is invalid") from exc
+            raise ValueError("manifest document has invalid file name") from exc
         if document.file_name != expected_filename:
-            raise ValueError("manifest document file name does not match its owner")
+            raise ValueError("manifest document has unexpected file name")
 
     data: dict[str, Any] = {
         "schema_version": 1,
@@ -183,7 +211,7 @@ def manifest_bytes(manifest: CorpusManifest) -> bytes:
     return canonical_json_bytes(manifest) + b"\n"
 
 
-def _document_record(
+def _to_manifest_document(
     document: RenderedDocument, *, project_slug: str
 ) -> ManifestDocument:
     """Project a rendered document into stable manifest metadata.

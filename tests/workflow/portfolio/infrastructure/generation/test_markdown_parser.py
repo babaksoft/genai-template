@@ -20,8 +20,7 @@ from genai_template.workflow.portfolio.domain import (
 )
 from genai_template.workflow.portfolio.infrastructure.generation import (
     parse_summary_markdown,
-    validate_component_evidence,
-    validate_project_evidence,
+    validate_evidence,
 )
 
 
@@ -95,7 +94,7 @@ def test_parser_filters_mixed_evidence_and_keeps_every_valid_path() -> None:
         "src/z.py",
     )
     assert [warning.code for warning in parsed.warnings] == ["invalid_evidence_path"]
-    validate_component_evidence(parsed.summary, ("src/a.py", "src/z.py"))
+    validate_evidence(parsed.summary, ("src/a.py", "src/z.py"))
 
 
 @pytest.mark.parametrize(
@@ -124,6 +123,7 @@ def test_parser_falls_back_for_all_invalid_or_absent_evidence(
 
     assert isinstance(parsed.summary, ArchitectureSummary)
     assert parsed.summary.boundaries.evidence_paths == ("src/a.py", "src/b.py")
+
     codes = [warning.code for warning in parsed.warnings]
     if evidence_block:
         assert codes[:2] == [
@@ -132,10 +132,10 @@ def test_parser_falls_back_for_all_invalid_or_absent_evidence(
         ]
     else:
         assert codes[0] == "evidence_scope_fallback"
-    validate_project_evidence(
+
+    validate_evidence(
         parsed.summary,
-        repository_context_paths=("src/a.py",),
-        component_evidence_paths=("src/b.py",),
+        ("src/a.py","src/b.py"),
     )
 
 

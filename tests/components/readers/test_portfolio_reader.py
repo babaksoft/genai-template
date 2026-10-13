@@ -43,7 +43,7 @@ from genai_template.workflow.portfolio.domain.config import (
     TokenPricingConfig,
 )
 from genai_template.workflow.portfolio.infrastructure.corpus import (
-    build_corpus_manifest_v2,
+    build_future_corpus_manifest,
     manifest_bytes,
 )
 
@@ -126,7 +126,7 @@ def _write_corpus(
             output_per_million_tokens=Decimal(8),
         ),
     )
-    manifest = build_corpus_manifest_v2(
+    manifest = build_future_corpus_manifest(
         generation=generation, projects=projects, documents=records
     )
     release_dir.mkdir()

@@ -9,6 +9,9 @@ from time import perf_counter
 from genai_template.workflow.portfolio.domain import (
     COMPONENT_PROMPT,
     OUTPUT_SCHEMA_VERSION,
+    PROMPTS,
+    SUMMARY_SPECIFICATIONS,
+    ArchitectureSummary,
     ArtifactProvenance,
     ArtifactRunReport,
     ArtifactValidationError,
@@ -16,8 +19,11 @@ from genai_template.workflow.portfolio.domain import (
     ComponentSummary,
     ComponentSummaryArtifact,
     GenerationRequest,
+    ProjectOverviewSummary,
+    StructuredSummary,
     SummaryPlan,
     SummaryUnitPlan,
+    TestingOperationsSummary,
     TokenUsage,
     count_generation_warnings,
 )
@@ -30,7 +36,7 @@ from genai_template.workflow.portfolio.infrastructure.caches import (
     CACHE_SCHEMA_VERSION,
 )
 from genai_template.workflow.portfolio.infrastructure.fingerprints import (
-    component_generation_fingerprint,
+    summary_generation_fingerprint,
     sha256_canonical_json,
 )
 from genai_template.workflow.portfolio.infrastructure.generation.costs import (
@@ -43,10 +49,14 @@ from genai_template.workflow.portfolio.infrastructure.generation.service import 
     generate_validated_summary,
 )
 from genai_template.workflow.portfolio.infrastructure.generation.validation import (
-    validate_component_evidence,
+    validate_evidence,
 )
 
 logger = logging.getLogger(__name__)
+
+
+class SummaryService:
+    pass
 
 
 def generate_component_summaries(
@@ -129,24 +139,23 @@ def _generate_component_summary(
     """
 
     started_at = clock()
+    prompt = next(
+        prompt_def
+        for prompt_def in PROMPTS
+        if prompt_def.artifact_kind == unit.artifact_kind
+    )
+    assert prompt is not None
+
     structured_generation = generation.structured_generation
-    fingerprint = component_generation_fingerprint(
+    fingerprint = summary_generation_fingerprint(
         source_fingerprint=plan.source_fingerprint,
         unit_id=unit.unit_id,
         unit_input_fingerprint=unit.input_fingerprint,
-        prompt_id=COMPONENT_PROMPT.prompt_id,
-        prompt_hash=COMPONENT_PROMPT.prompt_hash,
+        prompt_id=prompt.prompt_id,
+        prompt_hash=prompt.prompt_hash,
         output_schema_version=generation.output_schema_version,
         structured_generation=structured_generation,
     )
-
-    cached = cache.get(
-        fingerprint,
-        expected_kind="component",
-        output_schema_version=generation.output_schema_version,
-        output_type=ComponentSummary,
-    )
-    paths = tuple(file.path for file in unit.files)
     logger.info(
         "Processing component summary %s: files=%d bytes=%d fingerprint=%s",
         unit.unit_id,
@@ -155,53 +164,43 @@ def _generate_component_summary(
         fingerprint,
     )
 
+    cached = _cached_artifact(
+        cache,
+        fingerprint,
+        unit,
+        generation.output_schema_version,
+        started_at,
+        clock=clock
+    )
     if cached is not None:
-        summary = ComponentSummary.model_validate(cached.summary)
-        validate_component_evidence(summary, paths)
-        logger.info("Component summary %s accepted from cache", unit.unit_id)
-
-        return ComponentSummaryArtifact(
-            unit_id=unit.unit_id,
-            summary=summary,
-            artifact=cached,
-            run_report=ArtifactRunReport(
-                artifact_kind="component",
-                generation_fingerprint=fingerprint,
-                cache_hit=True,
-                token_usage=TokenUsage(),
-                estimated_cost=None,
-                original_token_usage=cached.original_token_usage,
-                original_estimated_cost=cached.original_estimated_cost,
-                generation_warning_counts=count_generation_warnings(
-                    cached.generation_warnings
-                ),
-                latency_seconds=_elapsed(clock, started_at),
-            ),
-        )
+        return cached
 
     _validate_input_limits(unit, generation, fingerprint)
     provenance = ArtifactProvenance(
-        artifact_kind="component",
+        artifact_kind=unit.artifact_kind,
         generation_fingerprint=fingerprint,
         source_fingerprint=plan.source_fingerprint,
         unit_input_fingerprint=unit.input_fingerprint,
-        prompt_id=COMPONENT_PROMPT.prompt_id,
-        prompt_hash=COMPONENT_PROMPT.prompt_hash,
+        prompt_id=prompt.prompt_id,
+        prompt_hash=prompt.prompt_hash,
         output_schema_version=generation.output_schema_version,
         provider=structured_generation.provider,
         model=structured_generation.model,
         temperature=structured_generation.inference.temperature,
         seed=structured_generation.inference.seed,
     )
+
+    paths = tuple(file.path for file in unit.files)
+    specification = SUMMARY_SPECIFICATIONS[unit.artifact_kind]
     request = GenerationRequest(
         provenance=provenance,
-        prompt=assemble_component_prompt(COMPONENT_PROMPT, unit.files),
+        prompt=assemble_component_prompt(prompt, unit.files),
         input_paths=paths,
     )
     response = generate_validated_summary(
         generator,
         request,
-        ComponentSummary,
+        specification.output_type,
         repository_context_paths=paths,
     )
     _validate_provider_identity(
@@ -210,6 +209,7 @@ def _generate_component_summary(
         generation,
         fingerprint,
     )
+
     structured_output = response.value.model_dump(mode="json")
     estimated_cost = estimate_generation_cost(response.token_usage, generation.pricing)
     artifact = CachedArtifact(
@@ -225,12 +225,13 @@ def _generate_component_summary(
     )
     cache.put(artifact, output_type=ComponentSummary)
     logger.info("Component summary %s generated and cached", unit.unit_id)
+
     return ComponentSummaryArtifact(
         unit_id=unit.unit_id,
         summary=response.value,
         artifact=artifact,
         run_report=ArtifactRunReport(
-            artifact_kind="component",
+            artifact_kind=unit.artifact_kind,
             generation_fingerprint=fingerprint,
             cache_hit=False,
             token_usage=response.token_usage,
@@ -241,6 +242,61 @@ def _generate_component_summary(
             latency_seconds=_elapsed(clock, started_at),
         ),
     )
+
+
+def _cached_artifact(
+    cache: ArtifactCache,
+    fingerprint: str,
+    unit: SummaryUnitPlan,
+    output_schema_version: str,
+    started_at: float,
+    *,
+    clock: Callable[[], float],
+) -> ComponentSummaryArtifact | None:
+
+    type_map: dict[str, type[StructuredSummary]] = {
+        "overview": ProjectOverviewSummary,
+        "architecture": ArchitectureSummary,
+        "testing_operations": TestingOperationsSummary,
+    }
+    expected_kind, output_type = (
+        (unit.unit_id, type_map[unit.unit_id])
+        if unit.unit_id in type_map
+        else ("component", ComponentSummary)
+    )
+
+    cached = cache.get(
+        fingerprint,
+        expected_kind=expected_kind,
+        output_schema_version=output_schema_version,
+        output_type=output_type,
+    )
+    if cached is not None:
+        summary = output_type.model_validate(cached.summary)
+        paths = tuple(file.path for file in unit.files)
+        validate_evidence(summary, paths)
+        logger.info("Component summary %s accepted from cache", unit.unit_id)
+
+        return ComponentSummaryArtifact(
+            unit_id=unit.unit_id,
+            summary=summary,
+            artifact=cached,
+            run_report=ArtifactRunReport(
+                artifact_kind=expected_kind,
+                generation_fingerprint=fingerprint,
+                cache_hit=True,
+                token_usage=TokenUsage(),
+                estimated_cost=None,
+                original_token_usage=cached.original_token_usage,
+                original_estimated_cost=cached.original_estimated_cost,
+                generation_warning_counts=count_generation_warnings(
+                    cached.generation_warnings
+                ),
+                latency_seconds=_elapsed(clock, started_at),
+            ),
+        )
+
+    return None
 
 
 def _validate_generation_versions(generation: GenerationConfig) -> None:

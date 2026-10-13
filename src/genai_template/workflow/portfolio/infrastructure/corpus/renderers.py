@@ -63,11 +63,9 @@ def build_document_file_name(
 
     Raises:
         ValueError:
-            If identifiers are unsafe or component identity does not match type.
+            If identifiers do not follow the expected identifier pattern,
+            which is lowercase kebab case.
     """
-
-    if component_id is None:
-        raise ValueError("component documents require a component identifier")
 
     _validate_identifier(project_slug, "project slug")
     _validate_identifier(component_id, "component identifier")

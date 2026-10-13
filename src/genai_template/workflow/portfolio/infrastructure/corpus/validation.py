@@ -36,7 +36,7 @@ def validate_rendered_corpus(
     documents: Sequence[RenderedDocument],
     snapshot: RepositorySnapshot,
 ) -> None:
-    """Validate a complete rendered corpus before filesystem staging.
+    """Validate a complete rendered corpus before file system staging.
 
     Args:
         manifest:
@@ -108,8 +108,10 @@ def read_manifest(path: Path) -> CorpusManifest:
         ValueError,
     ) as exc:
         raise CorpusValidationError("manifest.json is invalid") from exc
+
     if raw != manifest_bytes(manifest):
         raise CorpusValidationError("manifest.json is not canonical")
+
     return manifest
 
 

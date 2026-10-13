@@ -8,7 +8,7 @@ from genai_template.workflow.portfolio.domain.config import (
 )
 from genai_template.workflow.portfolio.infrastructure.fingerprints import (
     canonical_json_bytes,
-    component_generation_fingerprint,
+    summary_generation_fingerprint,
     project_generation_fingerprint,
 )
 
@@ -65,7 +65,7 @@ def _component(**changes: object) -> str:
         "structured_generation": _provider(),
     }
     values.update(changes)
-    return component_generation_fingerprint(**values)  # type: ignore[arg-type]
+    return summary_generation_fingerprint(**values)  # type: ignore[arg-type]
 
 
 def test_canonical_json_is_independent_of_mapping_order() -> None:

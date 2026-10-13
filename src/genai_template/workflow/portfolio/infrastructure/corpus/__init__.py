@@ -5,7 +5,7 @@ from genai_template.workflow.portfolio.infrastructure.corpus.loading import (
 )
 from genai_template.workflow.portfolio.infrastructure.corpus.manifest import (
     build_corpus_manifest,
-    build_corpus_manifest_v2,
+    build_future_corpus_manifest,
     manifest_bytes,
 )
 from genai_template.workflow.portfolio.infrastructure.corpus.publisher import (
@@ -24,8 +24,8 @@ from genai_template.workflow.portfolio.infrastructure.corpus.validation import (
 
 __all__ = [
     "build_corpus_manifest",
-    "build_corpus_manifest_v2",
     "build_document_file_name",
+    "build_future_corpus_manifest",
     "load_corpus",
     "manifest_bytes",
     "publish_corpus",

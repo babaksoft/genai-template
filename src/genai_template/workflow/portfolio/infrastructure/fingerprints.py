@@ -67,7 +67,7 @@ def sha256_canonical_json(value: object) -> str:
     return hashlib.sha256(canonical_json_bytes(value)).hexdigest()
 
 
-def component_generation_fingerprint(
+def summary_generation_fingerprint(
     *,
     source_fingerprint: str,
     unit_id: str,
@@ -77,7 +77,7 @@ def component_generation_fingerprint(
     output_schema_version: str,
     structured_generation: StructuredGenerationConfig,
 ) -> str:
-    """Calculate one component artifact's stable generation identity.
+    """Calculate one summary artifact's stable generation identity.
 
     Credentials, local paths, timeout, pricing, timestamps, latency, and run cache
     status cannot affect this identity because none are admitted to the projection.
@@ -103,7 +103,7 @@ def component_generation_fingerprint(
     """
 
     identity = {
-        "fingerprint_schema": "portfolio-component-generation-v1",
+        "fingerprint_schema": "portfolio-summary-generation-v1",
         "source_fingerprint": source_fingerprint,
         "unit": {
             "id": unit_id,
@@ -111,7 +111,11 @@ def component_generation_fingerprint(
         },
         "prompt": {"id": prompt_id, "hash": prompt_hash},
         "output_schema_version": output_schema_version,
-        "structured_generation": _generation_settings(structured_generation),
+        "structured_generation": {
+            "provider": structured_generation.provider,
+            "model": structured_generation.model,
+            "inference": structured_generation.inference.model_dump(mode="json"),
+        },
     }
     return sha256_canonical_json(identity)
 
@@ -230,7 +234,7 @@ def calculate_corpus_fingerprint(
     """Calculate the non-circular stable identity of a complete corpus.
 
     The hash input contains the canonical manifest with ``corpus_fingerprint``
-    omitted and an explicit ordered filename/content-hash list. The latter makes
+    omitted and an explicit ordered file-name/content-hash list. The latter makes
     the byte identity boundary obvious even though hashes also occur in records.
 
     Args:
@@ -269,4 +273,5 @@ def calculate_corpus_fingerprint(
         "manifest": projection,
         "markdown": ordered_hashes,
     }
+
     return hashlib.sha256(canonical_json_bytes(envelope)).hexdigest()
