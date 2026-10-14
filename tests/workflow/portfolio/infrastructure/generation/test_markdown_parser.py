@@ -135,7 +135,7 @@ def test_parser_falls_back_for_all_invalid_or_absent_evidence(
 
     validate_evidence(
         parsed.summary,
-        ("src/a.py","src/b.py"),
+        ("src/a.py", "src/b.py"),
     )
 
 

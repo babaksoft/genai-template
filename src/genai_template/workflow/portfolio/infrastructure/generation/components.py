@@ -12,6 +12,7 @@ from genai_template.workflow.portfolio.domain import (
     PROMPTS,
     SUMMARY_SPECIFICATIONS,
     ArchitectureSummary,
+    ArtifactKind,
     ArtifactProvenance,
     ArtifactRunReport,
     ArtifactValidationError,
@@ -36,19 +37,15 @@ from genai_template.workflow.portfolio.infrastructure.caches import (
     CACHE_SCHEMA_VERSION,
 )
 from genai_template.workflow.portfolio.infrastructure.fingerprints import (
-    summary_generation_fingerprint,
     sha256_canonical_json,
-)
-from genai_template.workflow.portfolio.infrastructure.generation.costs import (
-    estimate_generation_cost,
+    summary_generation_fingerprint,
 )
 from genai_template.workflow.portfolio.infrastructure.generation.prompts import (
     assemble_component_prompt,
 )
 from genai_template.workflow.portfolio.infrastructure.generation.service import (
+    estimate_generation_cost,
     generate_validated_summary,
-)
-from genai_template.workflow.portfolio.infrastructure.generation.validation import (
     validate_evidence,
 )
 
@@ -149,6 +146,7 @@ def _generate_component_summary(
     structured_generation = generation.structured_generation
     fingerprint = summary_generation_fingerprint(
         source_fingerprint=plan.source_fingerprint,
+        document_type=unit.artifact_kind,
         unit_id=unit.unit_id,
         unit_input_fingerprint=unit.input_fingerprint,
         prompt_id=prompt.prompt_id,
@@ -170,7 +168,7 @@ def _generate_component_summary(
         unit,
         generation.output_schema_version,
         started_at,
-        clock=clock
+        clock=clock,
     )
     if cached is not None:
         return cached
@@ -201,7 +199,7 @@ def _generate_component_summary(
         generator,
         request,
         specification.output_type,
-        repository_context_paths=paths,
+        repository_paths=paths,
     )
     _validate_provider_identity(
         response.provider,
@@ -254,16 +252,14 @@ def _cached_artifact(
     clock: Callable[[], float],
 ) -> ComponentSummaryArtifact | None:
 
-    type_map: dict[str, type[StructuredSummary]] = {
+    type_map: dict[ArtifactKind, type[StructuredSummary]] = {
+        "component": ComponentSummary,
         "overview": ProjectOverviewSummary,
         "architecture": ArchitectureSummary,
         "testing_operations": TestingOperationsSummary,
     }
-    expected_kind, output_type = (
-        (unit.unit_id, type_map[unit.unit_id])
-        if unit.unit_id in type_map
-        else ("component", ComponentSummary)
-    )
+    expected_kind = unit.artifact_kind
+    output_type = type_map[expected_kind]
 
     cached = cache.get(
         fingerprint,

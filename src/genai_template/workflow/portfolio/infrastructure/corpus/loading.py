@@ -133,7 +133,9 @@ def _validate_consumer_contract(manifest: CorpusManifest) -> None:
         raise CorpusValidationError("manifest projects must be unique and sorted")
 
     file_names = tuple(record.file_name for record in manifest.documents)
-    if file_names != tuple(sorted(file_names)) or len(file_names) != len(set(file_names)):
+    if file_names != tuple(sorted(file_names)) or len(file_names) != len(
+        set(file_names)
+    ):
         raise CorpusValidationError("manifest file names must be unique and sorted")
 
     known_projects = set(project_slugs)

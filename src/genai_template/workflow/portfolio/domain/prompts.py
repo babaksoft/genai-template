@@ -6,19 +6,16 @@ from pydantic import Field, computed_field
 
 from genai_template.workflow.portfolio.domain.base import ImmutableDomainModel
 from genai_template.workflow.portfolio.domain.summaries import (
-    ArtifactKind,
     SUMMARY_SPECIFICATIONS,
+    ArtifactKind,
 )
+from genai_template.workflow.portfolio.prompts import prompts_v1 as prompts
 from genai_template.workflow.portfolio.prompts.prompts_v1 import (
-    ARCHITECTURE_PROMPT,
     ARCHITECTURE_PROMPT_ID,
-    COMPONENT_PROMPT,
     COMPONENT_PROMPT_ID,
-    OVERVIEW_PROMPT,
     OVERVIEW_PROMPT_ID,
     PROMPT_TEMPLATE,
     SAFETY_PROMPT,
-    TESTING_OPERATIONS_PROMPT,
     TESTING_OPERATIONS_PROMPT_ID,
 )
 
@@ -38,7 +35,9 @@ class PromptDefinition(ImmutableDomainModel):
     """
 
     prompt_id: str = Field(min_length=1, description="Stable prompt identifier.")
-    artifact_kind: ArtifactKind = Field(description="Artifact type produced by this prompt.")
+    artifact_kind: ArtifactKind = Field(
+        description="Artifact type produced by this prompt."
+    )
     instructions: str = Field(
         min_length=1,
         description="Stable task-specific prompt instructions.",
@@ -59,28 +58,28 @@ class PromptDefinition(ImmutableDomainModel):
 COMPONENT_PROMPT = PromptDefinition(
     prompt_id=COMPONENT_PROMPT_ID,
     artifact_kind="component",
-    instructions=COMPONENT_PROMPT,
+    instructions=prompts.COMPONENT_PROMPT,
 )
 OVERVIEW_PROMPT = PromptDefinition(
     prompt_id=OVERVIEW_PROMPT_ID,
     artifact_kind="overview",
-    instructions=OVERVIEW_PROMPT,
+    instructions=prompts.OVERVIEW_PROMPT,
 )
 ARCHITECTURE_PROMPT = PromptDefinition(
     prompt_id=ARCHITECTURE_PROMPT_ID,
     artifact_kind="architecture",
-    instructions=ARCHITECTURE_PROMPT,
+    instructions=prompts.ARCHITECTURE_PROMPT,
 )
 TESTING_OPERATIONS_PROMPT = PromptDefinition(
     prompt_id=TESTING_OPERATIONS_PROMPT_ID,
     artifact_kind="testing_operations",
-    instructions=TESTING_OPERATIONS_PROMPT,
+    instructions=prompts.TESTING_OPERATIONS_PROMPT,
 )
 PROMPTS = (
     ARCHITECTURE_PROMPT,
     COMPONENT_PROMPT,
     OVERVIEW_PROMPT,
-    TESTING_OPERATIONS_PROMPT
+    TESTING_OPERATIONS_PROMPT,
 )
 
 

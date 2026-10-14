@@ -77,8 +77,14 @@ class SummaryUnitPlan(ImmutableDomainModel):
 
     @property
     def artifact_kind(self) -> ArtifactKind:
-        kinds = ("component" "summary", "architecture", "testing_operations")
-        return "component" if self.unit_id not in kinds else self.unit_id
+        special_kinds: dict[str, ArtifactKind] = {
+            "overview": "overview",
+            "architecture": "architecture",
+            "testing_operations": "testing_operations",
+        }
+
+        return special_kinds.get(self.unit_id, "component")
+
 
 class SummaryPlan(ImmutableDomainModel):
     """Stable logical summary work derived from a repository snapshot.

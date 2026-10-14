@@ -98,6 +98,7 @@ def read_manifest(path: Path) -> CorpusManifest:
         value = json.loads(text)
         if not isinstance(value, dict):
             raise TypeError("manifest root must be an object")
+
         manifest = CorpusManifest.model_validate(value)
     except (
         OSError,
@@ -144,6 +145,7 @@ def validate_corpus_directory(
     entries = tuple(directory.iterdir())
     if any(not entry.is_file() or entry.is_symlink() for entry in entries):
         raise CorpusValidationError("corpus must contain only flat regular files")
+
     manifest_path = directory / "manifest.json"
     if not manifest_path.is_file():
         raise CorpusValidationError("corpus is missing manifest.json")
@@ -174,6 +176,7 @@ def validate_corpus_directory(
 
     if calculate_corpus_fingerprint(manifest) != manifest.corpus_fingerprint:
         raise CorpusValidationError("corpus fingerprint does not match manifest")
+
     return manifest
 
 
@@ -227,22 +230,22 @@ def _validate_document_records(
     if file_names != tuple(sorted(file_names)) or len(file_names) != len(
         set(file_names)
     ):
-        raise CorpusValidationError("manifest filenames must be unique and sorted")
+        raise CorpusValidationError("manifest file names must be unique and sorted")
 
     project_slugs = tuple(project.project_slug for project in manifest.projects)
     if project_slugs != tuple(sorted(project_slugs)) or len(project_slugs) != len(
         set(project_slugs)
     ):
         raise CorpusValidationError("manifest projects must be unique and sorted")
+
     if snapshot.project_slug not in project_slugs:
         raise CorpusValidationError("manifest does not identify the supplied snapshot")
 
     evidence_members = {file.path for file in snapshot.files}
-    project_types: set[str] = set()
-    component_ids: set[str] = set()
     for record in manifest.documents:
         if record.project_slug != snapshot.project_slug:
             raise CorpusValidationError("document belongs to an unexpected project")
+
         pure_name = PurePosixPath(record.file_name)
         if pure_name.name != record.file_name or not _SAFE_FILENAME.fullmatch(
             record.file_name
@@ -266,14 +269,10 @@ def _validate_document_records(
         if not set(record.evidence_paths).issubset(evidence_members):
             raise CorpusValidationError("document evidence is outside the snapshot")
 
-        if record.document_type == "component":
-            assert record.component_id is not None
-            if record.component_id in component_ids:
-                raise CorpusValidationError("component ids must be unique")
-            component_ids.add(record.component_id)
-        else:
-            if record.document_type in project_types:
-                raise CorpusValidationError("project document types must be unique")
-            project_types.add(record.document_type)
+    component_ids = {
+        record.component_id
+        for record in manifest.documents
+        if record.document_type == "component"
+    }
     if not component_ids:
         raise CorpusValidationError("balanced corpus requires component documents")

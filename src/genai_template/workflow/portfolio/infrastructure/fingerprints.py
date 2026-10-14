@@ -17,6 +17,7 @@ from genai_template.workflow.portfolio.domain.config import (
     GenerationConfig,
     StructuredGenerationConfig,
 )
+from genai_template.workflow.portfolio.domain.summaries import ArtifactKind
 
 
 def canonical_json_bytes(value: object) -> bytes:
@@ -70,6 +71,7 @@ def sha256_canonical_json(value: object) -> str:
 def summary_generation_fingerprint(
     *,
     source_fingerprint: str,
+    document_type: ArtifactKind,
     unit_id: str,
     unit_input_fingerprint: str,
     prompt_id: str,
@@ -104,6 +106,7 @@ def summary_generation_fingerprint(
 
     identity = {
         "fingerprint_schema": "portfolio-summary-generation-v1",
+        "document_type": document_type,
         "source_fingerprint": source_fingerprint,
         "unit": {
             "id": unit_id,
@@ -117,6 +120,7 @@ def summary_generation_fingerprint(
             "inference": structured_generation.inference.model_dump(mode="json"),
         },
     }
+
     return sha256_canonical_json(identity)
 
 

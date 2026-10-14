@@ -27,7 +27,6 @@ from genai_template.workflow.portfolio.domain import (
     ComponentSummary,
     GenerationRequest,
     GenerationRunReport,
-    ProjectOverviewSummary,
     SnapshotFile,
 )
 from genai_template.workflow.portfolio.domain.config import (
@@ -156,7 +155,7 @@ def _assert_real_prompt_contracts(
         generator,
         component_request,
         ComponentSummary,
-        repository_context_paths=(component_file.path,),
+        repository_paths=(component_file.path,),
     )
 
     assert component.warnings == ()

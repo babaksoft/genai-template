@@ -8,8 +8,8 @@ from genai_template.workflow.portfolio.domain.config import (
 )
 from genai_template.workflow.portfolio.infrastructure.fingerprints import (
     canonical_json_bytes,
-    summary_generation_fingerprint,
     project_generation_fingerprint,
+    summary_generation_fingerprint,
 )
 
 
@@ -57,6 +57,7 @@ def _component(**changes: object) -> str:
 
     values: dict[str, object] = {
         "source_fingerprint": "1" * 64,
+        "document_type": "overview",
         "unit_id": "core",
         "unit_input_fingerprint": "2" * 64,
         "prompt_id": "component-v1",
@@ -65,6 +66,7 @@ def _component(**changes: object) -> str:
         "structured_generation": _provider(),
     }
     values.update(changes)
+
     return summary_generation_fingerprint(**values)  # type: ignore[arg-type]
 
 
@@ -91,6 +93,7 @@ def test_each_component_generation_input_changes_identity() -> None:
     baseline = _component()
     variants = [
         _component(source_fingerprint="a" * 64),
+        _component(document_type="component"),
         _component(unit_id="api"),
         _component(unit_input_fingerprint="b" * 64),
         _component(prompt_id="component-v2"),

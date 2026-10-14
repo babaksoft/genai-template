@@ -73,7 +73,7 @@ def build_document_file_name(
     return f"{project_slug}--component--{component_id}.md"
 
 
-def render_component_document(
+def render_document(
     project_slug: str,
     display_name: str,
     component: ComponentSummaryArtifact,
@@ -96,7 +96,7 @@ def render_component_document(
     return _render_document(
         project_slug=project_slug,
         title=title,
-        document_type="component",
+        document_type=component.artifact.provenance.artifact_kind,
         component_id=component.unit_id,
         summary=component.summary,
         artifact=component.artifact,
@@ -151,7 +151,7 @@ def render_balanced_documents(
         raise ValueError("balanced document file names collide")
 
     return tuple(
-        render_component_document(project_slug, display_name, component)
+        render_document(project_slug, display_name, component)
         for component in ordered_components
     )
 
@@ -201,8 +201,10 @@ def _render_document(
         if not isinstance(section, EvidenceSection):
             raise TypeError("summary fields must be evidence sections")
         lines.extend(_render_section(_SECTION_TITLES[field_name], section))
+
     content = "\n".join(lines).rstrip("\n") + "\n"
     content_bytes = content.encode("utf-8")
+
     return RenderedDocument(
         filename=build_document_file_name(project_slug, component_id),
         document_type=document_type,

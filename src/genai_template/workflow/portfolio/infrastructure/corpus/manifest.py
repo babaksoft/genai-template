@@ -6,10 +6,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from genai_template.workflow.portfolio.domain import (
-    ARCHITECTURE_PROMPT,
-    COMPONENT_PROMPT,
-    OVERVIEW_PROMPT,
-    TESTING_OPERATIONS_PROMPT,
+    PROMPTS,
     CorpusManifest,
     ManifestDocument,
     ManifestProject,
@@ -24,13 +21,6 @@ from genai_template.workflow.portfolio.infrastructure.fingerprints import (
     calculate_corpus_fingerprint,
     canonical_json_bytes,
     generation_configuration_fingerprint,
-)
-
-_PROMPTS = (
-    COMPONENT_PROMPT,
-    OVERVIEW_PROMPT,
-    ARCHITECTURE_PROMPT,
-    TESTING_OPERATIONS_PROMPT,
 )
 
 
@@ -101,13 +91,15 @@ def build_corpus_manifest(
                 "prompt_id": prompt.prompt_id,
                 "prompt_hash": prompt.prompt_hash,
             }
-            for prompt in _PROMPTS
+            for prompt in PROMPTS
         ),
         "output_schema_version": generation.output_schema_version,
         "provider": generation.structured_generation.provider,
         "model": generation.structured_generation.model,
         "configuration_fingerprint": generation_configuration_fingerprint(generation),
-        "projects": tuple(project.model_dump(mode="json"),),
+        "projects": tuple(
+            project.model_dump(mode="json"),
+        ),
         "documents": tuple(
             document.model_dump(mode="json") for document in manifest_documents
         ),
@@ -180,7 +172,7 @@ def build_future_corpus_manifest(
                 "prompt_id": prompt.prompt_id,
                 "prompt_hash": prompt.prompt_hash,
             }
-            for prompt in _PROMPTS
+            for prompt in PROMPTS
         ),
         "output_schema_version": generation.output_schema_version,
         "provider": generation.structured_generation.provider,

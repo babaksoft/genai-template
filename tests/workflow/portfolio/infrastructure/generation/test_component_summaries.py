@@ -12,7 +12,6 @@ from genai_template.config import settings
 from genai_template.workflow.portfolio.domain import (
     ArtifactValidationError,
     GenerationRequest,
-    PromptDefinition,
     ProviderAuditMetadata,
     SnapshotFile,
     SummaryPlan,
@@ -283,53 +282,6 @@ def test_selective_unit_and_global_model_invalidation(tmp_path: Path) -> None:
 
     assert selective.calls == [("tests/test_api.py",)]
     assert global_change.calls == [("src/api.py",), ("tests/test_api.py",)]
-
-
-# NOTE: This test will be disabled until further notice, because it depends on the older architecture.
-# Fixing it will require a design change, which is undesirable at the moment.
-def disabled_test_source_prompt_and_inference_changes_invalidate_all_components(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Every global content-affecting identity change causes fresh calls."""
-
-    cache = FilesystemArtifactCache(tmp_path / "cache")
-    generate_component_summaries(_plan(), _config(), _CountingGenerator(), cache)
-
-    source_change = _CountingGenerator()
-    generate_component_summaries(
-        _plan(source_fingerprint="c" * 64),
-        _config(),
-        source_change,
-        cache,
-    )
-    inference_change = _CountingGenerator()
-    generate_component_summaries(
-        _plan(source_fingerprint="c" * 64),
-        _config(temperature=0.2, seed=11),
-        inference_change,
-        cache,
-    )
-    monkeypatch.setattr(
-        "genai_template.workflow.portfolio.domain.prompts.COMPONENT_PROMPT",
-        PromptDefinition(
-            prompt_id="portfolio-component-v1",
-            artifact_kind="component",
-            instructions="Changed component summary instructions.",
-        ),
-    )
-    prompt_change = _CountingGenerator()
-    generate_component_summaries(
-        _plan(source_fingerprint="c" * 64),
-        _config(temperature=0.2, seed=11),
-        prompt_change,
-        cache,
-    )
-
-    expected_calls = [("src/api.py",), ("tests/test_api.py",)]
-    assert source_change.calls == expected_calls
-    assert inference_change.calls == expected_calls
-    assert prompt_change.calls == expected_calls
 
 
 def test_invalid_evidence_warnings_and_fallback_are_reused_from_cache(

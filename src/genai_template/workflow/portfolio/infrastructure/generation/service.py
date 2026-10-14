@@ -4,21 +4,113 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Iterable
+from decimal import Decimal
 from typing import cast
 
 from genai_template.workflow.portfolio.domain import (
     SUMMARY_SPECIFICATIONS,
+    EvidenceSection,
+    EvidenceValidationError,
     GenerationRequest,
+    ParsedSummary,
     StructuredSummary,
     SummaryGenerationResponse,
+    SummarySpecification,
+    TokenUsage,
+    summary_evidence_paths,
 )
+from genai_template.workflow.portfolio.domain.config import TokenPricingConfig
 from genai_template.workflow.portfolio.domain.contracts import TextGenerator
 from genai_template.workflow.portfolio.infrastructure.generation.parser import (
-    parse_summary_markdown,
+    HeadingParser,
 )
-from genai_template.workflow.portfolio.infrastructure.generation.validation import (
-    validate_evidence,
-)
+
+_TOKENS_PER_MILLION = Decimal(1_000_000)
+
+
+def validate_evidence(
+    summary: StructuredSummary,
+    planned_paths: Iterable[str],
+) -> StructuredSummary:
+    """Require component evidence to belong to that component's planned files.
+
+    Args:
+        summary:
+            Validated component structured output.
+        planned_paths:
+            Exact file paths assigned to the component.
+
+    Returns:
+        The unchanged validated summary.
+
+    Raises:
+        EvidenceValidationError:
+            If any cited path is outside the component input scope.
+    """
+
+    permitted_paths = tuple(sorted(set(planned_paths)))
+    invalid_paths = tuple(
+        path for path in summary_evidence_paths(summary) if path not in permitted_paths
+    )
+    if invalid_paths:
+        raise EvidenceValidationError(
+            "generated evidence is outside the exact generation input scope",
+            invalid_paths=invalid_paths,
+            permitted_paths=permitted_paths,
+        )
+
+    return summary
+
+
+def parse_summary_markdown(
+    response_text: str,
+    specification: SummarySpecification,
+    allowed_evidence_paths: Iterable[str],
+) -> ParsedSummary:
+    """Parse provider Markdown into an existing typed summary model.
+
+    Structural defects are recovered without another provider call. Evidence is
+    filtered by exact membership in the supplied call scope, and the complete
+    scope is used when a section retains no valid provider citation.
+
+    Args:
+        response_text:
+            Non-empty provider response containing Markdown.
+        specification:
+            Exact ordered section contract for the requested artifact.
+        allowed_evidence_paths:
+            Exact repository-relative evidence scope supplied to the call.
+
+    Returns:
+        Validated typed summary and ordered recovery warnings.
+
+    Raises:
+        ValueError:
+            If the response or allowed evidence scope is empty.
+    """
+
+    normalized = response_text.replace("\r\n", "\n").replace("\r", "\n")
+    if not normalized.strip():
+        raise ValueError("provider Markdown response must be non-empty")
+
+    parser = HeadingParser(specification, allowed_evidence_paths)
+    lines = normalized.split("\n")
+    for line in lines:
+        if line.startswith("## ") and not line.startswith("### "):
+            parser.examine_heading(line)
+        parser.parse_line(line)
+
+    parser.handle_unassigned()
+
+    output: dict[str, EvidenceSection] = {}
+    for section in specification.sections:
+        parser.examine_section(section)
+        output[section.field_name] = parser.parse_section(section)
+
+    summary = specification.output_type.model_validate(output)
+    validate_evidence(summary, allowed_evidence_paths)
+
+    return ParsedSummary(summary=summary, warnings=parser.warnings)
 
 
 def generate_validated_summary[SummaryT: StructuredSummary](
@@ -26,8 +118,7 @@ def generate_validated_summary[SummaryT: StructuredSummary](
     request: GenerationRequest,
     output_type: type[SummaryT],
     *,
-    repository_context_paths: Iterable[str],
-    component_evidence_paths: Iterable[str] = (),
+    repository_paths: Iterable[str],
 ) -> SummaryGenerationResponse[SummaryT]:
     """Generate text once, parse it, and enforce the exact evidence scope.
 
@@ -53,8 +144,6 @@ def generate_validated_summary[SummaryT: StructuredSummary](
             If provider generation fails.
     """
 
-    repository_paths = tuple(repository_context_paths)
-    component_paths = tuple(component_evidence_paths)
     response = generator.generate(request)
 
     specification = SUMMARY_SPECIFICATIONS[request.provenance.artifact_kind]
@@ -64,10 +153,9 @@ def generate_validated_summary[SummaryT: StructuredSummary](
     parsed = parse_summary_markdown(
         response.text,
         specification,
-        (*repository_paths, *component_paths),
+        repository_paths,
     )
     value = cast(SummaryT, parsed.summary)
-    validate_evidence(value, repository_paths)
 
     return SummaryGenerationResponse[SummaryT](
         value=value,
@@ -78,3 +166,28 @@ def generate_validated_summary[SummaryT: StructuredSummary](
         raw_response_hash=hashlib.sha256(response.text.encode("utf-8")).hexdigest(),
         warnings=parsed.warnings,
     )
+
+
+def estimate_generation_cost(
+    usage: TokenUsage,
+    pricing: TokenPricingConfig,
+) -> Decimal | None:
+    """Estimate cost only when both provider token counts are available.
+
+    Args:
+        usage:
+            Complete, partial, or unavailable provider token counts.
+        pricing:
+            Explicit input and output rates per million tokens.
+
+    Returns:
+        Estimated cost, or null when either count is unknown.
+    """
+
+    if usage.input_tokens is None or usage.output_tokens is None:
+        return None
+
+    input_cost = Decimal(usage.input_tokens) * pricing.input_per_million_tokens
+    output_cost = Decimal(usage.output_tokens) * pricing.output_per_million_tokens
+
+    return (input_cost + output_cost) / _TOKENS_PER_MILLION

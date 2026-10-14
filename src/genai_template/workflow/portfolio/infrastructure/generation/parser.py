@@ -7,12 +7,8 @@ from collections.abc import Iterable
 from genai_template.workflow.portfolio.domain import (
     EvidenceSection,
     GenerationWarning,
-    ParsedSummary,
-    SummarySpecification,
     SummarySectionSpecification,
-)
-from genai_template.workflow.portfolio.infrastructure.generation.validation import (
-    validate_evidence,
+    SummarySpecification,
 )
 
 _PLACEHOLDER = "No supported information was provided."
@@ -20,9 +16,7 @@ _PLACEHOLDER = "No supported information was provided."
 
 class HeadingParser:
     def __init__(
-        self,
-        specification: SummarySpecification,
-        allowed_evidence_paths: Iterable[str]
+        self, specification: SummarySpecification, allowed_evidence_paths: Iterable[str]
     ) -> None:
         if not allowed_evidence_paths:
             raise ValueError("allowed evidence scope must be non-empty")
@@ -40,8 +34,10 @@ class HeadingParser:
         }
         self._seen: set[str] = set()
         self._warnings: list[GenerationWarning] = []
+        self._highest_section_index = -1
         self._section_indexes = {
-            section.heading: index for index, section in enumerate(specification.sections)
+            section.heading: index
+            for index, section in enumerate(specification.sections)
         }
         self._current_field: str | None = None
         self._in_evidence = False
@@ -73,7 +69,7 @@ class HeadingParser:
                 )
             )
         else:
-            if section_index < highest_section_index:
+            if section_index < self._highest_section_index:
                 self._warnings.append(
                     GenerationWarning(
                         code="reordered_section",
@@ -82,7 +78,9 @@ class HeadingParser:
                     )
                 )
             self._seen.add(heading)
-            highest_section_index = max(highest_section_index, section_index)
+            self._highest_section_index = max(
+                self._highest_section_index, section_index
+            )
 
     def parse_line(self, line: str) -> None:
         if line == "### Evidence":
@@ -150,9 +148,7 @@ class HeadingParser:
                 )
             self._blocks = (_PLACEHOLDER,)
 
-    def parse_section(
-        self, section: SummarySectionSpecification
-    ) -> EvidenceSection:
+    def parse_section(self, section: SummarySectionSpecification) -> EvidenceSection:
         valid_paths: set[str] = set()
         invalid_paths: set[str] = set()
         for path in self._evidence[section.field_name]:
@@ -188,59 +184,9 @@ class HeadingParser:
 
         return parsed_section
 
-
-def parse_summary_markdown(
-    response_text: str,
-    specification: SummarySpecification,
-    allowed_evidence_paths: Iterable[str],
-) -> ParsedSummary:
-    """Parse provider Markdown into an existing typed summary model.
-
-    Structural defects are recovered without another provider call. Evidence is
-    filtered by exact membership in the supplied call scope, and the complete
-    scope is used when a section retains no valid provider citation.
-
-    Args:
-        response_text:
-            Non-empty provider response containing Markdown.
-        specification:
-            Exact ordered section contract for the requested artifact.
-        allowed_evidence_paths:
-            Exact repository-relative evidence scope supplied to the call.
-
-    Returns:
-        Validated typed summary and ordered recovery warnings.
-
-    Raises:
-        ValueError:
-            If the response or allowed evidence scope is empty.
-    """
-
-    normalized = response_text.replace("\r\n", "\n").replace("\r", "\n")
-    if not normalized.strip():
-        raise ValueError("provider Markdown response must be non-empty")
-
-    warnings: list[GenerationWarning] = []
-
-    parser = HeadingParser(specification, allowed_evidence_paths)
-    lines = normalized.split("\n")
-    for line in lines:
-        if line.startswith("## ") and not line.startswith("### "):
-            parser.examine_heading(line)
-        parser.parse_line(line)
-
-    parser.handle_unassigned()
-
-    output: dict[str, EvidenceSection] = {}
-    for section in specification.sections:
-        parser.examine_section(section)
-        output[section.field_name] = parser.parse_section(section)
-
-    summary = specification.output_type.model_validate(output)
-    allowed_paths = tuple(sorted(set(allowed_evidence_paths)))
-    validate_evidence(summary, allowed_paths)
-
-    return ParsedSummary(summary=summary, warnings=tuple(warnings))
+    @property
+    def warnings(self) -> tuple[GenerationWarning, ...]:
+        return tuple(self._warnings)
 
 
 def _content_blocks(lines: Iterable[str]) -> tuple[str, ...]:

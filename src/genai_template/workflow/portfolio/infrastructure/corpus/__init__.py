@@ -14,7 +14,7 @@ from genai_template.workflow.portfolio.infrastructure.corpus.publisher import (
 from genai_template.workflow.portfolio.infrastructure.corpus.renderers import (
     build_document_file_name,
     render_balanced_documents,
-    render_component_document,
+    render_document,
 )
 from genai_template.workflow.portfolio.infrastructure.corpus.validation import (
     read_manifest,
@@ -31,7 +31,7 @@ __all__ = [
     "publish_corpus",
     "read_manifest",
     "render_balanced_documents",
-    "render_component_document",
+    "render_document",
     "validate_corpus_directory",
     "validate_rendered_corpus",
 ]

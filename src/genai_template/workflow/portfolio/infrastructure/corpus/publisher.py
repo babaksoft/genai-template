@@ -155,6 +155,7 @@ def _validate_publication_target(publication_path: Path, releases_path: Path) ->
                 "publication target is an existing real file or directory"
             )
         return
+
     target = Path(os.readlink(publication_path))
     resolved_target = (publication_path.parent / target).absolute()
     if (

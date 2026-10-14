@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Literal, cast
+from typing import Literal
 
 from pydantic import Field, JsonValue, PositiveInt, model_validator
 

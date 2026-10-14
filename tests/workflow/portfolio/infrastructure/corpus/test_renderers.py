@@ -20,7 +20,7 @@ from genai_template.workflow.portfolio.domain import (
 from genai_template.workflow.portfolio.infrastructure.corpus import (
     build_document_file_name,
     render_balanced_documents,
-    render_component_document,
+    render_document,
 )
 from genai_template.workflow.portfolio.infrastructure.fingerprints import (
     sha256_canonical_json,
@@ -140,7 +140,7 @@ def _component(unit_id: str = "api") -> ComponentSummaryArtifact:
 def test_component_renderer_matches_golden_markdown_and_hashes_actual_bytes() -> None:
     """Component headings, escaping, evidence, whitespace, and hash are fixed."""
 
-    document = render_component_document("sample", "Sample --- Project", _component())
+    document = render_document("sample", "Sample --- Project", _component())
 
     expected = r"""# Sample \-\-\- Project — api Component
 
