@@ -14,7 +14,7 @@ from genai_template.workflow.portfolio.domain import (
 _PLACEHOLDER = "No supported information was provided."
 
 
-class HeadingParser:
+class MarkdownParser:
     def __init__(
         self, specification: SummarySpecification, allowed_evidence_paths: Iterable[str]
     ) -> None:
@@ -45,6 +45,7 @@ class HeadingParser:
         self._blocks: tuple[str, ...] = ()
 
     def examine_heading(self, line: str) -> None:
+        self._in_evidence = False
         heading = line[3:]
         section = self._headings.get(heading)
         if section is None:

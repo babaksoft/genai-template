@@ -97,9 +97,7 @@ def build_corpus_manifest(
         "provider": generation.structured_generation.provider,
         "model": generation.structured_generation.model,
         "configuration_fingerprint": generation_configuration_fingerprint(generation),
-        "projects": tuple(
-            project.model_dump(mode="json"),
-        ),
+        "projects": (project.model_dump(mode="json"),),
         "documents": tuple(
             document.model_dump(mode="json") for document in manifest_documents
         ),

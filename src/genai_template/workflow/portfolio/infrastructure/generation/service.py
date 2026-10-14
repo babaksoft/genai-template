@@ -22,7 +22,7 @@ from genai_template.workflow.portfolio.domain import (
 from genai_template.workflow.portfolio.domain.config import TokenPricingConfig
 from genai_template.workflow.portfolio.domain.contracts import TextGenerator
 from genai_template.workflow.portfolio.infrastructure.generation.parser import (
-    HeadingParser,
+    MarkdownParser,
 )
 
 _TOKENS_PER_MILLION = Decimal(1_000_000)
@@ -92,12 +92,17 @@ def parse_summary_markdown(
     normalized = response_text.replace("\r\n", "\n").replace("\r", "\n")
     if not normalized.strip():
         raise ValueError("provider Markdown response must be non-empty")
+    allowed_paths = tuple(sorted(set(allowed_evidence_paths)))
+    if not allowed_paths:
+        raise ValueError("allowed evidence scope must be non-empty")
 
-    parser = HeadingParser(specification, allowed_evidence_paths)
+    parser = MarkdownParser(specification, allowed_paths)
     lines = normalized.split("\n")
     for line in lines:
         if line.startswith("## ") and not line.startswith("### "):
             parser.examine_heading(line)
+            continue
+
         parser.parse_line(line)
 
     parser.handle_unassigned()
@@ -108,7 +113,7 @@ def parse_summary_markdown(
         output[section.field_name] = parser.parse_section(section)
 
     summary = specification.output_type.model_validate(output)
-    validate_evidence(summary, allowed_evidence_paths)
+    validate_evidence(summary, allowed_paths)
 
     return ParsedSummary(summary=summary, warnings=parser.warnings)
 

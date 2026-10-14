@@ -83,13 +83,13 @@ def test_every_v1_prompt_has_a_distinct_complete_markdown_contract() -> None:
             "8982947725ce63f7f332631ebb9dd5e8bf071bc832441e2b823a8c9dba50e438"
         ),
         "portfolio-overview-v1": (
-            "2d9859ba31cfa8f74dd5fe3d322ab355bc6f449c6905f2831959d570d834bcd4"
+            "97f2a49099384d4ec0977b4630f83b21efec44ba17f296911c7763cf917428ae"
         ),
         "portfolio-architecture-v1": (
-            "8e4923e5d54c750a2e4b3985b3692baf9ea45a6626ee563209e5117516820ab4"
+            "eb6c9486c7946fc5e5be6dd21ea34697aca74d279a167159a13c5a8431417cbb"
         ),
         "portfolio-testing-operations-v1": (
-            "1d74e324ec9d8047fb287e22171acff8c35fd05aff483fb805daa1bfb6812ee1"
+            "a1f68b556e130f5cf90d28fe4bc6d08fd4fe6ce3aa476dc4d054fe2aa5fb27f4"
         ),
     }
 
