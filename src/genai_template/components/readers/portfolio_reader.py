@@ -59,20 +59,19 @@ class PortfolioReader:
 
         corpus = load_corpus(directory)
         loaded = self._text_reader.load(corpus.release_path)
-        documents = loaded.documents if isinstance(loaded, LoadedDocuments) else loaded
         by_name: dict[str, Document] = {}
         expected_names = {record.file_name for record in corpus.documents}
 
-        for document in documents:
-            filename = document.metadata.get(FILE_NAME)
+        for document in loaded.documents:
+            file_name = document.metadata.get(FILE_NAME)
             file_path = document.metadata.get("file_path")
-            if not isinstance(filename, str) or Path(filename).name != filename:
+            if not isinstance(file_name, str) or Path(file_name).name != file_name:
                 raise CorpusValidationError("reader returned an unsafe document name")
-            if filename not in expected_names:
+            if file_name not in expected_names:
                 raise CorpusValidationError(
                     "reader returned an extra or renamed document"
                 )
-            if filename in by_name:
+            if file_name in by_name:
                 raise CorpusValidationError("reader returned a duplicate document")
             if not isinstance(file_path, str):
                 raise CorpusValidationError("reader omitted the document path")
@@ -83,11 +82,11 @@ class PortfolioReader:
                 raise CorpusValidationError(
                     "reader returned an invalid document path"
                 ) from exc
-            if reader_path != corpus.release_path / filename:
+            if reader_path != corpus.release_path / file_name:
                 raise CorpusValidationError(
                     "reader returned a document from another path"
                 )
-            by_name[filename] = document
+            by_name[file_name] = document
 
         if set(by_name) != expected_names:
             raise CorpusValidationError("reader result does not match the manifest")
@@ -104,6 +103,7 @@ class PortfolioReader:
             )
             for record in corpus.documents
         )
+
         return LoadedDocuments(documents=projected, provenance=corpus.manifest)
 
     @staticmethod
@@ -138,9 +138,12 @@ class PortfolioReader:
             GENERATION_FINGERPRINT: record.generation_fingerprint,
             FILE_NAME: record.file_name,
         }
+
         if record.component_id is not None:
             metadata[COMPONENT_ID] = record.component_id
         if project.repository_url is not None:
             metadata[REPOSITORY_URL] = project.repository_url
+
         validate_portfolio_metadata(metadata, allow_header_path=False)
+
         return Document(text=document.text, id_=record.file_name, metadata=metadata)

@@ -71,7 +71,7 @@ class AnswerResponse(BaseModel):
 class SourceCandidateResponse(BaseModel):
     """A corpus directory available for registration."""
 
-    name: str = Field(..., description="Directory basename used as source name.")
+    name: str = Field(..., description="Directory base name used as source name.")
 
 
 class CreateSourceRequest(BaseModel):
@@ -95,7 +95,7 @@ class SourceResponse(BaseModel):
 
     name: str = Field(
         ...,
-        description="Source name derived from the registered directory basename.",
+        description="Source name derived from the registered directory base name.",
     )
 
     directory: str = Field(

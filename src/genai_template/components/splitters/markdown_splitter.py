@@ -60,6 +60,7 @@ class MarkdownDocumentSplitter:
                 metadata = dict(node.metadata)
                 document_id = node_document_id(node, identities)
                 validate_chunk_metadata(metadata, document_id)
+
                 index = chunk_counts.get(document_id, 0)
                 chunk_counts[document_id] = index + 1
 

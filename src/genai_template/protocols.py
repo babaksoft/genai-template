@@ -103,11 +103,6 @@ class VectorStore(Protocol):
 
         ...
 
-    def delete(self) -> None:
-        """Delete the vector store's collection."""
-
-        ...
-
     def upsert(self, chunks: list[DocumentChunk]) -> None:
         """Persist or update embedded document chunks.
 
@@ -137,6 +132,11 @@ class VectorStore(Protocol):
         Returns:
             Retrieved chunks ordered by the store's relevance measure.
         """
+
+        ...
+
+    def delete(self) -> None:
+        """Delete the vector store's collection."""
 
         ...
 

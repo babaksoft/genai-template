@@ -42,6 +42,7 @@ async def create_experiment(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
         ) from exc
+
     return ExperimentResponse.model_validate(experiment, from_attributes=True)
 
 
@@ -92,4 +93,5 @@ async def get_experiment(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
         ) from exc
+
     return ExperimentResponse.model_validate(experiment, from_attributes=True)

@@ -1,5 +1,7 @@
 """RAG configuration registry API routes."""
 
+from __future__ import annotations
+
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -11,25 +13,6 @@ from genai_template.schemas import RagConfigResponse
 from genai_template.services import RagConfigService
 
 router = APIRouter(prefix="/rag-configs", tags=["rag-configs"])
-
-
-def _response(record: RagConfigRecord) -> RagConfigResponse:
-    """Convert a persisted configuration to its API representation.
-
-    Args:
-        record:
-            Persisted configuration record.
-
-    Returns:
-        Configuration API response.
-    """
-
-    return RagConfigResponse(
-        id=record.id,
-        config_fingerprint=record.config_fingerprint,
-        config=RagConfig.model_validate_json(record.config_json),
-        created_at=record.created_at,
-    )
 
 
 @router.post("", response_model=RagConfigResponse, status_code=status.HTTP_201_CREATED)
@@ -59,6 +42,7 @@ async def register_config(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=str(exc)
         ) from exc
+
     return _response(record)
 
 
@@ -106,4 +90,24 @@ async def get_config(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
         ) from exc
+
     return _response(record)
+
+
+def _response(record: RagConfigRecord) -> RagConfigResponse:
+    """Convert a persisted configuration to its API representation.
+
+    Args:
+        record:
+            Persisted configuration record.
+
+    Returns:
+        Configuration API response.
+    """
+
+    return RagConfigResponse(
+        id=record.id,
+        config_fingerprint=record.config_fingerprint,
+        config=RagConfig.model_validate_json(record.config_json),
+        created_at=record.created_at,
+    )

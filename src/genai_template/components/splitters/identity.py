@@ -32,24 +32,28 @@ def document_identity_map(documents: list[Document]) -> dict[str, str]:
 
     identities: dict[str, str] = {}
     seen: set[str] = set()
+
     for document in documents:
         metadata = dict(document.metadata)
-        filename = metadata.get(FILE_NAME)
+        file_name = metadata.get(FILE_NAME)
         if has_portfolio_metadata(metadata):
             validate_portfolio_metadata(metadata, allow_header_path=False)
-            if document.id_ != filename:
+            if document.id_ != file_name:
                 raise ValueError("Portfolio document ID must equal its file_name")
             document_id = str(document.id_)
-        elif isinstance(filename, str) and filename:
-            document_id = filename
+        elif isinstance(file_name, str) and file_name:
+            document_id = file_name
         else:
             document_id = str(document.id_)
+
         if not document_id:
             raise ValueError("Document ID cannot be empty")
         if document_id in seen:
             raise ValueError(f"Duplicate document ID: {document_id}")
+
         seen.add(document_id)
         identities[str(document.id_)] = document_id
+
     return identities
 
 
@@ -73,10 +77,12 @@ def node_document_id(node: BaseNode, identities: dict[str, str]) -> str:
     source_id = node.ref_doc_id
     if source_id is not None and source_id in identities:
         return identities[source_id]
-    filename: Any = node.metadata.get(FILE_NAME)
-    matches = [identity for identity in identities.values() if identity == filename]
+
+    file_name: Any = node.metadata.get(FILE_NAME)
+    matches = [identity for identity in identities.values() if identity == file_name]
     if len(matches) == 1:
         return matches[0]
+
     raise ValueError("Splitter produced a node without a known document identity")
 
 
@@ -96,6 +102,7 @@ def validate_chunk_metadata(metadata: dict[str, Any], document_id: str) -> None:
 
     if not has_portfolio_metadata(metadata):
         return
+
     validate_portfolio_metadata(metadata, allow_header_path=True)
     if metadata[FILE_NAME] != document_id:
         raise ValueError("Chunk file_name does not match its document ID")

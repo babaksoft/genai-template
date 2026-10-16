@@ -85,25 +85,8 @@ class ChromaStore:
             self._client.get_collection(name=self._collection_name)
         except NotFoundError:
             return False
+
         return True
-
-    def _get_collection(self) -> Collection:
-        """Open the configured collection, creating it when necessary.
-
-        Returns:
-            Configured Chroma collection.
-        """
-
-        return self._client.get_or_create_collection(
-            name=self._collection_name,
-            metadata={"hnsw:space": self._DISTANCE_MAP[self._distance]},
-        )
-
-    def delete(self) -> None:
-        """Delete this store's Chroma collection."""
-
-        if self.exists():
-            self._client.delete_collection(name=self._collection_name)
 
     def count(self) -> int:
         """Return the number of records in this store's collection.
@@ -114,6 +97,7 @@ class ChromaStore:
 
         if not self.exists():
             return 0
+
         return self._client.get_collection(name=self._collection_name).count()
 
     def upsert(
@@ -254,6 +238,24 @@ class ChromaStore:
         self._log_stats(retrieved_chunks, timer)
 
         return retrieved_chunks
+
+    def delete(self) -> None:
+        """Delete this store's Chroma collection."""
+
+        if self.exists():
+            self._client.delete_collection(name=self._collection_name)
+
+    def _get_collection(self) -> Collection:
+        """Open the configured collection, creating it when necessary.
+
+        Returns:
+            Configured Chroma collection.
+        """
+
+        return self._client.get_or_create_collection(
+            name=self._collection_name,
+            metadata={"hnsw:space": self._DISTANCE_MAP[self._distance]},
+        )
 
     def _log_stats(self, retrieved_chunks: list[RetrievedChunk], timer: Timer) -> None:
 

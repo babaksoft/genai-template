@@ -183,6 +183,51 @@ class RagConfig(_ImmutableConfig):
     llm: AnyLLMConfig
 
 
+def load_rag_config(path: Path | None = None) -> RagConfig:
+    """Load a fully resolved RAG configuration.
+
+    Application settings provide the defaults. When ``path`` is supplied, its
+    YAML mapping is recursively overlaid on those defaults before validation.
+    Relative paths are interpreted from the repository root.
+
+    Args:
+        path:
+            Optional YAML configuration file. A relative path is resolved from
+            the repository root.
+
+    Returns:
+        An immutable, validated RAG configuration.
+
+    Raises:
+        FileNotFoundError:
+            If the configuration file does not exist.
+        ValueError:
+            If the file is malformed YAML or its root is not a mapping.
+        pydantic.ValidationError:
+            If configuration keys or values are invalid.
+    """
+
+    data = _settings_config()
+    if path is not None:
+        config_path = path.expanduser()
+        if not config_path.is_absolute():
+            config_path = settings.REPO_ROOT / config_path
+
+        try:
+            loaded = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+        except yaml.YAMLError as error:
+            raise ValueError(f"Malformed YAML configuration: {config_path}") from error
+
+        if loaded is None:
+            loaded = {}
+        if not isinstance(loaded, dict):
+            raise ValueError("RAG configuration must be a YAML mapping")
+        data = _merge_config(data, loaded)
+
+    _resolve_paths(data)
+    return RagConfig.model_validate(data)
+
+
 def canonical_config_json(config: RagConfig) -> str:
     """Serialize a resolved RAG configuration deterministically.
 
@@ -334,48 +379,3 @@ def _resolve_paths(data: dict[str, Any]) -> None:
     if not path.is_absolute():
         path = settings.REPO_ROOT / path
     vector_store[path_key] = path.resolve()
-
-
-def load_rag_config(path: Path | None = None) -> RagConfig:
-    """Load a fully resolved RAG configuration.
-
-    Application settings provide the defaults. When ``path`` is supplied, its
-    YAML mapping is recursively overlaid on those defaults before validation.
-    Relative paths are interpreted from the repository root.
-
-    Args:
-        path:
-            Optional YAML configuration file. A relative path is resolved from
-            the repository root.
-
-    Returns:
-        An immutable, validated RAG configuration.
-
-    Raises:
-        FileNotFoundError:
-            If the configuration file does not exist.
-        ValueError:
-            If the file is malformed YAML or its root is not a mapping.
-        pydantic.ValidationError:
-            If configuration keys or values are invalid.
-    """
-
-    data = _settings_config()
-    if path is not None:
-        config_path = path.expanduser()
-        if not config_path.is_absolute():
-            config_path = settings.REPO_ROOT / config_path
-
-        try:
-            loaded = yaml.safe_load(config_path.read_text(encoding="utf-8"))
-        except yaml.YAMLError as error:
-            raise ValueError(f"Malformed YAML configuration: {config_path}") from error
-
-        if loaded is None:
-            loaded = {}
-        if not isinstance(loaded, dict):
-            raise ValueError("RAG configuration must be a YAML mapping")
-        data = _merge_config(data, loaded)
-
-    _resolve_paths(data)
-    return RagConfig.model_validate(data)
