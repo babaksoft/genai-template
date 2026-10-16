@@ -52,10 +52,6 @@ from genai_template.workflow.portfolio.infrastructure.generation.service import 
 logger = logging.getLogger(__name__)
 
 
-class SummaryService:
-    pass
-
-
 def generate_component_summaries(
     plan: SummaryPlan,
     generation: GenerationConfig,
@@ -221,7 +217,7 @@ def _generate_component_summary(
         provider_metadata=response.provider_metadata,
         generation_warnings=response.warnings,
     )
-    cache.put(artifact, output_type=ComponentSummary)
+    cache.put(artifact, output_type=specification.output_type)
     logger.info("Component summary %s generated and cached", unit.unit_id)
 
     return ComponentSummaryArtifact(

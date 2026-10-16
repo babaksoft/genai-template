@@ -78,12 +78,6 @@ class QdrantStore:
 
         logger.info("Connected to Qdrant collection '%s'.", collection_name)
 
-    def delete(self) -> None:
-        """Delete this store's collection if it exists."""
-
-        if self.exists():
-            self._client.delete_collection(collection_name=self._collection_name)
-
     def create(self, vector_size: int) -> None:
         """Create an empty collection if it does not already exist.
 
@@ -98,6 +92,7 @@ class QdrantStore:
 
         if vector_size <= 0:
             raise ValueError("vector_size must be positive")
+
         if not self.exists():
             self._client.create_collection(
                 collection_name=self._collection_name,
@@ -244,6 +239,12 @@ class QdrantStore:
 
         self._log_stats(retrieved_chunks, timer)
         return retrieved_chunks
+
+    def delete(self) -> None:
+        """Delete this store's collection if it exists."""
+
+        if self.exists():
+            self._client.delete_collection(collection_name=self._collection_name)
 
     @staticmethod
     def _point_id(chunk_id: str) -> str:

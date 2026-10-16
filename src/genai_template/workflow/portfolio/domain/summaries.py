@@ -26,6 +26,16 @@ GenerationWarningCode = Literal[
     "evidence_scope_fallback",
 ]
 
+_SPECIAL_UNIT_KINDS: dict[str, ArtifactKind] = {
+    "overview": "overview",
+    "architecture": "architecture",
+    "testing-operations": "testing_operations",
+}
+
+
+def artifact_kind_from_unit(unit_id: str) -> ArtifactKind:
+    return _SPECIAL_UNIT_KINDS.get(unit_id, "component")
+
 
 class GenerationWarning(ImmutableDomainModel):
     """One typed deterministic recovery performed while parsing Markdown.
@@ -77,13 +87,7 @@ class SummaryUnitPlan(ImmutableDomainModel):
 
     @property
     def artifact_kind(self) -> ArtifactKind:
-        special_kinds: dict[str, ArtifactKind] = {
-            "overview": "overview",
-            "architecture": "architecture",
-            "testing_operations": "testing_operations",
-        }
-
-        return special_kinds.get(self.unit_id, "component")
+        return artifact_kind_from_unit(self.unit_id)
 
 
 class SummaryPlan(ImmutableDomainModel):

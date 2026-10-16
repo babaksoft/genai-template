@@ -15,6 +15,7 @@ from genai_template.workflow.portfolio.domain.summaries import (
     ProjectOverviewSummary,
     StructuredSummary,
     TestingOperationsSummary,
+    artifact_kind_from_unit,
 )
 
 
@@ -257,9 +258,7 @@ class ComponentSummaryArtifact(ImmutableDomainModel):
             "testing_operations": TestingOperationsSummary,
         }
 
-        artifact_kind = (
-            "component" if self.unit_id not in expected_types else self.unit_id
-        )
+        artifact_kind = artifact_kind_from_unit(self.unit_id)
 
         if not isinstance(self.summary, expected_types[artifact_kind]):
             raise TypeError("project artifact kind does not match its summary schema")

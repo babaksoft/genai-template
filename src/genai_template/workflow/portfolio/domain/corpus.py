@@ -110,7 +110,7 @@ class PublicationResult(ImmutableDomainModel):
 
 
 class LoadedCorpus(ImmutableDomainModel):
-    """A validated corpus pinned to one immutable filesystem location.
+    """A validated corpus pinned to one immutable file system location.
 
     Attributes:
         release_path:
